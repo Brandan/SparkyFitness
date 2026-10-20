@@ -49,6 +49,10 @@ import {
 } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
+import { useCopyFoodEntryItem } from '../hooks/useCopyFoodEntryItem';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../components/CopyMealSheet';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
 import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
@@ -177,6 +181,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
   const timeSheetRef = useRef<TimeSheetRef>(null);
+  const copySheetRef = useRef<CopyMealSheetRef>(null);
 
   useEffect(() => {
     if (entry.food_entry_meal_id) {
@@ -824,6 +829,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     updateEntry(payload);
   };
 
+  const { copyItem, isPending: isCopyPending } = useCopyFoodEntryItem({
+    onSuccess: () => copySheetRef.current?.dismiss(),
+  });
   const {
     confirmAndDelete,
     isPending: isDeletePending,
@@ -1538,6 +1546,32 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           ) : null}
         </Animated.View>
 
+        {canEdit && !isEditing && (
+          <Animated.View layout={LinearTransition.duration(300)}>
+            <Button
+              variant="secondary"
+              onPress={() =>
+                copySheetRef.current?.present(
+                  initialDate,
+                  entry.meal_type_id ?? null,
+                  entry.meal_type ?? '',
+                  entry.food_name ||
+                    t('foodEntryView.unknownFood', {
+                      defaultValue: 'Unknown food',
+                    })
+                )
+              }
+              accessibilityRole="button"
+              accessibilityLabel={t('foodEntryView.copyEntry', {
+                defaultValue: 'Copy Entry',
+              })}
+              className="mt-2"
+            >
+              {t('foodEntryView.copyEntry', { defaultValue: 'Copy Entry' })}
+            </Button>
+          </Animated.View>
+        )}
+
         <Animated.View layout={LinearTransition.duration(300)}>
           <Button
             variant="destructive"
@@ -1558,6 +1592,18 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
       </ScrollView>
 
+      <CopyMealSheet
+        ref={copySheetRef}
+        isPending={isCopyPending}
+        onCopyItem={({ targetDate, targetMealTypeId }) =>
+          copyItem({
+            kind: 'foodEntry',
+            id: entry.id,
+            targetDate,
+            targetMealType: targetMealTypeId,
+          })
+        }
+      />
       {isEditing && (
         <CalendarSheet
           ref={calendarRef}
