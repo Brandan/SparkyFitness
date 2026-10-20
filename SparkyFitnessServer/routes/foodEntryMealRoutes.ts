@@ -1,10 +1,12 @@
 import express from 'express';
+import { z } from 'zod';
 import foodEntryService from '../services/foodEntryService.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import {
+  CopyFoodEntryItemBodySchema,
   isEntryTimeString,
   foodPhotoLogRequestSchema,
   foodPhotoLogResponseSchema,
@@ -663,6 +665,72 @@ router.delete('/:id', async (req, res, next) => {
     next(err);
   }
 });
+/**
+ * @swagger
+ * /food-entry-meals/{id}/copy:
+ *   post:
+ *     summary: Copy a logged meal to a day and meal
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Copies a logged meal and the foods in it to the given day and meal
+ *       type. The target may be the meal's own day and slot, which logs it
+ *       again.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - targetDate
+ *               - targetMealType
+ *             properties:
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *               targetMealType:
+ *                 type: string
+ *                 description: Meal type id or name.
+ *     responses:
+ *       201:
+ *         description: The foods of the new logged meal.
+ *       400:
+ *         description: Invalid request body or meal type.
+ *       404:
+ *         description: FoodEntryMeal not found.
+ */
+router.post(
+  '/:id/copy',
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = CopyFoodEntryItemBodySchema.safeParse(req.body);
+    if (!parsed.success || !z.uuid().safeParse(req.params.id).success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      const copiedEntries = await foodEntryService.copyFoodEntryItem(
+        req.userId,
+        req.originalUserId || req.userId,
+        'foodEntryMeal',
+        req.params.id,
+        parsed.data.targetDate,
+        parsed.data.targetMealType
+      );
+      clearUserTdeeCache(req.userId);
+      res.status(201).json(copiedEntries);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 /**
  * @swagger
  * /food-entry-meals/{id}/image:

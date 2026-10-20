@@ -1204,6 +1204,142 @@ async function getFoodEntriesByDateRange(
     throw error;
   }
 }
+// Builds the insert row for a copy of `entry` in another day/slot. The entry
+// is a self-contained snapshot, so nutrition values, notes and the optional
+// food/variant links all travel with it.
+function buildCopiedEntryRow(
+  entry: FoodEntryInput,
+  target: {
+    userId: string;
+    actingUserId: string;
+    mealTypeId: string;
+    date: string;
+    foodEntryMealId: string | null;
+  }
+): FoodEntryInput {
+  return {
+    user_id: target.userId,
+    created_by_user_id: target.actingUserId,
+    food_id: entry.food_id,
+    meal_type_id: target.mealTypeId,
+    food_entry_meal_id: target.foodEntryMealId,
+    quantity: Number(entry.quantity ?? 0),
+    unit: entry.unit,
+    entry_date: target.date,
+    entry_time: entry.entry_time ?? null,
+    variant_id: entry.variant_id,
+    meal_plan_template_id: null,
+    food_name: entry.food_name,
+    brand_name: entry.brand_name,
+    serving_size: Number(entry.serving_size ?? 0),
+    serving_unit: entry.serving_unit,
+    calories: entry.calories,
+    protein: entry.protein,
+    carbs: entry.carbs,
+    fat: entry.fat,
+    saturated_fat: entry.saturated_fat,
+    polyunsaturated_fat: entry.polyunsaturated_fat,
+    monounsaturated_fat: entry.monounsaturated_fat,
+    trans_fat: entry.trans_fat,
+    cholesterol: entry.cholesterol,
+    sodium: entry.sodium,
+    potassium: entry.potassium,
+    dietary_fiber: entry.dietary_fiber,
+    sugars: entry.sugars,
+    vitamin_a: entry.vitamin_a,
+    vitamin_c: entry.vitamin_c,
+    calcium: entry.calcium,
+    iron: entry.iron,
+    caffeine_mg: entry.caffeine_mg,
+    water_ml: entry.water_ml,
+    alcohol_g: entry.alcohol_g,
+    glycemic_index: entry.glycemic_index,
+    custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
+    // The note travels with the entry it describes.
+    notes: entry.notes ?? null,
+  };
+}
+
+// Copies one logged food, or one logged meal with its foods, to a day and
+// meal slot. Unlike the meal-level copies this never skips a "duplicate": the
+// person asked for this exact item, and copying it onto its own slot is how
+// they log a second helping.
+async function copyFoodEntryItem(
+  authenticatedUserId: string,
+  actingUserId: string,
+  kind: 'foodEntry' | 'foodEntryMeal',
+  itemId: string,
+  targetDate: string,
+  targetMealType: string
+) {
+  if (!isDayString(targetDate)) {
+    throw copyStatusError('targetDate must be a YYYY-MM-DD day.', 400);
+  }
+  const targetMealTypeId = await resolveMealTypeId(
+    authenticatedUserId,
+    targetMealType
+  );
+  if (!targetMealTypeId) {
+    throw copyStatusError(`Invalid target meal type: ${targetMealType}`, 400);
+  }
+  const target = {
+    userId: authenticatedUserId,
+    actingUserId,
+    mealTypeId: targetMealTypeId,
+    date: targetDate,
+  };
+
+  if (kind === 'foodEntry') {
+    const entry = await foodRepository.getFoodEntryById(
+      itemId,
+      authenticatedUserId
+    );
+    if (!entry || entry.user_id !== authenticatedUserId) {
+      throw copyStatusError('Food entry not found.', 404);
+    }
+    // A food that sat inside a logged meal is copied on its own, not into a
+    // new copy of that meal.
+    return foodRepository.bulkCreateFoodEntries(
+      [buildCopiedEntryRow(entry, { ...target, foodEntryMealId: null })],
+      authenticatedUserId
+    );
+  }
+
+  const originalMeal = await foodEntryMealRepository.getFoodEntryMealById(
+    itemId,
+    authenticatedUserId
+  );
+  if (!originalMeal || originalMeal.user_id !== authenticatedUserId) {
+    throw copyStatusError('Logged meal not found.', 404);
+  }
+  const components =
+    await foodRepository.getFoodEntryComponentsByFoodEntryMealId(
+      itemId,
+      authenticatedUserId
+    );
+  const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
+    {
+      user_id: authenticatedUserId,
+      meal_template_id: originalMeal.meal_template_id,
+      meal_type_id: targetMealTypeId,
+      entry_date: targetDate,
+      entry_time: originalMeal.entry_time ?? null,
+      name: originalMeal.name,
+      description: originalMeal.description,
+      notes: originalMeal.notes ?? null,
+      quantity: originalMeal.quantity,
+      unit: originalMeal.unit,
+    },
+    actingUserId
+  );
+  if (components.length === 0) return [];
+  return foodRepository.bulkCreateFoodEntries(
+    components.map((component: FoodEntryInput) =>
+      buildCopiedEntryRow(component, { ...target, foodEntryMealId: newMeal.id })
+    ),
+    authenticatedUserId
+  );
+}
 async function copyFoodEntries(
   authenticatedUserId: string,
   actingUserId: string,
@@ -1305,47 +1441,15 @@ async function copyFoodEntries(
         newFoodEntryMealId // Use the new meal container ID for the duplicate check
       );
       if (!existingEntry) {
-        entriesToCreate.push({
-          user_id: authenticatedUserId,
-          created_by_user_id: actingUserId,
-          food_id: entry.food_id,
-          meal_type_id: targetMealTypeId,
-          food_entry_meal_id: newFoodEntryMealId, // Link the food to the new container
-          quantity: Number(entry.quantity ?? 0),
-          unit: entry.unit,
-          entry_date: targetDate,
-          entry_time: entry.entry_time ?? null,
-          variant_id: entry.variant_id,
-          meal_plan_template_id: null,
-          food_name: entry.food_name,
-          brand_name: entry.brand_name,
-          serving_size: Number(entry.serving_size ?? 0),
-          serving_unit: entry.serving_unit,
-          calories: entry.calories,
-          protein: entry.protein,
-          carbs: entry.carbs,
-          fat: entry.fat,
-          saturated_fat: entry.saturated_fat,
-          polyunsaturated_fat: entry.polyunsaturated_fat,
-          monounsaturated_fat: entry.monounsaturated_fat,
-          trans_fat: entry.trans_fat,
-          cholesterol: entry.cholesterol,
-          sodium: entry.sodium,
-          potassium: entry.potassium,
-          dietary_fiber: entry.dietary_fiber,
-          sugars: entry.sugars,
-          vitamin_a: entry.vitamin_a,
-          vitamin_c: entry.vitamin_c,
-          calcium: entry.calcium,
-          iron: entry.iron,
-          caffeine_mg: entry.caffeine_mg,
-          water_ml: entry.water_ml,
-          alcohol_g: entry.alcohol_g,
-          glycemic_index: entry.glycemic_index,
-          custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
-          // The note travels with the entry it describes.
-          notes: entry.notes ?? null,
-        });
+        entriesToCreate.push(
+          buildCopiedEntryRow(entry, {
+            userId: authenticatedUserId,
+            actingUserId,
+            mealTypeId: targetMealTypeId,
+            date: targetDate,
+            foodEntryMealId: newFoodEntryMealId,
+          })
+        );
         log(
           'debug',
           `copyFoodEntries: Adding entry for food_id: ${entry.food_id} into meal_id: ${newFoodEntryMealId}`
@@ -4055,6 +4159,7 @@ export { updateFoodEntry };
 export { getFoodEntriesByDate };
 export { getFoodEntriesByDateRange };
 export { copyFoodEntries };
+export { copyFoodEntryItem };
 export { copyFoodEntriesFromYesterday };
 export { copyAllFoodEntries };
 export { copyAllFoodEntriesFromYesterday };
@@ -4079,6 +4184,7 @@ export default {
   getFoodEntriesByDate,
   getFoodEntriesByDateRange,
   copyFoodEntries,
+  copyFoodEntryItem,
   copyFoodEntriesFromYesterday,
   copyAllFoodEntries,
   copyAllFoodEntriesFromYesterday,

@@ -38,6 +38,17 @@ function rejectDuplicateEntryIds(
   });
 }
 
+// Copy one logged food or one logged meal to a day and meal slot of the same
+// diary. The meal slot is a meal type id or name, as for the meal-level copy.
+export const CopyFoodEntryItemBodySchema = z
+  .object({
+    targetDate: dayString,
+    targetMealType: z.string().trim().min(1),
+  })
+  .strict();
+
+export type CopyFoodEntryItemBody = z.infer<typeof CopyFoodEntryItemBodySchema>;
+
 export const CopySelectedFoodEntriesFromUserBodySchema = z
   .object({
     familyUserId: z.string().uuid(),

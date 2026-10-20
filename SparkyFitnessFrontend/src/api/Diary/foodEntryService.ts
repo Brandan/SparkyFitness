@@ -146,6 +146,22 @@ export const copyFoodEntries = async (
   return response;
 };
 
+export type CopiedItemKind = 'foodEntry' | 'foodEntryMeal';
+
+export const copyFoodEntryItem = async (
+  kind: CopiedItemKind,
+  id: string,
+  targetDate: string,
+  targetMealType: string
+): Promise<unknown> => {
+  const base = kind === 'foodEntryMeal' ? 'food-entry-meals' : 'food-entries';
+  const response = await apiCall(`/${base}/${id}/copy`, {
+    method: 'POST',
+    body: { targetDate, targetMealType },
+  });
+  return response;
+};
+
 export const copyFoodEntriesFromYesterday = async (
   mealType: string,
   targetDate: string

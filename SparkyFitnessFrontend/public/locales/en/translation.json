@@ -3417,6 +3417,7 @@
     "confirm": "Confirm",
     "notApplicable": "N/A",
     "totalSets": "Total Sets",
+    "today": "Today",
     "actions": "Actions",
     "advanced": "Advanced",
     "avgHrUnit": "Avg HR",
@@ -3633,6 +3634,9 @@
     "copyAllSuccess": "Entire day copied successfully.",
     "copyAllToDate": "Copy entire day to date",
     "copyError": "Failed to copy entries.",
+    "copyItem": "Copy",
+    "copyItemError": "Failed to copy.",
+    "copyItemSuccess": "Copied to {{meal}}, {{date}}.",
     "copyFamilyDesc": "Symmetrically copy diary entries between your diary and family member diaries.",
     "copyFamilyFromError": "Failed to copy entries from family.",
     "copyFamilyFromSuccess": "Entries copied from family successfully.",
@@ -6725,11 +6729,13 @@
     "copyButton": "Copy",
     "description": "Select the target date and meal type to copy the food entries.",
     "descriptionAll": "Select the target date to copy all food entries from this day.",
+    "descriptionItem": "Pick the day and meal for the copy.",
     "mealType": "Meal Type",
     "selectMealTypePlaceholder": "Select meal type",
     "targetDate": "Target Date",
     "title": "Copy Food Entries",
-    "titleAll": "Copy Entire Day"
+    "titleAll": "Copy Entire Day",
+    "titleItem": "Copy {{name}}"
   },
   "customNutrients": {
     "failedToAddNutrient": "Failed to add nutrient.",
