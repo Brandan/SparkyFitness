@@ -150,6 +150,7 @@ export * from './utils/calorieCalculations.ts';
 export * from './utils/servingSizeConversions.ts';
 export * from './utils/nutrientMatching.ts';
 export * from './utils/search.ts';
+export * from './utils/lastLogged.ts';
 export * from './utils/csvValue.ts';
 export * from './utils/csvFormat.ts';
 export * from './utils/parseCsv.ts';
