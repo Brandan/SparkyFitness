@@ -718,6 +718,10 @@ function appendProviderTypeClause(
   }
 }
 
+/** Half-life-ish decay (days) for weighting a logged food's recency. */
+const USAGE_DECAY_DAYS = 45;
+const USAGE_USER_PLACEHOLDER = '__USAGE_USER__';
+
 async function getFoodsWithPagination(
   searchTerm: string | null | undefined,
   foodFilter: string | null | undefined,
@@ -765,8 +769,19 @@ async function getFoodsWithPagination(
     let query = `
       SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
+        TO_CHAR(fu.last_used_date, 'YYYY-MM-DD') AS last_used_date, fu.usage_count,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
+      LEFT JOIN (
+        SELECT
+          fe.food_id,
+          MAX(fe.entry_date) AS last_used_date,
+          COUNT(*)::int AS usage_count,
+          SUM(EXP(-GREATEST(CURRENT_DATE - fe.entry_date, 0) / ${USAGE_DECAY_DAYS}.0)) AS usage_score
+        FROM food_entries fe
+        WHERE fe.user_id = ${USAGE_USER_PLACEHOLDER} AND fe.food_id IS NOT NULL
+        GROUP BY fe.food_id
+      ) fu ON fu.food_id = f.id
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
       WHERE ${whereClauses.join(' AND ')}
     `;
@@ -774,13 +789,21 @@ async function getFoodsWithPagination(
     if (sortBy) {
       const [sortField, sortOrder] = sortBy.split(':');
       const nutritionSortFields = ['calories', 'protein', 'carbs', 'fat'];
-      const allowedSortFields = ['name', ...nutritionSortFields];
+      const allowedSortFields = ['name', 'last_used', ...nutritionSortFields];
       const allowedSortOrders = ['asc', 'desc'];
       if (
         allowedSortFields.includes(sortField) &&
         allowedSortOrders.includes(sortOrder)
       ) {
-        if (nutritionSortFields.includes(sortField)) {
+        if (sortField === 'last_used') {
+          // Foods never logged sort last in either direction.
+          orderByClause = `fu.last_used_date ${sortOrder.toUpperCase()} NULLS LAST, f.name ASC, f.id ASC`;
+        } else if (sortField === 'name' && sortOrder === 'asc' && searchTerm) {
+          // A typed search ranks foods the user routinely logs (recent use
+          // weighs more than old use) ahead of alphabetical order.
+          orderByClause =
+            'fu.usage_score DESC NULLS LAST, fu.last_used_date DESC NULLS LAST, f.name ASC, f.id ASC';
+        } else if (nutritionSortFields.includes(sortField)) {
           orderByClause = `fv.${sortField} ${sortOrder.toUpperCase()} NULLS LAST, f.name ASC, f.id ASC`;
         } else {
           orderByClause = `f.${sortField} ${sortOrder.toUpperCase()}, f.id ASC`;
@@ -803,6 +826,12 @@ async function getFoodsWithPagination(
     query += ` ORDER BY ${orderByClause}`;
     query += ` LIMIT $${selectParamIndex} OFFSET $${selectParamIndex + 1}`;
     selectQueryParams.push(limit, offset);
+    // Bound last so the filter/limit/offset placeholders keep their numbering.
+    query = query.replace(
+      USAGE_USER_PLACEHOLDER,
+      `$${selectQueryParams.length + 1}`
+    );
+    selectQueryParams.push(authenticatedUserId);
     const foodsResult = await client.query(query, selectQueryParams);
     return foodsResult.rows;
   } finally {

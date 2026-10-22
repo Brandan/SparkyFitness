@@ -1654,6 +1654,12 @@
     "description": "Search for foods to add to your database."
   },
   "enhancedFoodSearch": {
+    "lastLogged": "Last logged",
+    "lastLoggedToday": "Last logged today",
+    "lastLoggedYesterday": "Last logged yesterday",
+    "lastLoggedDaysAgo_one": "Last logged {{count}} day ago",
+    "lastLoggedDaysAgo_other": "Last logged {{count}} days ago",
+    "lastLoggedOn": "Last logged {{date}}",
     "database": "Database",
     "meals": "Meals",
     "online": "Online",

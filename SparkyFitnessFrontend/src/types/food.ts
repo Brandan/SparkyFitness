@@ -90,6 +90,11 @@ export interface Food {
   // ISO timestamp of when the current user starred this food. Present only on
   // items returned by the favorites endpoint; used to order the Favorites list.
   favorited_at?: string;
+  // Calendar day (YYYY-MM-DD) the current user last logged this food, and how
+  // many times they have. Present on library search results; null/absent when
+  // the user has never logged it.
+  last_used_date?: string | null;
+  usage_count?: number;
 }
 
 /**
