@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Edit, Share2, Sparkles, Star } from 'lucide-react';
 import { NutrientGrid } from './NutrientGrid';
+import { LastLogged } from './LastLogged';
 import ProviderVerifiedBadge from './ProviderVerifiedBadge';
 import AllergenBadges from '@/components/AllergenBadges';
 import type { Food } from '@/types/food';
@@ -270,6 +271,7 @@ const FoodResultCard = ({
                     ),
                   })}
                 </p>
+                <LastLogged lastUsedDate={foodItem.last_used_date} />
                 <AllergenBadges
                   allergens={foodItem.default_variant.allergens}
                   traces={foodItem.default_variant.traces}
