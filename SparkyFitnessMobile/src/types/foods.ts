@@ -60,6 +60,9 @@ export interface FoodItem {
    * food; only the owner can edit it.
    */
   notes?: string | null;
+  // Calendar day (YYYY-MM-DD) the user last logged this food. Present on
+  // library search results; null/absent when it was never logged.
+  last_used_date?: string | null;
   default_variant: FoodDefaultVariant;
 }
 

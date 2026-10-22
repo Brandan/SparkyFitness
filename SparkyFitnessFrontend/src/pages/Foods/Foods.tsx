@@ -48,6 +48,7 @@ import { Meal, MealFilter } from '@/types/meal';
 import { useFoodDatabaseManager } from '@/hooks/Foods/useFoodDatabaseManager';
 import DeleteFoodDialog, { PendingDeletion } from './DeleteFoodDialog';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
+import { LastLogged } from '@/components/FoodSearch/LastLogged';
 import AllergenBadges from '@/components/AllergenBadges';
 import {
   useFavoritesQuery,
@@ -398,6 +399,19 @@ const FoodDatabaseManager = () => {
           enableSorting: !isCustom && nutrient !== 'dietary_fiber',
         };
       }),
+      {
+        id: 'last_used',
+        header: t('enhancedFoodSearch.lastLogged', 'Last logged'),
+        accessorFn: (row: Food) => row.last_used_date ?? '',
+        cell: ({ row }) => (
+          <LastLogged
+            lastUsedDate={row.original.last_used_date}
+            className="text-xs text-muted-foreground"
+          />
+        ),
+        meta: { hideOnMobile: true },
+        enableSorting: true,
+      },
       {
         id: 'actions',
         header: t('common.actions', 'Actions'),

@@ -55,6 +55,59 @@ describe('food model search query builder', () => {
       expect(sql).toContain('LIMIT $5 OFFSET $6');
     });
 
+    it('ranks routinely and recently logged foods first when searching', async () => {
+      await foodDb.getFoodsWithPagination(
+        'yogurt',
+        null,
+        'user-1',
+        10,
+        0,
+        'name:asc'
+      );
+
+      const [sql, params] = mockClient.query.mock.calls[0];
+
+      expect(sql).toContain(
+        "TO_CHAR(fu.last_used_date, 'YYYY-MM-DD') AS last_used_date, fu.usage_count"
+      );
+      expect(sql).toContain(
+        'fu.usage_score DESC NULLS LAST, fu.last_used_date DESC NULLS LAST, f.name ASC'
+      );
+      expect(sql).toContain('fe.user_id = $5');
+      expect(params).toEqual(['%yogurt%', '%yogurt%', 10, 0, 'user-1']);
+    });
+
+    it('keeps plain alphabetical order when browsing without a search term', async () => {
+      await foodDb.getFoodsWithPagination(
+        '',
+        null,
+        'user-1',
+        10,
+        0,
+        'name:asc'
+      );
+
+      const [sql] = mockClient.query.mock.calls[0];
+
+      expect(sql).toContain('ORDER BY f.name ASC, f.id ASC');
+      expect(sql).not.toContain('ORDER BY fu.usage_score');
+    });
+
+    it('sorts by the last time a food was logged', async () => {
+      await foodDb.getFoodsWithPagination(
+        'yogurt',
+        null,
+        'user-1',
+        10,
+        0,
+        'last_used:desc'
+      );
+
+      const [sql] = mockClient.query.mock.calls[0];
+
+      expect(sql).toContain('fu.last_used_date DESC NULLS LAST, f.name ASC');
+    });
+
     describe('provider (data source) filtering', () => {
       it('binds a valid provider type as a parameter after limit/offset ordering is intact', async () => {
         await foodDb.getFoodsWithPagination(
@@ -76,6 +129,7 @@ describe('food model search query builder', () => {
           '%whey protein%',
           10,
           0,
+          'user-1',
         ]);
         expect(sql).toContain('f.provider_type = $3');
         expect(sql).toContain(
@@ -97,7 +151,7 @@ describe('food model search query builder', () => {
 
         const [sql, params] = mockClient.query.mock.calls[0];
 
-        expect(params).toEqual([10, 0]);
+        expect(params).toEqual([10, 0, 'user-1']);
         expect(sql).toContain('f.provider_type IS NULL');
         expect(sql).toContain('LIMIT $1 OFFSET $2');
       });
@@ -115,7 +169,7 @@ describe('food model search query builder', () => {
 
         const [sql, params] = mockClient.query.mock.calls[0];
 
-        expect(params).toEqual([10, 0]);
+        expect(params).toEqual([10, 0, 'user-1']);
         expect(sql).not.toContain('provider_type =');
         expect(sql).not.toContain('provider_type IS NULL');
       });
@@ -134,7 +188,7 @@ describe('food model search query builder', () => {
           );
 
           const [sql, params] = mockClient.query.mock.calls[0];
-          expect(params).toEqual([10, 0]);
+          expect(params).toEqual([10, 0, 'user-1']);
           expect(sql).not.toContain('provider_type =');
           expect(sql).not.toContain('provider_type IS NULL');
         }
@@ -153,7 +207,7 @@ describe('food model search query builder', () => {
 
         const [sql, params] = mockClient.query.mock.calls[0];
 
-        expect(params).toEqual(['user-1', 'fatsecret', 10, 0]);
+        expect(params).toEqual(['user-1', 'fatsecret', 10, 0, 'user-1']);
         expect(sql).toContain('f.user_id = $1');
         expect(sql).toContain('f.provider_type = $2');
         expect(sql).toContain('LIMIT $3 OFFSET $4');

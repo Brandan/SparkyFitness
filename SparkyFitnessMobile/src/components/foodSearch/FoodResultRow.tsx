@@ -1,5 +1,7 @@
 import React from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { describeLastLogged } from '@workspace/shared';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Icon from '../Icon';
 import AllergenBadges from '../AllergenBadges';
@@ -7,6 +9,7 @@ import ShareStatusBadge from '../ShareStatusBadge';
 import VerifiedBadge from '../VerifiedBadge';
 import { deriveShareStatus } from '../../utils/shareStatus';
 import { formatServingUnit } from '../../utils/foodDetails';
+import { getTodayDate } from '../../utils/dateUtils';
 import { foodItemToFoodInfo } from '../../types/foodInfo';
 import FoodThumbnail from '../FoodThumbnail';
 import { useFoodImageSourceContext } from '../FoodImageSourceProvider';
@@ -37,6 +40,40 @@ interface FoodResultRowProps {
   selection?: FoodRowSelection;
 }
 
+function formatLastLogged(
+  lastUsedDate: string | null | undefined,
+  t: TFunction
+): string | null {
+  const age = describeLastLogged(lastUsedDate, getTodayDate());
+  if (!age) return null;
+  switch (age.kind) {
+    case 'today':
+      return t('foodSearch.labels.lastLoggedToday', {
+        defaultValue: 'Last logged today',
+      });
+    case 'yesterday':
+      return t('foodSearch.labels.lastLoggedYesterday', {
+        defaultValue: 'Last logged yesterday',
+      });
+    case 'daysAgo':
+      return t('foodSearch.labels.lastLoggedDaysAgo', {
+        defaultValue: 'Last logged {{count}} days ago',
+        count: age.days,
+      });
+    case 'date': {
+      const [y, m, d] = age.day.split('-').map(Number);
+      return t('foodSearch.labels.lastLoggedOn', {
+        defaultValue: 'Last logged {{date}}',
+        date: new Date(y, m - 1, d).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        }),
+      });
+    }
+  }
+}
+
 const FoodResultRow: React.FC<FoodResultRowProps> = ({
   item,
   profileId,
@@ -54,6 +91,7 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
   const images = usableFoodImages(item.images);
+  const lastLoggedLabel = formatLastLogged(item.last_used_date, t);
   // The thumbnail is a SIBLING of the row's pressable, never nested inside it —
   // nesting leaves the inner one live while the parent is disabled. Matches
   // FoodLibraryRow.
@@ -131,6 +169,11 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
           {item.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5">
               {item.brand}
+            </Text>
+          ) : null}
+          {lastLoggedLabel ? (
+            <Text className="text-text-secondary text-xs mt-0.5">
+              {lastLoggedLabel}
             </Text>
           ) : null}
           <AllergenBadges

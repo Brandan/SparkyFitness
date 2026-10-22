@@ -3876,6 +3876,11 @@
     "labels": {
       "caloriesShort": "kcal",
       "caloriesUnit": "cal",
+      "lastLoggedToday": "Last logged today",
+      "lastLoggedYesterday": "Last logged yesterday",
+      "lastLoggedDaysAgo_one": "Last logged {{count}} day ago",
+      "lastLoggedDaysAgo_other": "Last logged {{count}} days ago",
+      "lastLoggedOn": "Last logged {{date}}",
       "foods": "foods",
       "meals": "meals",
       "meal": "Meal",
