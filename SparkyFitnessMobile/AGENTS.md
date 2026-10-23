@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-19_
+_Last updated: 2026-10-23_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -167,6 +167,7 @@ npx expo prebuild --clean
 - `LibraryScreen` is the hub for saved Foods, Meals, recurring Meal Plans, Exercises, and Workout Presets. Full lists live in `FoodsLibraryScreen`, `MealsLibraryScreen`, `MealPlansScreen`, `ExercisesLibraryScreen`, and `WorkoutPresetsLibraryScreen`.
 - Food detail/edit flow: `FoodDetailScreen`, `FoodFormScreen`, `FoodForm`, `FoodUnitSelectorSheet`, `useFoodVariants`, `useFoodsLibrary`, `useDeleteFood`, `foodsApi`, and `utils/foodDetails.ts`.
 - `FoodForm` supports equivalent serving sizes grouped by nutrient signature, auto-scale nutrition, compatible unit conversion via `convertServingSizeOnUnitChange`, optional AI cross-category unit conversion, custom nutrients, and caller-provided `headerChildren`.
+- Entering a food quantity in a different unit than the food's own (ounces for a gram food) is a display-edge conversion, not a variant change: `useQuantityUnit` (`hooks/useQuantityUnit.ts`, pure maths in `utils/quantityUnits.ts`) wraps a screen's existing `StepperInput` handlers through `getStepperProps(...)`, and `QuantityUnitSwitcher` is the one-tap unit row under the stepper (weight: g/oz/lb/kg; volume: ml/fl oz/cup/tbsp/tsp/l; quantity-style units like serving or piece offer nothing). The screen keeps holding and saving the quantity in the chosen variant's unit, so no entry payload or nutrition math changes; picking another serving variant, or a reused sheet showing another entry (`resetKey`), puts the unit back on the food's own. It is mounted on `FoodEntryViewScreen`, `FoodEntryAddScreen`, `FoodEntryMultiAddScreen` (per row, via `RowQuantity`, since hooks can't run in the rows' map) and `ServingAdjustSheet`; a new food-quantity stepper should use it too.
 - `EditBarcodeScreen` lets users add or remove extra barcodes for a saved food. Keep `FoodDetailScreen`, `EditBarcodeScreen`, `foodsApi`, and the `EditBarcode` route params aligned.
 - Meal templates use `MealAddScreen`, `MealDetailScreen`, `FoodSearch` / `FoodEntryAdd` with `pickerMode: 'meal-builder'`, and `services/mealBuilderSelection.ts` for pending ingredient handoff.
 - Recurring meal plans use `MealPlansScreen`, `MealPlanFormScreen`, `useMealPlans`, `mealPlansApi`, and `utils/mealPlanForm.ts`. Plans can schedule any meal already visible in the user's meal library, including family/public meals, but the plan itself remains private to its owner.
