@@ -6202,6 +6202,9 @@
     "setInputKeypad": "Keypad",
     "setInputCrown": "Digital Crown"
   },
+  "quantityUnit": {
+    "enterIn": "Enter quantity in"
+  },
   "progressPhotos": {
     "card": {
       "title": "Progress",

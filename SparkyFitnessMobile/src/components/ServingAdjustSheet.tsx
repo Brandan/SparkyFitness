@@ -10,6 +10,8 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import StepperInput from './StepperInput';
+import QuantityUnitSwitcher from './QuantityUnitSwitcher';
+import { useQuantityUnit } from '../hooks/useQuantityUnit';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
 import { formatServingUnit } from '../utils/foodDetails';
@@ -92,6 +94,13 @@ const ServingAdjustSheet = forwardRef<
     }
   };
 
+  const quantityUnit = useQuantityUnit({
+    baseUnit: entry?.unit,
+    baseQuantityText: quantityText,
+    setBaseQuantityText: setQuantityText,
+    resetKey: entry?.id,
+  });
+
   const handleDone = () => {
     if (!entry || quantity <= 0) return;
     if (quantity === entry.quantity) {
@@ -137,17 +146,29 @@ const ServingAdjustSheet = forwardRef<
             <View className="items-center mb-5">
               <View className="flex-row items-center">
                 <StepperInput
-                  value={quantityText}
-                  onChangeText={updateQuantityText}
-                  onBlur={clampQuantity}
-                  onDecrement={() => adjustQuantity(-1)}
-                  onIncrement={() => adjustQuantity(1)}
+                  {...quantityUnit.getStepperProps({
+                    onChangeText: updateQuantityText,
+                    onBlur: clampQuantity,
+                    onDecrement: () => adjustQuantity(-1),
+                    onIncrement: () => adjustQuantity(1),
+                  })}
                   InputComponent={BottomSheetTextInput}
                 />
                 <Text className="text-text-secondary text-lg ml-3">
-                  {formatServingUnit(entry.unit)}
+                  {formatServingUnit(
+                    quantityUnit.isConverted ? quantityUnit.unit : entry.unit
+                  )}
                 </Text>
               </View>
+              {quantityUnit.choices.length > 1 ? (
+                <View className="self-stretch mt-4">
+                  <QuantityUnitSwitcher
+                    choices={quantityUnit.choices}
+                    unit={quantityUnit.unit}
+                    onSelect={quantityUnit.selectUnit}
+                  />
+                </View>
+              ) : null}
             </View>
 
             {/* Calories */}
