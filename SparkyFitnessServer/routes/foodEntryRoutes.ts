@@ -1,10 +1,12 @@
 import express from 'express';
+import { z } from 'zod';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import {
+  CopyFoodEntryItemBodySchema,
   CopyReviewedFoodEntriesFromUserBodySchema,
   CopySelectedFoodEntriesFromUserBodySchema,
   isEntryTimeString,
@@ -284,6 +286,72 @@ router.post(
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(403).json({ error: error.message });
       }
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /food-entries/{id}/copy:
+ *   post:
+ *     summary: Copy one food entry to a day and meal
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Copies a single logged food to the given day and meal type. The target
+ *       may be the entry's own day and meal, which logs it a second time.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - targetDate
+ *               - targetMealType
+ *             properties:
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *               targetMealType:
+ *                 type: string
+ *                 description: Meal type id or name.
+ *     responses:
+ *       201:
+ *         description: The new food entry.
+ *       400:
+ *         description: Invalid request body or meal type.
+ *       404:
+ *         description: Food entry not found.
+ */
+router.post(
+  '/:id/copy',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = CopyFoodEntryItemBodySchema.safeParse(req.body);
+    if (!parsed.success || !z.uuid().safeParse(req.params.id).success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      const copiedEntries = await foodEntryService.copyFoodEntryItem(
+        req.userId,
+        req.originalUserId || req.userId,
+        'foodEntry',
+        req.params.id,
+        parsed.data.targetDate,
+        parsed.data.targetMealType
+      );
+      clearUserTdeeCache(req.userId);
+      res.status(201).json(copiedEntries);
+    } catch (error) {
       next(error);
     }
   }

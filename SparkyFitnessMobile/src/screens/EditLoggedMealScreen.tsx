@@ -42,6 +42,10 @@ import {
 import { useFoodEntryMealDetails } from '../hooks/useFoodEntryMealDetails';
 import { useUpdateFoodEntryMeal } from '../hooks/useUpdateFoodEntryMeal';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
+import { useCopyFoodEntryItem } from '../hooks/useCopyFoodEntryItem';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../components/CopyMealSheet';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel, normalizeDate } from '../utils/dateUtils';
@@ -269,6 +273,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
       invalidateDeleteCache();
       navigation.goBack();
     },
+  });
+
+  const copySheetRef = useRef<CopyMealSheetRef>(null);
+  const { copyItem, isPending: isCopyPending } = useCopyFoodEntryItem({
+    onSuccess: () => copySheetRef.current?.dismiss(),
   });
 
   const isRowBusy = isSavePending || isDeletePending;
@@ -746,6 +755,27 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
           </View>
         </View>
 
+        {/* Copy meal */}
+        {meal && (
+          <Button
+            variant="secondary"
+            onPress={() =>
+              copySheetRef.current?.present(
+                normalizeDate(meal.entry_date),
+                meal.meal_type_id ?? null,
+                meal.meal_type,
+                meal.name
+              )
+            }
+            disabled={isRowBusy}
+            className="mt-2"
+          >
+            {t('editLoggedMeal.actions.copyMeal', {
+              defaultValue: 'Copy Meal',
+            })}
+          </Button>
+        )}
+
         {/* Delete meal */}
         <Button
           variant="destructive"
@@ -761,6 +791,18 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
         </Button>
       </ScrollView>
 
+      <CopyMealSheet
+        ref={copySheetRef}
+        isPending={isCopyPending}
+        onCopyItem={({ targetDate, targetMealTypeId }) =>
+          copyItem({
+            kind: 'foodEntryMeal',
+            id: foodEntryMealId,
+            targetDate,
+            targetMealType: targetMealTypeId,
+          })
+        }
+      />
       <CalendarSheet
         ref={calendarRef}
         selectedDate={effectiveDate ?? ''}

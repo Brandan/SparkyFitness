@@ -185,4 +185,77 @@ describe('CopyMealSheet', () => {
     );
     expect(view.getByText('Copy meal: my old meal')).toBeTruthy();
   });
+
+  describe('copying one item', () => {
+    it('names the item and copies onto its own day and meal in one tap', () => {
+      const onCopyItem = jest.fn();
+      const ref = createRef<CopyMealSheetRef>();
+      const view = render(<CopyMealSheet ref={ref} onCopyItem={onCopyItem} />);
+      const sourceDate = getTodayDate();
+      act(() =>
+        ref.current?.present(sourceDate, 'brunch-id', 'Brunch', 'Banana')
+      );
+
+      expect(view.getByText('Copy Banana')).toBeTruthy();
+      fireEvent.press(view.getByLabelText('Copy'));
+
+      expect(onCopyItem).toHaveBeenCalledWith({
+        targetDate: sourceDate,
+        targetMealTypeId: 'brunch-id',
+      });
+    });
+
+    it('copies to a chosen meal by id, even when meal names are ambiguous', () => {
+      useMealTypesMock.mockReturnValue({ mealTypes: ambiguousMealTypes });
+      const onCopyItem = jest.fn();
+      const ref = createRef<CopyMealSheetRef>();
+      const view = render(<CopyMealSheet ref={ref} onCopyItem={onCopyItem} />);
+      const sourceDate = getTodayDate();
+      act(() =>
+        ref.current?.present(sourceDate, 'breakfast-custom', 'Breakfast', 'Egg')
+      );
+
+      fireEvent.press(view.getByText('Brunch'));
+      fireEvent.press(view.getByLabelText('Copy'));
+
+      expect(onCopyItem).toHaveBeenCalledWith({
+        targetDate: sourceDate,
+        targetMealTypeId: 'brunch-id',
+      });
+      expect(Toast.show).not.toHaveBeenCalled();
+    });
+
+    it('offers Today when the item is from another day, and copies to today', () => {
+      const onCopyItem = jest.fn();
+      const ref = createRef<CopyMealSheetRef>();
+      const view = render(<CopyMealSheet ref={ref} onCopyItem={onCopyItem} />);
+      const sourceDate = addDays(getTodayDate(), -3);
+      act(() =>
+        ref.current?.present(sourceDate, 'breakfast-id', 'Breakfast', 'Oats')
+      );
+
+      fireEvent.press(view.getByLabelText('Today'));
+      expect(view.queryByLabelText('Today')).toBeNull();
+      fireEvent.press(view.getByLabelText('Copy'));
+
+      expect(onCopyItem).toHaveBeenCalledWith({
+        targetDate: getTodayDate(),
+        targetMealTypeId: 'breakfast-id',
+      });
+    });
+
+    it('does not offer Today when the item is already from today', () => {
+      const ref = createRef<CopyMealSheetRef>();
+      const view = render(<CopyMealSheet ref={ref} onCopyItem={jest.fn()} />);
+      act(() =>
+        ref.current?.present(
+          getTodayDate(),
+          'breakfast-id',
+          'Breakfast',
+          'Oats'
+        )
+      );
+      expect(view.queryByLabelText('Today')).toBeNull();
+    });
+  });
 });

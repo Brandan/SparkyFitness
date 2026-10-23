@@ -1,6 +1,7 @@
 import { apiFetch } from './apiClient';
 import type { FoodEntry } from '../../types/foodEntries';
 import type {
+  CopyFoodEntryItemBody,
   CopyReviewedFoodEntriesFromUserPayload,
   CopySelectedFoodEntriesFromUserPayload,
 } from '@workspace/shared';
@@ -143,6 +144,36 @@ export const copyFoodEntries = async (
     operation: 'copy food entries',
     method: 'POST',
     body: payload,
+  });
+};
+
+export type CopiedItemKind = 'foodEntry' | 'foodEntryMeal';
+
+export interface CopyFoodEntryItemPayload extends CopyFoodEntryItemBody {
+  kind: CopiedItemKind;
+  id: string;
+}
+
+/**
+ * Copies one logged food, or one logged meal with its foods, to a day and meal
+ * type of the same diary. `targetMealType` is a meal type id. The target may be
+ * the item's own day and meal, which logs it again.
+ */
+export const copyFoodEntryItem = async ({
+  kind,
+  id,
+  targetDate,
+  targetMealType,
+}: CopyFoodEntryItemPayload): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint:
+      kind === 'foodEntryMeal'
+        ? `/api/food-entry-meals/${id}/copy`
+        : `/api/food-entries/${id}/copy`,
+    serviceName: 'Food Entries API',
+    operation: 'copy food entry',
+    method: 'POST',
+    body: { targetDate, targetMealType },
   });
 };
 

@@ -12,6 +12,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
+  Copy,
   Edit,
   Trash2,
   History,
@@ -21,6 +22,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
+import { format, parse } from 'date-fns';
 import EnhancedFoodSearch from '../../components/FoodSearch/FoodSearch';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -29,7 +31,13 @@ import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
-import { useCopyFoodEntriesFromYesterdayMutation } from '@/hooks/Diary/useFoodEntries';
+import {
+  type CopiedItemKind,
+  useCopyFoodEntriesFromYesterdayMutation,
+  useCopyFoodEntryItemMutation,
+} from '@/hooks/Diary/useFoodEntries';
+import { toast } from '@/hooks/use-toast';
+import CopyFoodEntryDialog from './CopyFoodEntryDialog';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
@@ -154,6 +162,12 @@ const MealCard = ({
   const highlightFoodId = searchParams.get('highlight') ?? null;
   const { mutate: copyFoodEntriesFromYesterday } =
     useCopyFoodEntriesFromYesterdayMutation();
+  const { mutate: copyFoodEntryItem } = useCopyFoodEntryItemMutation();
+  const [copyingItem, setCopyingItem] = useState<{
+    kind: CopiedItemKind;
+    id: string;
+    name: string;
+  } | null>(null);
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal'
       ? t('common.kcalUnit', 'kcal')
@@ -234,6 +248,27 @@ const MealCard = ({
       mealType: meal.type,
       targetDate: selectedDate,
     });
+  };
+
+  const handleCopyItem = (targetDate: string, targetMealType: string) => {
+    if (!copyingItem) return;
+    copyFoodEntryItem(
+      {
+        kind: copyingItem.kind,
+        id: copyingItem.id,
+        targetDate,
+        targetMealType,
+      },
+      {
+        onSuccess: () =>
+          toast({
+            title: t('diary.copyItemSuccess', 'Copied to {{meal}}, {{date}}.', {
+              meal: t(`common.${targetMealType.toLowerCase()}`, targetMealType),
+              date: format(parse(targetDate, 'yyyy-MM-dd', new Date()), 'PPP'),
+            }),
+          }),
+      }
+    );
   };
 
   return (
@@ -611,6 +646,24 @@ const MealCard = ({
                           size="icon"
                           variant="ghost"
                           className="h-9 w-9 text-muted-foreground"
+                          onClick={() =>
+                            setCopyingItem({
+                              kind: isFoodEntryMeal
+                                ? 'foodEntryMeal'
+                                : 'foodEntry',
+                              id: item.id,
+                              name: entryName ?? '',
+                            })
+                          }
+                          title={t('diary.copyItem', 'Copy')}
+                          aria-label={t('diary.copyItem', 'Copy')}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 text-muted-foreground"
                           onClick={() => {
                             debug(
                               loggingLevel,
@@ -745,6 +798,23 @@ const MealCard = ({
                       <Button
                         size="sm"
                         variant="ghost"
+                        onClick={() =>
+                          setCopyingItem({
+                            kind: isFoodEntryMeal
+                              ? 'foodEntryMeal'
+                              : 'foodEntry',
+                            id: item.id,
+                            name: entryName ?? '',
+                          })
+                        }
+                        title={t('diary.copyItem', 'Copy')}
+                        aria-label={t('diary.copyItem', 'Copy')}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={() => {
                           debug(
                             loggingLevel,
@@ -819,6 +889,15 @@ const MealCard = ({
           )}
         </CardContent>
       </Card>
+
+      <CopyFoodEntryDialog
+        isOpen={copyingItem !== null}
+        onClose={() => setCopyingItem(null)}
+        onCopy={handleCopyItem}
+        sourceMealType={meal.type}
+        itemName={copyingItem?.name ?? ''}
+        initialDate={selectedDate}
+      />
 
       {/* Edit Food Database Dialog */}
       {editingFood && (

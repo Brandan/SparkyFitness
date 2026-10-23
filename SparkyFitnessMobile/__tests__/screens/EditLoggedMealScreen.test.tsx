@@ -48,6 +48,33 @@ jest.mock('../../src/hooks/useUpdateFoodEntryMeal', () => ({
   useUpdateFoodEntryMeal: jest.fn(),
 }));
 
+const mockPresentCopySheet = jest.fn();
+const mockCopyItem = jest.fn();
+
+jest.mock('../../src/hooks/useCopyFoodEntryItem', () => ({
+  useCopyFoodEntryItem: jest.fn(() => ({
+    copyItem: mockCopyItem,
+    isPending: false,
+  })),
+}));
+
+jest.mock('../../src/components/CopyMealSheet', () => {
+  const ReactModule = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ReactModule.forwardRef(
+      (_props: unknown, ref: React.Ref<unknown>) => {
+        ReactModule.useImperativeHandle(ref, () => ({
+          present: mockPresentCopySheet,
+          dismiss: jest.fn(),
+        }));
+        return <View testID="copy-sheet" />;
+      }
+    ),
+  };
+});
+
 jest.mock('../../src/hooks/useDeleteFoodEntryMeal', () => ({
   useDeleteFoodEntryMeal: jest.fn(),
 }));
@@ -465,6 +492,19 @@ describe('EditLoggedMealScreen', () => {
     const screen = renderScreen();
     // Foods sum to 165 base cal; meal.calories is the consumed total.
     expect(screen.getByText('200 calories')).toBeTruthy();
+  });
+
+  it('copies the logged meal from its own day and meal', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Copy Meal'));
+
+    expect(mockPresentCopySheet).toHaveBeenCalledWith(
+      baseMeal.entry_date,
+      'mt-breakfast',
+      'breakfast',
+      baseMeal.name
+    );
   });
 
   it('confirms deletion when the Delete Meal button is pressed', () => {
