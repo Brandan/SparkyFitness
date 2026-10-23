@@ -8885,15 +8885,8 @@
     "newVersionAvailable": "New Version Available: {{version}}",
     "aNewVersionOfSparkyFitness": "A new version of SparkyFitness is available!",
     "releaseNotes": "Release Notes:",
-    "pleaseScrollToTheBottom": "⚠️ Please scroll to the bottom of the release notes to finish reading.",
-    "iHaveReadAndUnderstood": "I have read and understood the release notes.",
-    "pleaseContactThePlatformAdministrator": "Please contact the platform administrator to coordinate updates before proceeding.",
-    "checkingThisBoxConfirmsYou": "Checking this box confirms you are up-to-date with the latest changes.",
-    "typeBREAKINGHere": "Type 'BREAKING' here",
     "donTShowAgainFor": "Don't show again for this version",
     "published2": "Published: {{value}}",
-    "iAcknowledgeThatThisRelease2": "I acknowledge that this release contains a <span>BREAKING CHANGE</span> and I have read the changes.",
-    "toConfirmYouUnderstandPlease2": "To confirm you understand, please type <strong>BREAKING</strong> below:",
     "viewOnGitHub2": "View on GitHub: <link>{{htmlUrl}}</link>"
   },
   "oidcCallback": {

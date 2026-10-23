@@ -20,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
+import QuantityUnitSwitcher from '../components/QuantityUnitSwitcher';
+import { useQuantityUnit } from '../hooks/useQuantityUnit';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -63,6 +65,77 @@ function isRowQuantityValid(row: BasketRow): boolean {
   const quantity = rowQuantity(row);
   return Number.isFinite(quantity) && quantity > 0;
 }
+
+/**
+ * A basket row's quantity stepper, with a unit switcher underneath when the
+ * row's serving unit is a weight or volume. A component of its own because
+ * the unit hook can't run inside the rows' map.
+ */
+const RowQuantity: React.FC<{
+  row: BasketRow;
+  onQuantityChange: (quantityText: string) => void;
+  trailing: React.ReactNode;
+  t: TFunction;
+}> = ({ row, onQuantityChange, trailing, t }) => {
+  const quantityUnit = useQuantityUnit({
+    baseUnit: (row.variant ?? row.food.default_variant).serving_unit,
+    baseQuantityText: row.quantityText,
+    setBaseQuantityText: onQuantityChange,
+  });
+
+  return (
+    <>
+      <View className="mt-3 flex-row items-center justify-between">
+        <StepperInput
+          accessibilityLabels={{
+            decrement: t('foodEntryMultiAdd.accessibility.decreaseQuantity', {
+              defaultValue: 'Decrease quantity',
+            }),
+            increment: t('foodEntryMultiAdd.accessibility.increaseQuantity', {
+              defaultValue: 'Increase quantity',
+            }),
+          }}
+          {...quantityUnit.getStepperProps({
+            onChangeText: (text) => {
+              if (DECIMAL_INPUT_REGEX.test(text)) onQuantityChange(text);
+            },
+            onBlur: () => {
+              if (!isRowQuantityValid(row)) {
+                // Reset in the ROW's serving unit — the chosen variant when
+                // selected, else the food's default.
+                onQuantityChange(String(rowServingSize(row)));
+              }
+            },
+            onIncrement: () => {
+              // Invalid text parses to NaN — fall back to the seed quantity
+              // so a tap never writes "NaN".
+              const base = isRowQuantityValid(row)
+                ? rowQuantity(row)
+                : rowServingSize(row);
+              onQuantityChange(String(base + 1));
+            },
+            onDecrement: () => {
+              const base = isRowQuantityValid(row)
+                ? rowQuantity(row)
+                : rowServingSize(row);
+              onQuantityChange(String(Math.max(0, base - 1)));
+            },
+          })}
+        />
+        {trailing}
+      </View>
+      {quantityUnit.choices.length > 1 ? (
+        <View className="mt-3">
+          <QuantityUnitSwitcher
+            choices={quantityUnit.choices}
+            unit={quantityUnit.unit}
+            onSelect={quantityUnit.selectUnit}
+          />
+        </View>
+      ) : null}
+    </>
+  );
+};
 
 /**
  * Per-row variant selector (maintainer review, request 1): swaps the row's
@@ -494,91 +567,51 @@ const FoodEntryMultiAddScreen: React.FC<FoodEntryMultiAddScreenProps> = ({
                       </TouchableOpacity>
                     </View>
 
-                    <View className="mt-3 flex-row items-center justify-between">
-                      <StepperInput
-                        accessibilityLabels={{
-                          decrement: t(
-                            'foodEntryMultiAdd.accessibility.decreaseQuantity',
-                            { defaultValue: 'Decrease quantity' }
-                          ),
-                          increment: t(
-                            'foodEntryMultiAdd.accessibility.increaseQuantity',
-                            { defaultValue: 'Increase quantity' }
-                          ),
-                        }}
-                        value={row.quantityText}
-                        onChangeText={(text) => {
-                          if (DECIMAL_INPUT_REGEX.test(text)) {
-                            selection.updateDraft(row.key, {
-                              quantityText: text,
-                            });
+                    <RowQuantity
+                      row={row}
+                      onQuantityChange={(quantityText) =>
+                        selection.updateDraft(row.key, { quantityText })
+                      }
+                      t={t}
+                      trailing={
+                        <BottomSheetPicker
+                          value={row.mealTypeId}
+                          options={mealTypeOptions}
+                          onSelect={(mealTypeId: string) =>
+                            selection.updateDraft(row.key, { mealTypeId })
                           }
-                        }}
-                        onBlur={() => {
-                          if (!isRowQuantityValid(row)) {
-                            // Reset in the ROW's serving unit — the chosen
-                            // variant when selected, else the food's default.
-                            selection.updateDraft(row.key, {
-                              quantityText: String(rowServingSize(row)),
-                            });
-                          }
-                        }}
-                        onIncrement={() => {
-                          // Invalid text parses to NaN — fall back to the
-                          // seed quantity so a tap never writes "NaN".
-                          const base = isRowQuantityValid(row)
-                            ? rowQuantity(row)
-                            : rowServingSize(row);
-                          selection.updateDraft(row.key, {
-                            quantityText: String(base + 1),
-                          });
-                        }}
-                        onDecrement={() => {
-                          const base = isRowQuantityValid(row)
-                            ? rowQuantity(row)
-                            : rowServingSize(row);
-                          selection.updateDraft(row.key, {
-                            quantityText: String(Math.max(0, base - 1)),
-                          });
-                        }}
-                      />
-                      <BottomSheetPicker
-                        value={row.mealTypeId}
-                        options={mealTypeOptions}
-                        onSelect={(mealTypeId: string) =>
-                          selection.updateDraft(row.key, { mealTypeId })
-                        }
-                        title={t('foodEntryMultiAdd.pickers.selectMeal', {
-                          defaultValue: 'Select Meal',
-                        })}
-                        renderTrigger={({ onPress }) => (
-                          <TouchableOpacity
-                            onPress={onPress}
-                            activeOpacity={0.7}
-                            className="flex-row items-center rounded-full bg-raised px-3 py-1.5"
-                            accessibilityRole="button"
-                            accessibilityLabel={t(
-                              'foodEntryMultiAdd.accessibility.mealForRow',
-                              {
-                                food: row.food.name,
-                                meal: mealTypeLabel(row.mealTypeId),
-                                defaultValue: 'Meal for {{food}}: {{meal}}',
-                              }
-                            )}
-                          >
-                            <Text className="text-text-primary text-sm mr-1">
-                              {mealTypeLabel(row.mealTypeId)}
-                            </Text>
-                            <Icon
-                              name="chevron-down"
-                              size={10}
-                              color={textMuted}
-                              weight="medium"
-                            />
-                          </TouchableOpacity>
-                        )}
-                      />
-                    </View>
+                          title={t('foodEntryMultiAdd.pickers.selectMeal', {
+                            defaultValue: 'Select Meal',
+                          })}
+                          renderTrigger={({ onPress }) => (
+                            <TouchableOpacity
+                              onPress={onPress}
+                              activeOpacity={0.7}
+                              className="flex-row items-center rounded-full bg-raised px-3 py-1.5"
+                              accessibilityRole="button"
+                              accessibilityLabel={t(
+                                'foodEntryMultiAdd.accessibility.mealForRow',
+                                {
+                                  food: row.food.name,
+                                  meal: mealTypeLabel(row.mealTypeId),
+                                  defaultValue: 'Meal for {{food}}: {{meal}}',
+                                }
+                              )}
+                            >
+                              <Text className="text-text-primary text-sm mr-1">
+                                {mealTypeLabel(row.mealTypeId)}
+                              </Text>
+                              <Icon
+                                name="chevron-down"
+                                size={10}
+                                color={textMuted}
+                                weight="medium"
+                              />
+                            </TouchableOpacity>
+                          )}
+                        />
+                      }
+                    />
 
                     {!quantityValid && (
                       <Text
