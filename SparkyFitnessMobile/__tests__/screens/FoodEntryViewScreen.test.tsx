@@ -431,6 +431,53 @@ describe('FoodEntryViewScreen', () => {
     expect(screen.queryByText('150 g (183 cal)')).toBeNull();
   });
 
+  it('lets the quantity be entered in ounces and saves it in the variant unit', () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-grams',
+          food_id: 'food-1',
+          is_default: true,
+          serving_size: 28,
+          serving_unit: 'g',
+          calories: 71,
+          protein: 4.8,
+          carbs: 0,
+          fat: 5.6,
+        },
+      ] as any,
+      isLoading: false,
+      isError: false,
+    });
+
+    const screen = renderScreen({
+      entry: {
+        ...baseEntry,
+        variant_id: 'variant-grams',
+        food_name: 'Ground Beef',
+        quantity: 336,
+        unit: 'g',
+        serving_size: 28,
+        calories: 71,
+      },
+    });
+
+    pressAction(screen, navigation, 'Edit');
+    fireEvent.press(screen.getByRole('tab', { name: 'oz' }));
+
+    expect(screen.getByTestId('quantity-input').props.value).toBe('11.85');
+
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '12');
+    pressAction(screen, navigation, 'Done');
+
+    expect(mockUpdateEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ quantity: 340.19 })
+    );
+    expect(mockUpdateEntry).not.toHaveBeenCalledWith(
+      expect.objectContaining({ unit: 'oz' })
+    );
+  });
+
   it('applies the unit returned from adjust nutrition and saves against that variant', async () => {
     const screen = renderScreen({
       adjustedValues: {

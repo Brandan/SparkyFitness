@@ -48,6 +48,8 @@ import {
   useClearFoodEntryImage,
 } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
+import { useQuantityUnit } from '../hooks/useQuantityUnit';
+import QuantityUnitSwitcher from '../components/QuantityUnitSwitcher';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useCopyFoodEntryItem } from '../hooks/useCopyFoodEntryItem';
 import CopyMealSheet, {
@@ -658,6 +660,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     });
   };
 
+  const quantityUnit = useQuantityUnit({
+    baseUnit: displayValues.servingUnit,
+    baseQuantityText: quantityText,
+    setBaseQuantityText: (text) => updateEdit({ quantityText: text }),
+  });
+
   const navigateToNutritionForm = () => {
     // Build selectedUnitSelection from displayValues so FoodForm's variant-sync
     // effect uses the entry's actual stored nutrition rather than overwriting
@@ -1044,17 +1052,31 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               <View className="mt-3">
                 <View className="flex-row items-center">
                   <StepperInput
-                    value={quantityText}
-                    onChangeText={updateQuantityText}
-                    onBlur={clampQuantity}
-                    onIncrement={() => adjustQuantity(1)}
-                    onDecrement={() => adjustQuantity(-1)}
+                    {...quantityUnit.getStepperProps({
+                      onChangeText: updateQuantityText,
+                      onBlur: clampQuantity,
+                      onIncrement: () => adjustQuantity(1),
+                      onDecrement: () => adjustQuantity(-1),
+                    })}
                     keyboardType="decimal-pad"
                   />
                   <Text className="text-text-primary text-base font-medium ml-2">
-                    {formatServingUnit(displayValues.servingUnit)}
+                    {formatServingUnit(
+                      quantityUnit.isConverted
+                        ? quantityUnit.unit
+                        : displayValues.servingUnit
+                    )}
                   </Text>
                 </View>
+                {quantityUnit.choices.length > 1 ? (
+                  <View className="mt-3">
+                    <QuantityUnitSwitcher
+                      choices={quantityUnit.choices}
+                      unit={quantityUnit.unit}
+                      onSelect={quantityUnit.selectUnit}
+                    />
+                  </View>
+                ) : null}
                 <View className="flex-row items-center mt-2">
                   <Text className="text-text-secondary text-sm">
                     {formatLocalizedNumber(editServings, {
