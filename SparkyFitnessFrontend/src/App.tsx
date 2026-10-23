@@ -165,13 +165,27 @@ const Root = () => {
     setShowNewReleaseDialog(true);
   };
 
-  const handleDismissRelease = (version: string) => {
-    localStorage.setItem('dismissedReleaseVersion', version);
+  // Every way of closing these dialogs (button, X, Escape, click outside)
+  // counts as dismissed, so they don't come back on the next load.
+  const handleDismissRelease = () => {
+    try {
+      if (latestRelease) {
+        localStorage.setItem('dismissedReleaseVersion', latestRelease.version);
+      }
+    } catch {
+      // Storage can be unavailable (private mode); still close the dialog.
+    }
     setShowNewReleaseDialog(false);
   };
 
-  const handleDismissAnnouncement = (id: string) => {
-    localStorage.setItem('dismissedAnnouncementId', id);
+  const handleDismissAnnouncement = () => {
+    try {
+      if (announcement) {
+        localStorage.setItem('dismissedAnnouncementId', announcement.id);
+      }
+    } catch {
+      // Storage can be unavailable (private mode); still close the dialog.
+    }
     setShowAnnouncementDialog(false);
   };
 
@@ -252,15 +266,9 @@ const Root = () => {
                   }}
                 >
                   <NewReleaseDialog
-                    key={
-                      showNewReleaseDialog
-                        ? latestRelease?.version || 'open'
-                        : 'closed'
-                    }
                     isOpen={showNewReleaseDialog}
-                    onClose={() => setShowNewReleaseDialog(false)}
+                    onClose={handleDismissRelease}
                     releaseInfo={latestRelease}
-                    onDismissForVersion={handleDismissRelease}
                   />
                 </ErrorBoundary>
                 <ErrorBoundary
@@ -276,9 +284,8 @@ const Root = () => {
                 >
                   <AnnouncementDialog
                     isOpen={showAnnouncementDialog}
-                    onClose={() => setShowAnnouncementDialog(false)}
+                    onClose={handleDismissAnnouncement}
                     announcement={announcement}
-                    onDismiss={handleDismissAnnouncement}
                   />
                 </ErrorBoundary>
                 <Toaster />

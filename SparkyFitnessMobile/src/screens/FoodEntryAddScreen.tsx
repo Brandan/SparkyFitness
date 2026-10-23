@@ -23,6 +23,8 @@ import { useCSSVariable } from 'uniwind';
 import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
+import QuantityUnitSwitcher from '../components/QuantityUnitSwitcher';
+import { useQuantityUnit } from '../hooks/useQuantityUnit';
 import MarkdownNotesField from '../components/MarkdownNotesField';
 import { NoteMarkdown } from '../components/NoteMarkdown';
 import { usableFoodImages } from '../utils/foodImages';
@@ -825,6 +827,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     );
   };
 
+  const quantityUnit = useQuantityUnit({
+    baseUnit: displayValues.servingUnit,
+    baseQuantityText: quantityText,
+    setBaseQuantityText: setQuantityText,
+  });
+
   const scaled = (value: number) => value * servings;
 
   const insets = useSafeAreaInsets();
@@ -1603,11 +1611,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         <View className="mt-2">
           <View className="flex-row items-center">
             <StepperInput
-              value={quantityText}
-              onChangeText={updateQuantityText}
-              onBlur={clampQuantity}
-              onDecrement={() => adjustQuantity(-1)}
-              onIncrement={() => adjustQuantity(1)}
+              {...quantityUnit.getStepperProps({
+                onChangeText: updateQuantityText,
+                onBlur: clampQuantity,
+                onDecrement: () => adjustQuantity(-1),
+                onIncrement: () => adjustQuantity(1),
+              })}
             />
             {variantPickerOptions.length > 1 ? (
               <BottomSheetPicker
@@ -1632,7 +1641,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                     className="flex-1 flex-row items-center justify-between bg-raised border border-border-subtle rounded-lg px-3 py-3 ml-2 gap-2"
                   >
                     <Text className="text-text-primary text-base font-medium flex-1">
-                      {quantityUnitLabel}
+                      {quantityUnit.isConverted
+                        ? quantityUnit.unit
+                        : quantityUnitLabel}
                     </Text>
                     {isCreateVariantPending ? (
                       <ActivityIndicator size="small" color={accentColor} />
@@ -1649,10 +1660,21 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               />
             ) : (
               <Text className="text-text-primary text-base font-medium ml-2">
-                {quantityUnitLabel}
+                {quantityUnit.isConverted
+                  ? quantityUnit.unit
+                  : quantityUnitLabel}
               </Text>
             )}
           </View>
+          {quantityUnit.choices.length > 1 ? (
+            <View className="mt-3">
+              <QuantityUnitSwitcher
+                choices={quantityUnit.choices}
+                unit={quantityUnit.unit}
+                onSelect={quantityUnit.selectUnit}
+              />
+            </View>
+          ) : null}
           <View className="flex-row items-center mt-2">
             <Text className="text-text-secondary text-sm">
               {formatLocalizedNumber(servings, { maximumFractionDigits: 1 })}{' '}
