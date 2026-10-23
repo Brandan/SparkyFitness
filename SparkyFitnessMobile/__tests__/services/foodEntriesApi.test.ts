@@ -3,6 +3,7 @@ import {
   updateFoodEntry,
   deleteFoodEntry,
   copyFoodEntries,
+  copyFoodEntryItem,
   copyReviewedFoodEntriesFromUser,
   copySelectedFoodEntriesFromUser,
   calculateCaloriesConsumed,
@@ -529,6 +530,56 @@ describe('foodEntriesApi', () => {
 
       await expect(deleteFoodEntry('entry-1')).rejects.toThrow(
         'Server configuration not found.'
+      );
+    });
+  });
+
+  describe('copyFoodEntryItem', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    beforeEach(() => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([{ id: 'copied-1' }]),
+      });
+    });
+
+    test('posts a food entry to /api/food-entries/:id/copy', async () => {
+      await copyFoodEntryItem({
+        kind: 'foodEntry',
+        id: 'entry-1',
+        targetDate: '2024-06-16',
+        targetMealType: 'meal-type-lunch',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entries/entry-1/copy',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            targetDate: '2024-06-16',
+            targetMealType: 'meal-type-lunch',
+          }),
+        })
+      );
+    });
+
+    test('posts a logged meal to /api/food-entry-meals/:id/copy', async () => {
+      await copyFoodEntryItem({
+        kind: 'foodEntryMeal',
+        id: 'meal-1',
+        targetDate: '2024-06-16',
+        targetMealType: 'meal-type-lunch',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entry-meals/meal-1/copy',
+        expect.objectContaining({ method: 'POST' })
       );
     });
   });

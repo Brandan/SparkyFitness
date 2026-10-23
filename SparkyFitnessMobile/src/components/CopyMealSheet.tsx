@@ -18,7 +18,7 @@ import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { getLocalizedMealLabel } from '../constants/meals';
 import { getHistoricalMealTypeLabel } from '../utils/mealNutrition';
-import { formatDateLabel } from '../utils/dateUtils';
+import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
 import { useCalendarPresentation } from '../utils/calendarLocalization';
 import { dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
@@ -27,18 +27,26 @@ export interface CopyMealSheetRef {
   present: (
     sourceDate: string,
     sourceMealTypeId: string | null,
-    sourceMealTypeName: string
+    sourceMealTypeName: string,
+    // Set to copy one logged food or meal instead of a whole meal slot. The
+    // sheet then opens on the item's own day and meal and allows copying onto
+    // them, which logs the item again.
+    itemName?: string
   ) => void;
   dismiss: () => void;
 }
 
 interface CopyMealSheetProps {
   isPending?: boolean;
-  onCopy: (payload: CopyFoodEntriesPayload) => void;
+  onCopy?: (payload: CopyFoodEntriesPayload) => void;
+  onCopyItem?: (target: {
+    targetDate: string;
+    targetMealTypeId: string;
+  }) => void;
 }
 
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
-  ({ isPending = false, onCopy }, ref) => {
+  ({ isPending = false, onCopy, onCopyItem }, ref) => {
     const { t, i18n: translationI18n } = useTranslation();
     const dateLocale = translationI18n.language.startsWith('pl')
       ? 'pl-PL'
@@ -59,6 +67,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       date: string;
       mealTypeId: string | null;
       mealTypeName: string;
+      itemName?: string;
     } | null>(null);
     const [targetDate, setTargetDate] = useState<string>('');
     const [targetMealTypeId, setTargetMealTypeId] = useState<string | null>(
@@ -71,12 +80,14 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       present: (
         sourceDate: string,
         sourceMealTypeId: string | null,
-        sourceMealTypeName: string
+        sourceMealTypeName: string,
+        itemName?: string
       ) => {
         setSource({
           date: sourceDate,
           mealTypeId: sourceMealTypeId,
           mealTypeName: sourceMealTypeName,
+          itemName,
         });
         // Default to the same slot the user is viewing; they pick a new date/meal
         // before copying.
@@ -135,6 +146,12 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
 
     const handleCopy = useCallback(() => {
       if (!source || !targetDate || !targetMealTypeId) return;
+      if (source.itemName !== undefined) {
+        // The item endpoints take the meal type id, so there is no name
+        // ambiguity to guard against.
+        onCopyItem?.({ targetDate, targetMealTypeId });
+        return;
+      }
       // The server /food-entries/copy endpoint matches meal types by NAME only
       // (verified contract), so the payload carries names. Selection in the UI
       // is by canonical id; the name is resolved here so two categories that
@@ -167,13 +184,21 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
         return;
       }
 
-      onCopy({
+      onCopy?.({
         sourceDate: source.date,
         sourceMealType: source.mealTypeName,
         targetDate,
         targetMealType: targetType.name,
       });
-    }, [source, targetDate, targetMealTypeId, mealTypes, onCopy, t]);
+    }, [
+      source,
+      targetDate,
+      targetMealTypeId,
+      mealTypes,
+      onCopy,
+      onCopyItem,
+      t,
+    ]);
 
     return (
       <BottomSheetModal
@@ -190,23 +215,53 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
-                  {t('copyMeal.title', {
-                    defaultValue: 'Copy meal: {{meal}}',
-                    meal: sourceTitle,
-                  })}
+                  {source.itemName !== undefined
+                    ? t('copyItem.title', {
+                        defaultValue: 'Copy {{name}}',
+                        name: source.itemName,
+                      })
+                    : t('copyMeal.title', {
+                        defaultValue: 'Copy meal: {{meal}}',
+                        meal: sourceTitle,
+                      })}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
-                  {t('copyMeal.sourceDate', {
-                    defaultValue: 'Source date: {{date}}',
-                    date: formatDateLabel(source.date, t, dateLocale),
-                  })}
+                  {source.itemName !== undefined
+                    ? t('copyItem.from', {
+                        defaultValue: '{{meal}}, {{date}}',
+                        meal: sourceTitle,
+                        date: formatDateLabel(source.date, t, dateLocale),
+                      })
+                    : t('copyMeal.sourceDate', {
+                        defaultValue: 'Source date: {{date}}',
+                        date: formatDateLabel(source.date, t, dateLocale),
+                      })}
                 </Text>
               </View>
 
               {/* Target date */}
-              <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
-                {t('copyMeal.targetDate', { defaultValue: 'Target date' })}
-              </Text>
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className="text-xs font-semibold uppercase text-text-muted">
+                  {t('copyMeal.targetDate', { defaultValue: 'Target date' })}
+                </Text>
+                {source.itemName !== undefined &&
+                  targetDate !== getTodayDate() && (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={t('copyItem.today', {
+                        defaultValue: 'Today',
+                      })}
+                      onPress={() => setTargetDate(getTodayDate())}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      className="px-3 py-1 rounded-full bg-raised border border-border-subtle"
+                    >
+                      <Text className="text-sm font-semibold text-accent-primary">
+                        {t('copyItem.today', { defaultValue: 'Today' })}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+              </View>
               <DateTimePicker
                 mode="single"
                 date={dateValue}
@@ -294,7 +349,8 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                   isPending ||
                   !targetDate ||
                   !targetMealTypeId ||
-                  (source.date === targetDate &&
+                  (source.itemName === undefined &&
+                    source.date === targetDate &&
                     source.mealTypeId === targetMealTypeId)
                 }
               >

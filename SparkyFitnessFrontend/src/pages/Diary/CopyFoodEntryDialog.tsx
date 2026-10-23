@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isToday, parse } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -35,18 +35,27 @@ interface CopyFoodEntryDialogProps {
   onClose: () => void;
   onCopy: (targetDate: string, targetMealType: string) => void;
   sourceMealType: string;
+  // Set when copying one logged food or meal rather than a whole meal or day.
+  // The dialog then opens on the item's own day (`initialDate`, yyyy-MM-dd) and
+  // meal, so a single click copies it again in place.
+  itemName?: string;
+  initialDate?: string;
 }
+
+const dayToDate = (day: string) => parse(day, 'yyyy-MM-dd', new Date());
 
 const CopyFoodEntryDialog = ({
   isOpen,
   onClose,
   onCopy,
   sourceMealType,
+  itemName,
+  initialDate,
 }: CopyFoodEntryDialogProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, loggingLevel } = usePreferences();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    new Date()
+    initialDate ? dayToDate(initialDate) : new Date()
   );
   const [selectedMealType, setSelectedMealType] =
     useState<string>(sourceMealType);
@@ -54,6 +63,7 @@ const CopyFoodEntryDialog = ({
   const { data: availableMealTypes } = useMealTypes();
 
   const isAllDayCopy = sourceMealType === 'all';
+  const isItemCopy = itemName !== undefined;
 
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
 
@@ -61,6 +71,7 @@ const CopyFoodEntryDialog = ({
     setPrevIsOpen(isOpen);
     if (isOpen) {
       setSelectedMealType(sourceMealType);
+      if (initialDate) setSelectedDate(dayToDate(initialDate));
     }
   }
 
@@ -95,20 +106,29 @@ const CopyFoodEntryDialog = ({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isAllDayCopy
-              ? t('copyFoodEntryDialog.titleAll', 'Copy Entire Day')
-              : t('copyFoodEntryDialog.title', 'Copy Food Entries')}
+            {isItemCopy
+              ? t('copyFoodEntryDialog.titleItem', 'Copy {{name}}', {
+                  name: itemName,
+                })
+              : isAllDayCopy
+                ? t('copyFoodEntryDialog.titleAll', 'Copy Entire Day')
+                : t('copyFoodEntryDialog.title', 'Copy Food Entries')}
           </DialogTitle>
           <DialogDescription>
-            {isAllDayCopy
+            {isItemCopy
               ? t(
-                  'copyFoodEntryDialog.descriptionAll',
-                  'Select the target date to copy all food entries from this day.'
+                  'copyFoodEntryDialog.descriptionItem',
+                  'Pick the day and meal for the copy.'
                 )
-              : t(
-                  'copyFoodEntryDialog.description',
-                  'Select the target date and meal type to copy the food entries.'
-                )}
+              : isAllDayCopy
+                ? t(
+                    'copyFoodEntryDialog.descriptionAll',
+                    'Select the target date to copy all food entries from this day.'
+                  )
+                : t(
+                    'copyFoodEntryDialog.description',
+                    'Select the target date and meal type to copy the food entries.'
+                  )}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -116,34 +136,45 @@ const CopyFoodEntryDialog = ({
             <Label htmlFor="targetDate" className="text-right">
               {t('copyFoodEntryDialog.targetDate', 'Target Date')}
             </Label>
-            <Popover>
-              <PopoverTrigger asChild>
+            <div className="col-span-3 flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={'outline'}
+                    className={cn(
+                      'flex-1 justify-start text-left font-normal',
+                      !selectedDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? (
+                      <span>{format(selectedDate, 'PPP')}</span>
+                    ) : (
+                      <span>{t('common.pickADate', 'Pick a date')}</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      setSelectedDate(date);
+                      debug(loggingLevel, 'Selected date in dialog:', date);
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+              {isItemCopy && !(selectedDate && isToday(selectedDate)) && (
                 <Button
-                  variant={'outline'}
-                  className={cn(
-                    'col-span-3 justify-start text-left font-normal',
-                    !selectedDate && 'text-muted-foreground'
-                  )}
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setSelectedDate(new Date())}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? (
-                    <span>{format(selectedDate, 'PPP')}</span>
-                  ) : (
-                    <span>{t('common.pickADate', 'Pick a date')}</span>
-                  )}
+                  {t('common.today', 'Today')}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => {
-                    setSelectedDate(date);
-                    debug(loggingLevel, 'Selected date in dialog:', date);
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+              )}
+            </div>
           </div>
           {!isAllDayCopy && (
             <div className="grid grid-cols-4 items-center gap-4">
@@ -185,7 +216,11 @@ const CopyFoodEntryDialog = ({
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button onClick={handleCopyClick} disabled={!selectedDate}>
+          <Button
+            onClick={handleCopyClick}
+            disabled={!selectedDate}
+            autoFocus={isItemCopy}
+          >
             {t('copyFoodEntryDialog.copyButton', 'Copy')}
           </Button>
         </DialogFooter>

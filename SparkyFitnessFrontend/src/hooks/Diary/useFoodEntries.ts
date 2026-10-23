@@ -6,6 +6,7 @@ import {
   updateFoodEntry,
   removeFoodEntry,
   copyFoodEntries,
+  copyFoodEntryItem,
   copyFoodEntriesFromYesterday,
   copyAllFoodEntries,
   copyAllFoodEntriesFromYesterday,
@@ -22,6 +23,7 @@ import {
   copyFoodEntriesToUser,
   setFoodEntryImages,
   setFoodEntryMealImages,
+  type CopiedItemKind,
   type CopyFoodEntriesFromUserPayload,
   type CopyFoodEntriesToUserPayload,
   importFoodDiaryEntriesFromCsv,
@@ -169,6 +171,31 @@ export const useCopyFoodEntriesMutation = () => {
     meta: {
       successMessage: t('diary.copySuccess', 'Entries copied successfully.'),
       errorMessage: t('diary.copyError', 'Failed to copy entries.'),
+    },
+  });
+};
+
+export type { CopiedItemKind };
+
+export const useCopyFoodEntryItemMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: ({
+      kind,
+      id,
+      targetDate,
+      targetMealType,
+    }: {
+      kind: CopiedItemKind;
+      id: string;
+      targetDate: string;
+      targetMealType: string;
+    }) => copyFoodEntryItem(kind, id, targetDate, targetMealType),
+    onSuccess: () => invalidate(),
+    meta: {
+      errorMessage: t('diary.copyItemError', 'Failed to copy.'),
     },
   });
 };

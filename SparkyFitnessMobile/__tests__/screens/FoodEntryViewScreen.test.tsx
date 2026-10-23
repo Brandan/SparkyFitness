@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { pressAction } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodEntryViewScreen from '../../src/screens/FoodEntryViewScreen';
@@ -60,6 +60,33 @@ jest.mock('../../src/hooks/useFoodVariants', () => ({
 jest.mock('../../src/hooks/useDeleteFoodEntry', () => ({
   useDeleteFoodEntry: jest.fn(),
 }));
+
+const mockPresentCopySheet = jest.fn();
+const mockCopyItem = jest.fn();
+
+jest.mock('../../src/hooks/useCopyFoodEntryItem', () => ({
+  useCopyFoodEntryItem: jest.fn(() => ({
+    copyItem: mockCopyItem,
+    isPending: false,
+  })),
+}));
+
+jest.mock('../../src/components/CopyMealSheet', () => {
+  const ReactModule = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ReactModule.forwardRef(
+      (_props: unknown, ref: React.Ref<unknown>) => {
+        ReactModule.useImperativeHandle(ref, () => ({
+          present: mockPresentCopySheet,
+          dismiss: jest.fn(),
+        }));
+        return <View testID="copy-sheet" />;
+      }
+    ),
+  };
+});
 
 jest.mock('../../src/hooks/useUpdateFoodEntry', () => ({
   useUpdateFoodEntry: jest.fn(),
@@ -306,6 +333,26 @@ describe('FoodEntryViewScreen', () => {
     expect(navigation.replace).toHaveBeenCalledWith('EditLoggedMeal', {
       foodEntryMealId: 'fem-99',
     });
+  });
+
+  it('copies the entry from its own day and meal', () => {
+    mockUseProfile.mockReturnValue({
+      profile: { id: 'user-1' } as any,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Copy Entry'));
+
+    expect(mockPresentCopySheet).toHaveBeenCalledWith(
+      '2026-05-07',
+      'meal-1',
+      'breakfast',
+      'Greek Yogurt'
+    );
   });
 
   it('does not redirect for a standalone food entry', () => {
