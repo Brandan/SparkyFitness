@@ -17,6 +17,7 @@ export const mealPlanTemplatesSchema = z.object({
   start_date: z.date(),
   end_date: z.date().nullable(),
   is_active: z.boolean(),
+  auto_log: z.boolean(),
   created_at: z.date(),
   updated_at: z.date(),
 });
@@ -29,6 +30,7 @@ export const mealPlanTemplatesInitializerSchema = z.object({
   start_date: z.date(),
   end_date: z.date().optional().nullable(),
   is_active: z.boolean().optional(),
+  auto_log: z.boolean().optional(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
 });
@@ -41,6 +43,7 @@ export const mealPlanTemplatesMutatorSchema = z.object({
   start_date: z.date().optional(),
   end_date: z.date().optional().nullable(),
   is_active: z.boolean().optional(),
+  auto_log: z.boolean().optional(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
 });

@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, error } from '@/utils/logging';
 import { toast } from '@/hooks/use-toast';
@@ -25,7 +26,10 @@ import type {
 import type { Food, FoodVariant } from '@/types/food';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import MealUnitSelector from './MealUnitSelector';
-import { Edit, X } from 'lucide-react';
+import CopyDayDialog from './CopyDayDialog';
+import { ToastAction } from '@/components/ui/toast';
+import { copyDayAssignments, countAssignmentsByDay } from '@workspace/shared';
+import { Copy, Edit, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { mealViewOptions } from '@/hooks/Foods/useMeals';
 import { foodViewOptions } from '@/hooks/Foods/useFoods';
@@ -70,6 +74,10 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     return formatDateToYYYYMMDD(date);
   });
   const [isActive, setIsActive] = useState(template?.is_active || false);
+  // New plans start as "show as planned"; plans saved earlier keep adding automatically.
+  const [autoLog, setAutoLog] = useState(
+    template ? template.auto_log !== false : false
+  );
   const [assignments, setAssignments] = useState<MealPlanTemplateAssignment[]>(
     template?.assignments || []
   );
@@ -82,6 +90,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [currentDay, setCurrentDay] = useState<number | null>(null);
+  const [copySourceDay, setCopySourceDay] = useState<number | null>(null);
   const [currentMealType, setCurrentMealType] = useState<string | null>(null);
   const [editingAssignmentIndex, setEditingAssignmentIndex] = useState<
     number | null
@@ -320,6 +329,39 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     setExtendedAssignments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleCopyDay = (toDays: number[]) => {
+    if (copySourceDay === null) return;
+    const fromDay = copySourceDay;
+    const previousAssignments = assignments;
+    const previousExtended = extendedAssignments;
+    setAssignments(copyDayAssignments(assignments, fromDay, toDays));
+    setExtendedAssignments(
+      copyDayAssignments(extendedAssignments, fromDay, toDays)
+    );
+    setCopySourceDay(null);
+    toast({
+      title: t(
+        'mealPlanTemplateForm.dayCopied',
+        'Copied {{day}} to {{count}} days',
+        {
+          day: daysOfWeek[fromDay],
+          count: toDays.length,
+        }
+      ),
+      action: (
+        <ToastAction
+          altText={t('mealPlanTemplateForm.undoCopy', 'Undo')}
+          onClick={() => {
+            setAssignments(previousAssignments);
+            setExtendedAssignments(previousExtended);
+          }}
+        >
+          {t('mealPlanTemplateForm.undoCopy', 'Undo')}
+        </ToastAction>
+      ),
+    });
+  };
+
   const handleEditAssignment = async (index: number) => {
     const assignment = extendedAssignments[index];
     if (!assignment) return;
@@ -426,6 +468,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
       start_date: startDate,
       end_date: endDate,
       is_active: isActive,
+      auto_log: autoLog,
       assignments,
     };
     debug(
@@ -535,6 +578,35 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                 )}
               </p>
             </div>
+            <div className="space-y-2">
+              <Label id="mealPlanAutoLogLabel">
+                {t('mealPlanTemplateForm.autoLogLabel', 'When a day comes up')}
+              </Label>
+              <RadioGroup
+                aria-labelledby="mealPlanAutoLogLabel"
+                value={autoLog ? 'auto' : 'planned'}
+                onValueChange={(value) => setAutoLog(value === 'auto')}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="planned" id="autoLogPlanned" />
+                  <Label htmlFor="autoLogPlanned">
+                    {t(
+                      'mealPlanTemplateForm.autoLogPlanned',
+                      'Show it as planned, and I add it'
+                    )}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="auto" id="autoLogAuto" />
+                  <Label htmlFor="autoLogAuto">
+                    {t(
+                      'mealPlanTemplateForm.autoLogAuto',
+                      'Add it to my diary automatically'
+                    )}
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
             <div className="space-y-4">
               {daysOfWeek.map((day, dayIndex) => {
                 const dailyTotals = calculateDailyNutrition(dayIndex);
@@ -544,7 +616,29 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
                 return (
                   <div key={dayIndex}>
-                    <h3 className="text-lg font-semibold">{day}</h3>
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-lg font-semibold">{day}</h3>
+                      {hasDailyAssignments && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-h-9"
+                          disabled={
+                            extendedAssignments.length !== assignments.length
+                          }
+                          onClick={() => setCopySourceDay(dayIndex)}
+                          aria-label={t(
+                            'mealPlanTemplateForm.copyDayNamed',
+                            'Copy {{day}} to other days',
+                            { day }
+                          )}
+                        >
+                          <Copy className="mr-2 h-4 w-4" aria-hidden="true" />
+                          {t('mealPlanTemplateForm.copyDay', 'Copy to…')}
+                        </Button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       {mealTypes.map((mealType) => {
                         const mealTypeTotals = calculateMealTypeNutrition(
@@ -763,6 +857,14 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
           onSelect={handleFoodUnitSelected}
         />
       )}
+
+      <CopyDayDialog
+        fromDay={copySourceDay}
+        dayNames={daysOfWeek}
+        itemCounts={countAssignmentsByDay(assignments)}
+        onCopy={handleCopyDay}
+        onClose={() => setCopySourceDay(null)}
+      />
 
       {selectedMeal && (
         <MealUnitSelector

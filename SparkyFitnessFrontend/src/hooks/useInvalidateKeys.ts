@@ -15,7 +15,7 @@ import {
 } from '@/api/keys/diary';
 import { checkInKeys, sleepKeys } from '@/api/keys/checkin';
 import { chatbotKeys } from '@/api/keys/ai';
-import { foodKeys, mealKeys } from '@/api/keys/meals';
+import { foodKeys, mealKeys, plannedMealKeys } from '@/api/keys/meals';
 import { userAiConfigKeys } from '@/api/keys/admin';
 import { goalKeys } from '@/api/keys/goals';
 import { reportKeys } from '@/api/keys/reports';
@@ -35,6 +35,7 @@ export const useDiaryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: diaryReportKeys.all });
     queryClient.invalidateQueries({ queryKey: foodKeys.all });
     queryClient.invalidateQueries({ queryKey: mealKeys.all });
+    queryClient.invalidateQueries({ queryKey: plannedMealKeys.all });
     queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all });
     // A linked water container logs a coffee as a food entry, so pressing "+"
     // moves the caffeine curve as surely as logging one by hand does.
