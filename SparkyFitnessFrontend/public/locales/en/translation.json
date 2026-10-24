@@ -4641,7 +4641,8 @@
     "copyDayConfirm_other": "Copy to {{count}} days",
     "dayCopied_one": "Copied {{day}} to {{count}} day",
     "dayCopied_other": "Copied {{day}} to {{count}} days",
-    "undoCopy": "Undo"
+    "undoCopy": "Undo",
+    "reorder": "Reorder {{name}}"
   },
   "workoutPresetForm": {
     "createTitle": "Create New Workout Preset",

@@ -28,6 +28,7 @@ export const mealPlanTemplateAssignmentsSchema = z.object({
   quantity: z.number().nullable(),
   unit: z.string().nullable(),
   meal_type_id: mealTypesIdSchema,
+  sort_order: z.number(),
 });
 
 export const mealPlanTemplateAssignmentsInitializerSchema = z.object({
@@ -41,6 +42,7 @@ export const mealPlanTemplateAssignmentsInitializerSchema = z.object({
   quantity: z.number().optional().nullable(),
   unit: z.string().optional().nullable(),
   meal_type_id: mealTypesIdSchema,
+  sort_order: z.number().optional(),
 });
 
 export const mealPlanTemplateAssignmentsMutatorSchema = z.object({
@@ -54,6 +56,7 @@ export const mealPlanTemplateAssignmentsMutatorSchema = z.object({
   quantity: z.number().optional().nullable(),
   unit: z.string().optional().nullable(),
   meal_type_id: mealTypesIdSchema.optional(),
+  sort_order: z.number().optional(),
 });
 
 export type MealPlanTemplateAssignments = z.infer<

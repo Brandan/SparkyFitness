@@ -49,7 +49,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { mealEntryKey, useMealReorder } from '@/hooks/Diary/useMealReorder';
-import SortableMealEntry from './SortableMealEntry';
+import SortableRow from '@/components/SortableRow';
 import MealRetimeDialog from './MealRetimeDialog';
 interface MealTotals {
   calories: number;
@@ -563,7 +563,7 @@ const MealCard = ({
 
                       if (isMobile) {
                         return (
-                          <SortableMealEntry
+                          <SortableRow
                             key={mealEntryKey(item)}
                             id={mealEntryKey(item)}
                             handleLabel={reorderHandleLabel}
@@ -774,12 +774,12 @@ const MealCard = ({
                                 </div>
                               </div>
                             )}
-                          </SortableMealEntry>
+                          </SortableRow>
                         );
                       }
 
                       return (
-                        <SortableMealEntry
+                        <SortableRow
                           key={mealEntryKey(item)}
                           id={mealEntryKey(item)}
                           handleLabel={reorderHandleLabel}
@@ -975,7 +975,7 @@ const MealCard = ({
                               </div>
                             </div>
                           )}
-                        </SortableMealEntry>
+                        </SortableRow>
                       );
                     })}
                   </div>

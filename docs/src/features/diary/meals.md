@@ -57,4 +57,6 @@ Each plan has an **Add to diary** choice (a switch on mobile):
 
 To fill the week quickly, plan one day, then use **Copy to…** (web) or **Copy to other days…** (mobile) to copy it onto the other days. Days that are still empty are ticked for you, so for a new plan it is one tap; a day that already has items says it will be replaced and stays unticked unless you pick it. **Undo** appears after copying.
 
+To change the order of a meal's items on web, drag them by the grip on the right of each item (or focus the grip, press Space, move with the arrow keys and press Space again). The new order is saved with the plan. Planned items are listed in that order, and **Add all** and automatic plans add them to the Diary in that order. Ordering never gives an entry a time.
+
 Switching a plan from automatic to planned keeps today's entries exactly as they are and turns only the days after today into planned items. Changing a plan changes what is shown as planned straight away. Entries you already added from a plan are your own diary entries and are kept when you edit or delete the plan.

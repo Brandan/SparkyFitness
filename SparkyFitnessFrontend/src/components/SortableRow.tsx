@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface SortableMealEntryProps {
+interface SortableRowProps {
   id: string;
   /** Accessible name for the handle, e.g. "Reorder Oatmeal". */
   handleLabel: string;
@@ -14,17 +14,18 @@ interface SortableMealEntryProps {
 }
 
 /**
- * One draggable row in a meal card. Only the grip starts a drag, so clicks
+ * One draggable row in a sortable list (a diary meal, a meal plan's meal).
+ * Use inside a dnd-kit SortableContext. Only the grip starts a drag, so clicks
  * and text selection elsewhere in the row behave as before. The grip also
  * works from the keyboard: focus it, press Space, move with the arrow keys,
  * press Space again to drop (Escape cancels).
  */
-const SortableMealEntry = ({
+const SortableRow = ({
   id,
   handleLabel,
   disabled = false,
   children,
-}: SortableMealEntryProps) => {
+}: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -45,7 +46,7 @@ const SortableMealEntry = ({
       title={handleLabel}
       disabled={disabled}
       className={cn(
-        'inline-flex h-9 w-9 shrink-0 touch-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40',
+        'inline-flex h-11 w-11 shrink-0 touch-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40',
         isDragging ? 'cursor-grabbing' : 'cursor-grab'
       )}
     >
@@ -71,4 +72,4 @@ const SortableMealEntry = ({
   );
 };
 
-export default SortableMealEntry;
+export default SortableRow;

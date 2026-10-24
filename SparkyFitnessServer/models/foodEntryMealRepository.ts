@@ -25,10 +25,15 @@ interface FoodEntryMealInput {
   unit?: string | null;
   legacy_serving_unit_math?: boolean;
   entry_total_servings?: number | null;
+  /**
+   * When the entry was logged; defaults to now. A meal plan writing several
+   * items at once sets it so the diary keeps the plan's order.
+   */
+  created_at?: Date;
 }
 
 /** The subset of fields an update may change. */
-type FoodEntryMealUpdate = Partial<FoodEntryMealInput>;
+type FoodEntryMealUpdate = Partial<Omit<FoodEntryMealInput, 'created_at'>>;
 
 /**
  * Resolves a meal type name to its id on a caller-supplied client.
@@ -92,14 +97,15 @@ async function createFoodEntryMealWithClient(
                 user_id, meal_template_id, meal_type_id, entry_date, entry_time, name, description, notes,
                 quantity, unit, legacy_serving_unit_math,
                 created_by_user_id, updated_by_user_id, images,
-                entry_total_servings
+                entry_total_servings, created_at
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
               COALESCE(
                 (SELECT m.images FROM meals m WHERE m.id = $2),
                 '[]'::jsonb
               ),
-              $14
+              $14,
+              COALESCE($15::timestamptz, now())
             )
             RETURNING *`,
     [
@@ -117,6 +123,7 @@ async function createFoodEntryMealWithClient(
       createdByUserId,
       createdByUserId,
       foodEntryMealData.entry_total_servings ?? null,
+      foodEntryMealData.created_at ?? null,
     ]
   );
   return result.rows[0];

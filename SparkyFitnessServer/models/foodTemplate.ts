@@ -130,8 +130,9 @@ async function createFoodEntriesFromTemplate(
                                 'food_id', a.food_id,
                                 'variant_id', a.variant_id,
                                 'quantity', a.quantity,
-                                'unit', a.unit
-                            )
+                                'unit', a.unit,
+                                'sort_order', a.sort_order
+                            ) ORDER BY a.sort_order, a.id
                         )
                         FROM meal_plan_template_assignments a
                         WHERE a.template_id = t.id
@@ -274,6 +275,12 @@ async function createFoodEntriesFromTemplate(
       const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${dateStr}-${entry.variant_id}`;
       existingFoodEntries.add(key);
     });
+    // Rows written together share one transaction time, and the diary orders
+    // untimed entries by created_at, so stamp each item a millisecond apart
+    // in plan order. That keeps the plan's order without inventing a time.
+    const addedAtBase = Date.now();
+    let addedAtCount = 0;
+    const nextAddedAt = () => new Date(addedAtBase + addedAtCount++);
     while (compareDays(currentDay, lastDay) <= 0) {
       const dow = dayOfWeek(currentDay);
       const assignmentsForDay = assignments.filter(
@@ -290,6 +297,7 @@ async function createFoodEntriesFromTemplate(
           if (!meal) continue;
           const mealQuantity = assignment.quantity || 1.0;
           const mealUnit = assignment.unit || 'serving';
+          const mealAddedAt = nextAddedAt();
           log(
             'info',
             `Creating food_entry_meal for meal ${meal.name} with quantity ${mealQuantity} ${mealUnit}`
@@ -308,6 +316,7 @@ async function createFoodEntriesFromTemplate(
             legacy_serving_unit_math: false,
             created_by_user_id: userId,
             updated_by_user_id: userId,
+            created_at: mealAddedAt,
           };
           const newFoodEntryMeal =
             await foodEntryMealRepository.createFoodEntryMeal(
@@ -377,6 +386,7 @@ async function createFoodEntriesFromTemplate(
               variant.caffeine_mg,
               variant.water_ml,
               variant.alcohol_g,
+              mealAddedAt,
             ]);
           }
           log(
@@ -427,6 +437,7 @@ async function createFoodEntriesFromTemplate(
             variant.caffeine_mg,
             variant.water_ml,
             variant.alcohol_g,
+            nextAddedAt(),
           ]);
           existingFoodEntries.add(entryKey);
         }
@@ -441,7 +452,7 @@ async function createFoodEntriesFromTemplate(
                 calories, protein, carbs, fat,
                 saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
                 cholesterol, sodium, potassium, dietary_fiber, sugars,
-                vitamin_a, vitamin_c, calcium, iron, meal_id, created_by_user_id, food_entry_meal_id, custom_nutrients, caffeine_mg, water_ml, alcohol_g
+                vitamin_a, vitamin_c, calcium, iron, meal_id, created_by_user_id, food_entry_meal_id, custom_nutrients, caffeine_mg, water_ml, alcohol_g, created_at
             ) VALUES %L RETURNING id`,
         foodEntriesToInsert
       );
