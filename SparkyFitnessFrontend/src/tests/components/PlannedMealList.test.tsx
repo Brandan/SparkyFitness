@@ -30,7 +30,9 @@ jest.mock('@/hooks/use-toast', () => ({
 const mockAdd = jest.fn();
 const mockSkip = jest.fn();
 const mockRestore = jest.fn();
+const mockUpdate = jest.fn();
 jest.mock('@/api/Foods/plannedMeals', () => ({
+  updatePlannedFood: (...args: unknown[]) => mockUpdate(...args),
   getPlannedMeals: jest.fn(),
   addPlannedMeal: (...args: unknown[]) => mockAdd(...args),
   skipPlannedMeal: (...args: unknown[]) => mockSkip(...args),
@@ -251,5 +253,78 @@ describe('PlannedMealList', () => {
     renderList();
 
     expect(screen.queryByRole('button', { name: /Add all/ })).toBeNull();
+  });
+
+  describe('a one-off planned food', () => {
+    const oneOff: PlannedMealItem = {
+      ...item,
+      template_id: null,
+      template_name: '',
+      item_key: '44444444-4444-4444-8444-444444444444',
+      item_type: 'food',
+      meal_id: null,
+      food_id: '55555555-5555-4555-8555-555555555555',
+      variant_id: '66666666-6666-4666-8666-666666666666',
+      name: 'Birthday cake',
+      quantity: 1,
+      unit: 'slice',
+      foods: [],
+    };
+
+    it('is labelled one-off and can be changed', () => {
+      renderList([oneOff]);
+      expect(screen.getByText('Planned · one-off')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Change amount of Birthday cake' })
+      ).toBeInTheDocument();
+    });
+
+    it('offers no Change button for a plan item', () => {
+      renderList([item]);
+      expect(screen.queryByText('Change')).not.toBeInTheDocument();
+    });
+
+    it('adds with a null template id', async () => {
+      mockAdd.mockResolvedValue({
+        food_entry_ids: ['e1'],
+        food_entry_meal_ids: [],
+      });
+      renderList([oneOff]);
+      fireEvent.click(screen.getByRole('button', { name: 'Add to diary' }));
+      await waitFor(() =>
+        expect(mockAdd).toHaveBeenCalledWith({
+          template_id: null,
+          date: '2026-10-24',
+          item_key: oneOff.item_key,
+        })
+      );
+    });
+
+    it('saves a new amount', async () => {
+      mockUpdate.mockResolvedValue({ ...oneOff, quantity: 2 });
+      renderList([oneOff]);
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Change amount of Birthday cake' })
+      );
+      const input = await screen.findByLabelText('Amount (slice)');
+      fireEvent.change(input, { target: { value: '2' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(mockUpdate).toHaveBeenCalledWith(oneOff.item_key, {
+          quantity: 2,
+        })
+      );
+    });
+
+    it('will not save an amount of zero', async () => {
+      renderList([oneOff]);
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Change amount of Birthday cake' })
+      );
+      const input = await screen.findByLabelText('Amount (slice)');
+      fireEvent.change(input, { target: { value: '0' } });
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+      expect(screen.getByText('Enter an amount above 0.')).toBeInTheDocument();
+    });
   });
 });

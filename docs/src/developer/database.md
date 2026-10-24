@@ -86,6 +86,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `meal_plan_templates` | Reusable meal plan templates (supports multiple active plans per user) |
 | `meal_plan_template_assignments` | Scheduled meal templates to calendar |
 | `meal_plan_occurrences` | Planned meal items already added to, or removed from, a specific day |
+| `planned_food_items` | One-off foods planned for a day and meal, outside any meal plan |
 | `meal_plan_assignment_sets` | Sets within assigned meal plans |
 
 ### Exercise & Workouts (Tier 2/3: Owner-Write, Delegate-Read/Write)

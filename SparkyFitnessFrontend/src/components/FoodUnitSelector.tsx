@@ -102,6 +102,8 @@ interface FoodUnitSelectorProps {
   initialTime?: string;
   defaultMealTime?: string | null;
   showMealTypeSelect?: boolean;
+  /** Planning a food for later: no per-entry note, and the button says so. */
+  planned?: boolean;
   availableMealTypes?: Array<{
     id: string;
     name: string;
@@ -122,6 +124,7 @@ const FoodUnitSelector = ({
   initialTime,
   defaultMealTime,
   showMealTypeSelect,
+  planned,
   availableMealTypes,
 }: FoodUnitSelectorProps) => {
   const { t } = useTranslation();
@@ -589,10 +592,15 @@ const FoodUnitSelector = ({
                     name: food?.name,
                     defaultValue: `Edit ${food?.name}`,
                   })
-                : t('foodUnitSelector.addTitle', {
-                    name: food?.name,
-                    defaultValue: `Add ${food?.name} to Meal`,
-                  })}
+                : planned
+                  ? t('foodUnitSelector.planTitle', {
+                      name: food?.name,
+                      defaultValue: `Plan ${food?.name}`,
+                    })
+                  : t('foodUnitSelector.addTitle', {
+                      name: food?.name,
+                      defaultValue: `Add ${food?.name} to Meal`,
+                    })}
             </span>
             {/* Only persisted local/saved foods can be favorited (external
                 provider search results are not saved yet, so they have no
@@ -1033,25 +1041,27 @@ const FoodUnitSelector = ({
                 Not gated on `showTimeInput`: a per-occasion note has nothing to
                 do with whether the time picker is shown.
               */}
-              <div className="space-y-1">
-                <Label htmlFor="entryNotes">
-                  {t(
-                    'foodUnitSelector.entryNotes',
-                    'Note for this entry (optional)'
-                  )}
-                </Label>
-                <MarkdownEditor
-                  id="entryNotes"
-                  value={entryNotes}
-                  onChange={setEntryNotes}
-                  rows={3}
-                  placeholder={t(
-                    'foodUnitSelector.entryNotesPlaceholder',
-                    'Anything specific about this time you ate it'
-                  )}
-                  imageOptions={foodImageOptions}
-                />
-              </div>
+              {!planned && (
+                <div className="space-y-1">
+                  <Label htmlFor="entryNotes">
+                    {t(
+                      'foodUnitSelector.entryNotes',
+                      'Note for this entry (optional)'
+                    )}
+                  </Label>
+                  <MarkdownEditor
+                    id="entryNotes"
+                    value={entryNotes}
+                    onChange={setEntryNotes}
+                    rows={3}
+                    placeholder={t(
+                      'foodUnitSelector.entryNotesPlaceholder',
+                      'Anything specific about this time you ate it'
+                    )}
+                    imageOptions={foodImageOptions}
+                  />
+                </div>
+              )}
 
               <div className="flex justify-end space-x-2">
                 <Button
@@ -1076,7 +1086,9 @@ const FoodUnitSelector = ({
                     ? t('common.saving', 'Saving...')
                     : initialQuantity
                       ? t('foodUnitSelector.updateFood', 'Update Food')
-                      : t('foodUnitSelector.addToMeal', 'Add to Meal')}
+                      : planned
+                        ? t('foodUnitSelector.addToPlan', 'Add to Plan')
+                        : t('foodUnitSelector.addToMeal', 'Add to Meal')}
                 </Button>
               </div>
             </div>

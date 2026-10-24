@@ -3676,7 +3676,8 @@
       "addFood": "Add Food",
       "addMeal": "Add Meal",
       "removeFavorite": "Remove from favorites",
-      "addFavorite": "Add to favorites"
+      "addFavorite": "Add to favorites",
+      "addToPlan": "Add to Plan"
     },
     "labels": {
       "perServing": "per serving",
@@ -3689,7 +3690,9 @@
       "mealMakes_other": "meal makes {{formattedCount}} servings",
       "aboutThisFood": "About this food",
       "entryNotes": "Note for this entry",
-      "entryNotesPlaceholder": "Anything specific about this time you ate it"
+      "entryNotesPlaceholder": "Anything specific about this time you ate it",
+      "logEaten": "Eaten",
+      "logPlanned": "Planned"
     },
     "pickers": {
       "selectServing": "Select Serving",
@@ -8163,6 +8166,16 @@
     "protein": "P: {{amount}}g",
     "carbs": "C: {{amount}}g",
     "fat": "F: {{amount}}g",
-    "subtotal": "Planned:"
+    "subtotal": "Planned:",
+    "planError": "Could not plan that food.",
+    "oneOff": "One-off",
+    "change": "Change",
+    "changeNamed": "Change amount of {{name}}",
+    "changeAmountTitle": "Change {{name}}",
+    "amount": "Amount ({{unit}})",
+    "amountInvalid": "Enter an amount above 0.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "updateError": "Could not change the planned food."
   }
 }

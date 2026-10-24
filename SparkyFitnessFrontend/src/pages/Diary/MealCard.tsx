@@ -22,6 +22,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parse } from 'date-fns';
 import EnhancedFoodSearch from '../../components/FoodSearch/FoodSearch';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -105,7 +106,12 @@ interface MealCardProps {
   };
   totals: MealTotals;
   selectedDate: string;
-  onFoodSelect: (item: Food | Meal, mealType: string) => void;
+  /** `planned` is true when the food is to be planned, not logged as eaten. */
+  onFoodSelect: (
+    item: Food | Meal,
+    mealType: string,
+    planned?: boolean
+  ) => void;
   onEditEntry: (entry: FoodEntry | FoodEntryMeal) => void;
   onRemoveEntry: (
     itemId: string,
@@ -159,6 +165,13 @@ const MealCard = ({
   const selectedDateRelation = getDateRelationToToday(selectedDate);
 
   const [internalFoodSearchOpen, setInternalFoodSearchOpen] = useState(false);
+  // Nothing chosen yet means follow the day: a future day plans, any other logs.
+  const [planChoice, setPlanChoice] = useState<'eaten' | 'planned' | null>(
+    null
+  );
+  const planning =
+    (planChoice ??
+      (selectedDateRelation === 'future' ? 'planned' : 'eaten')) === 'planned';
   // One viewer for the whole card; the clicked row supplies its own images.
   const { lightboxProps, openLightbox } = useImageLightbox();
 
@@ -167,6 +180,7 @@ const MealCard = ({
 
   const handleFoodSearchOpenChange = (open: boolean) => {
     setInternalFoodSearchOpen(open);
+    if (!open) setPlanChoice(null);
     if (!open && onFoodSearchClose) {
       onFoodSearchClose();
     }
@@ -382,6 +396,7 @@ const MealCard = ({
                             'Warning: You are adding food entries for a past date.'
                           )) ||
                           (selectedDateRelation === 'future' &&
+                            !planning &&
                             t(
                               'foodDiary.futureDateWarning',
                               'Warning: You are adding food entries for a future date.'
@@ -390,8 +405,24 @@ const MealCard = ({
                       </span>
                     </DialogDescription>
                   </DialogHeader>
+                  <Tabs
+                    value={planning ? 'planned' : 'eaten'}
+                    onValueChange={(value) =>
+                      setPlanChoice(value === 'planned' ? 'planned' : 'eaten')
+                    }
+                  >
+                    <TabsList className="grid w-full grid-cols-2 h-auto">
+                      <TabsTrigger value="eaten" className="min-h-11">
+                        {t('mealCard.logEaten', 'Eaten')}
+                      </TabsTrigger>
+                      <TabsTrigger value="planned" className="min-h-11">
+                        {t('mealCard.logPlanned', 'Planned')}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                   <EnhancedFoodSearch
                     mealType={meal.type}
+                    hideMealTab={planning}
                     onFoodSelect={(item, type) => {
                       if (type === 'food') {
                         debug(
@@ -399,7 +430,7 @@ const MealCard = ({
                           'MealCard: Food selected in search:',
                           item
                         );
-                        onFoodSelect(item as Food, meal.type);
+                        onFoodSelect(item as Food, meal.type, planning);
                       } else {
                         debug(
                           loggingLevel,

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { sumPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ToastAction } from '@/components/ui/toast';
 import { toast } from '@/hooks/use-toast';
 import { usableFoodImages } from '@/utils/foodImages';
+import PlannedFoodEditDialog from './PlannedFoodEditDialog';
 import {
   useAddPlannedMealMutation,
   useRestorePlannedMealMutation,
@@ -81,6 +83,7 @@ const PlannedMealList = ({
   const addMutation = useAddPlannedMealMutation();
   const skipMutation = useSkipPlannedMealMutation();
   const restoreMutation = useRestorePlannedMealMutation();
+  const [editing, setEditing] = useState<PlannedMealItem | null>(null);
 
   if (items.length === 0) return null;
 
@@ -257,7 +260,9 @@ const PlannedMealList = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="gap-1 text-[11px]">
                     <CalendarClock className="h-3 w-3" aria-hidden="true" />
-                    {t('plannedMeals.badge', 'Planned')}
+                    {item.template_id === null
+                      ? t('plannedMeals.oneOffBadge', 'Planned · one-off')
+                      : t('plannedMeals.badge', 'Planned')}
                   </Badge>
                   <span className="font-semibold leading-tight">
                     {item.name}
@@ -291,6 +296,21 @@ const PlannedMealList = ({
                 )}
               </div>
               <div className="flex items-center gap-2">
+                {item.template_id === null && (
+                  <Button
+                    variant="outline"
+                    className="min-h-11"
+                    disabled={busy}
+                    onClick={() => setEditing(item)}
+                    aria-label={t(
+                      'plannedMeals.changeNamed',
+                      'Change amount of {{name}}',
+                      { name: item.name }
+                    )}
+                  >
+                    {t('plannedMeals.change', 'Change')}
+                  </Button>
+                )}
                 <Button
                   className="min-h-11 flex-1 sm:flex-none"
                   disabled={busy}
@@ -316,6 +336,7 @@ const PlannedMealList = ({
           );
         })}
       </ul>
+      <PlannedFoodEditDialog item={editing} onClose={() => setEditing(null)} />
       {showSubtotal && (
         <div className="mt-2 rounded bg-muted p-2 text-xs text-muted-foreground">
           <span className="font-semibold text-foreground">

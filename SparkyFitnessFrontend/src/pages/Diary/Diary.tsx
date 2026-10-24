@@ -62,7 +62,12 @@ import {
   sumPlannedNutrition,
 } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
-import { usePlannedMeals } from '@/hooks/Foods/usePlannedMeals';
+import {
+  useCreatePlannedFoodMutation,
+  usePlannedMeals,
+  useSkipPlannedMealMutation,
+} from '@/hooks/Foods/usePlannedMeals';
+import { ToastAction } from '@/components/ui/toast';
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -101,6 +106,8 @@ const Diary = () => {
 
   const [selectedMealType, setSelectedMealType] = useState<string>('');
   const [selectedMealTypeId, setSelectedMealTypeId] = useState<string>('');
+  // True while the picked food is being planned for later, not logged as eaten.
+  const [planningFood, setPlanningFood] = useState(false);
   const [openFoodSearchForMealType, setOpenFoodSearchForMealType] = useState<
     string | null
   >(null);
@@ -144,6 +151,8 @@ const Diary = () => {
     foodEntryMealsLoading;
 
   const { mutateAsync: createFoodEntry } = useCreateFoodEntryMutation();
+  const { mutateAsync: createPlannedFood } = useCreatePlannedFoodMutation();
+  const skipPlannedMeal = useSkipPlannedMealMutation();
   const { mutateAsync: removeFoodEntry } = useDeleteFoodEntryMutation();
   const { mutateAsync: copyFoodEntries } = useCopyFoodEntriesMutation();
   const { mutateAsync: deleteFoodEntryMeal } = useDeleteFoodEntryMealMutation();
@@ -235,7 +244,11 @@ const Diary = () => {
     }
   };
 
-  const handleFoodSelect = async (item: Food | MealType, mealType: string) => {
+  const handleFoodSelect = async (
+    item: Food | MealType,
+    mealType: string,
+    planned = false
+  ) => {
     const typeObj = availableMealTypes?.find(
       (t) => t.name.toLowerCase() === mealType.toLowerCase()
     );
@@ -247,6 +260,7 @@ const Diary = () => {
       setSelectedFood(item as Food);
       setSelectedMealType(mealType); // Name
       setSelectedMealTypeId(typeId); // UUID
+      setPlanningFood(planned);
       setIsUnitSelectorOpen(true);
     } else {
       // It's a Meal Template (not FoodEntryMeal)
@@ -280,6 +294,10 @@ const Diary = () => {
       selectedVariant,
       entryTime,
     });
+    if (planningFood) {
+      await handlePlanFood(food, quantity, unit, selectedVariant);
+      return;
+    }
     try {
       await createFoodEntry({
         user_id: currentUserId,
@@ -296,6 +314,47 @@ const Diary = () => {
       info(loggingLevel, 'Food entry added successfully.');
     } catch (err) {
       error(loggingLevel, 'Error adding food entry:', err);
+    }
+  };
+
+  const handlePlanFood = async (
+    food: Food,
+    quantity: number,
+    unit: string,
+    selectedVariant: FoodVariant
+  ) => {
+    if (!selectedVariant.id || !selectedMealTypeId) return;
+    try {
+      const planned = await createPlannedFood({
+        date: selectedDate,
+        meal_type_id: selectedMealTypeId,
+        food_id: food.id,
+        variant_id: selectedVariant.id,
+        quantity,
+        unit,
+      });
+      toast({
+        title: t('plannedMeals.planned', 'Planned {{name}} for {{mealName}}', {
+          name: food.name,
+          mealName: t(`common.${selectedMealType}`, selectedMealType),
+        }),
+        action: (
+          <ToastAction
+            altText={t('plannedMeals.undo', 'Undo')}
+            onClick={() =>
+              skipPlannedMeal.mutate({
+                template_id: planned.template_id,
+                date: selectedDate,
+                item_key: planned.item_key,
+              })
+            }
+          >
+            {t('plannedMeals.undo', 'Undo')}
+          </ToastAction>
+        ),
+      });
+    } catch (err) {
+      error(loggingLevel, 'Error planning food:', err);
     }
   };
 
@@ -548,7 +607,8 @@ const Diary = () => {
           onOpenChange={setIsUnitSelectorOpen}
           onSelect={handleFoodUnitSelect}
           showUnitSelector={true}
-          showTimeInput={true}
+          showTimeInput={!planningFood}
+          planned={planningFood}
           defaultMealTime={
             availableMealTypes?.find(
               (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()

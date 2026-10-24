@@ -67,3 +67,9 @@ To change the order of a meal's items on web, drag them by the grip on the right
 On the web, each item in the plan shows its picture when the food or meal has one — the same picture the Diary shows, including a meal that borrows the first picture of the foods inside it. Tap the picture to see it larger. A food's brand appears beside its name.
 
 Switching a plan from automatic to planned keeps today's entries exactly as they are and turns only the days after today into planned items. Changing a plan changes what is shown as planned straight away. Entries you already added from a plan are your own diary entries and are kept when you edit or delete the plan.
+
+### Planning a single food for one day
+
+To plan something without a meal plan (a birthday cake on Saturday, tomorrow's lunch), use the add-food screen as usual and choose **Planned** instead of **Eaten**. On a future day **Planned** is already selected; on today or a past day **Eaten** is. The choice applies only to that food and is never remembered. A planned food needs a saved food, so a result from an online search has to be saved first, and meals cannot be planned this way.
+
+The food appears in that day's meal as a **Planned · one-off** item, next to anything a meal plan puts there. It looks and behaves the same: it shows its calories and macros, counts toward the **planned** figures and not the day's totals, and has **Add to diary**, **Skip** and **Undo**. A one-off item also has **Change**, which edits its amount. A one-off item that was not added stays on the day it was planned for; it is never carried forward.

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import {
@@ -15,6 +15,7 @@ import { useOpenLightbox } from './LightboxProvider';
 import { formatLocalizedNumber } from '../localization';
 import { usableFoodImages } from '../utils/foodImages';
 import { usePlannedMealMutations } from '../hooks/usePlannedMeals';
+import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 interface PlannedMealsSectionProps {
   items: PlannedMealItem[];
@@ -23,6 +24,67 @@ interface PlannedMealsSectionProps {
 
 const formatQuantity = (quantity: number, unit: string) =>
   `${Number.isInteger(quantity) ? quantity : Number(quantity.toFixed(2))} ${unit}`;
+
+/** Changes how much of a one-off planned food is planned. */
+const OneOffAmountEditor: React.FC<{
+  item: PlannedMealItem;
+  disabled: boolean;
+  onSave: (quantity: number) => void;
+  onCancel: () => void;
+}> = ({ item, disabled, onSave, onCancel }) => {
+  const { t } = useTranslation();
+  const [text, setText] = useState(String(item.quantity));
+  const parsed = parseDecimalInput(text);
+  const valid = Number.isFinite(parsed) && parsed > 0;
+  return (
+    <View className="gap-2">
+      <Text className="text-sm text-text-secondary">
+        {t('plannedMeals.amount', {
+          defaultValue: 'Amount ({{unit}})',
+          unit: item.unit,
+        })}
+      </Text>
+      <TextInput
+        className="rounded-lg border border-border-subtle bg-raised px-3 py-3 text-base text-text-primary"
+        value={text}
+        onChangeText={(next) => {
+          if (next === '' || DECIMAL_INPUT_REGEX.test(next)) setText(next);
+        }}
+        keyboardType="decimal-pad"
+        autoFocus
+        selectTextOnFocus
+        accessibilityLabel={t('plannedMeals.changeNamed', {
+          defaultValue: 'Change amount of {{name}}',
+          name: item.name,
+        })}
+      />
+      {!valid ? (
+        <Text className="text-sm text-text-secondary">
+          {t('plannedMeals.amountInvalid', {
+            defaultValue: 'Enter an amount above 0.',
+          })}
+        </Text>
+      ) : null}
+      <View className="flex-row gap-2">
+        <Button
+          variant="primary"
+          className="flex-1 py-3"
+          disabled={disabled || !valid}
+          onPress={() => valid && onSave(parsed)}
+        >
+          {t('plannedMeals.save', { defaultValue: 'Save' })}
+        </Button>
+        <Button
+          variant="ghost"
+          className="min-h-11 py-3 px-4"
+          onPress={onCancel}
+        >
+          {t('plannedMeals.cancel', { defaultValue: 'Cancel' })}
+        </Button>
+      </View>
+    </View>
+  );
+};
 
 const formatMacro = (value: number) =>
   (Number.isFinite(value) ? value : 0).toFixed(1);
@@ -118,8 +180,10 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
     addPlannedMealAsync,
     skipPlannedMealAsync,
     restorePlannedMealAsync,
+    updatePlannedFoodAsync,
     isPending,
   } = usePlannedMealMutations(date);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
   const [proteinColor, carbsColor, fatColor] = useCSSVariable([
@@ -358,6 +422,13 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
                           colors={macroColors}
                         />
                       ) : null}
+                      {item.template_id === null ? (
+                        <Text className="text-xs font-semibold uppercase text-text-muted">
+                          {t('plannedMeals.oneOff', {
+                            defaultValue: 'One-off',
+                          })}
+                        </Text>
+                      ) : null}
                       {item.foods.length > 0 && (
                         <Text className="text-sm text-text-secondary">
                           {item.foods
@@ -370,30 +441,68 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
                       )}
                     </View>
                   </View>
-                  <View className="flex-row gap-2">
-                    <Button
-                      variant="primary"
-                      className="flex-1 py-3"
+                  {editingKey === item.item_key ? (
+                    <OneOffAmountEditor
+                      item={item}
                       disabled={isPending}
-                      onPress={() => void handleAdd(item)}
-                    >
-                      {t('plannedMeals.addToDiary', {
-                        defaultValue: 'Add to diary',
-                      })}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="min-h-11 py-3 px-4"
-                      disabled={isPending}
-                      onPress={() => void handleSkip(item)}
-                      accessibilityLabel={t('plannedMeals.skipNamed', {
-                        defaultValue: 'Skip {{name}} for this day',
-                        name: item.name,
-                      })}
-                    >
-                      {t('plannedMeals.skip', { defaultValue: 'Skip' })}
-                    </Button>
-                  </View>
+                      onCancel={() => setEditingKey(null)}
+                      onSave={(quantity) => {
+                        void updatePlannedFoodAsync({
+                          id: item.item_key,
+                          quantity,
+                        })
+                          .then(() => setEditingKey(null))
+                          .catch(() =>
+                            Toast.show({
+                              type: 'error',
+                              text1: t('plannedMeals.updateError', {
+                                defaultValue:
+                                  'Could not change the planned food.',
+                              }),
+                            })
+                          );
+                      }}
+                    />
+                  ) : (
+                    <View className="flex-row gap-2">
+                      {item.template_id === null ? (
+                        <Button
+                          variant="ghost"
+                          className="min-h-11 py-3 px-4"
+                          disabled={isPending}
+                          onPress={() => setEditingKey(item.item_key)}
+                          accessibilityLabel={t('plannedMeals.changeNamed', {
+                            defaultValue: 'Change amount of {{name}}',
+                            name: item.name,
+                          })}
+                        >
+                          {t('plannedMeals.change', { defaultValue: 'Change' })}
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="primary"
+                        className="flex-1 py-3"
+                        disabled={isPending}
+                        onPress={() => void handleAdd(item)}
+                      >
+                        {t('plannedMeals.addToDiary', {
+                          defaultValue: 'Add to diary',
+                        })}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="min-h-11 py-3 px-4"
+                        disabled={isPending}
+                        onPress={() => void handleSkip(item)}
+                        accessibilityLabel={t('plannedMeals.skipNamed', {
+                          defaultValue: 'Skip {{name}} for this day',
+                          name: item.name,
+                        })}
+                      >
+                        {t('plannedMeals.skip', { defaultValue: 'Skip' })}
+                      </Button>
+                    </View>
+                  )}
                 </View>
               );
             })}

@@ -1,8 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { PlannedMealActionBody } from '@workspace/shared';
+import type {
+  PlannedMealActionBody,
+  UpdatePlannedFoodBody,
+} from '@workspace/shared';
 import {
   addPlannedMeal,
+  createPlannedFood,
+  updatePlannedFood,
   getPlannedMeals,
   restorePlannedMeal,
   skipPlannedMeal,
@@ -63,6 +68,37 @@ export const useRestorePlannedMealMutation = () => {
     onSuccess: invalidateDiary,
     meta: {
       errorMessage: t('plannedMeals.undoError', 'Could not undo that.'),
+    },
+  });
+};
+
+export const useCreatePlannedFoodMutation = () => {
+  const { t } = useTranslation();
+  const invalidateDiary = useDiaryInvalidation();
+  return useMutation({
+    mutationFn: createPlannedFood,
+    onSuccess: invalidateDiary,
+    meta: {
+      errorMessage: t(
+        'plannedMeals.planFoodError',
+        'Could not plan that food.'
+      ),
+    },
+  });
+};
+
+export const useUpdatePlannedFoodMutation = () => {
+  const { t } = useTranslation();
+  const invalidateDiary = useDiaryInvalidation();
+  return useMutation({
+    mutationFn: ({ id, ...body }: UpdatePlannedFoodBody & { id: string }) =>
+      updatePlannedFood(id, body),
+    onSuccess: invalidateDiary,
+    meta: {
+      errorMessage: t(
+        'plannedMeals.updateError',
+        'Could not change the planned food.'
+      ),
     },
   });
 };

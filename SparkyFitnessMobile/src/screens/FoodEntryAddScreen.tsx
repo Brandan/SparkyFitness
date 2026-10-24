@@ -23,6 +23,7 @@ import { useCSSVariable } from 'uniwind';
 import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
+import SegmentedControl from '../components/SegmentedControl';
 import QuantityUnitSwitcher from '../components/QuantityUnitSwitcher';
 import { useQuantityUnit } from '../hooks/useQuantityUnit';
 import MarkdownNotesField from '../components/MarkdownNotesField';
@@ -44,7 +45,11 @@ import { setPendingContainerLinkSelection } from '../services/waterContainerLink
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { addDays, getTodayDate, getDeviceTimezone } from '../utils/dateUtils';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { prefillEntryTime, userHourMinute } from '@workspace/shared';
+import {
+  compareDays,
+  prefillEntryTime,
+  userHourMinute,
+} from '@workspace/shared';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
@@ -66,6 +71,7 @@ import {
 import { useSaveFood } from '../hooks/useSaveFood';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../hooks/useAddFoodEntryMeal';
+import { useCreatePlannedFood } from '../hooks/usePlannedMeals';
 import type { FoodEntryMealCreateData } from '../types/foodEntryMeals';
 import CalendarSheet, {
   type CalendarSheetRef,
@@ -1353,8 +1359,56 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     value: mealType.id,
   }));
 
+  // Only a saved food can be planned: planning stores the food and serving, not
+  // a nutrition snapshot. Nothing chosen means follow the day: a future day
+  // plans, any other logs.
+  const [planChoice, setPlanChoice] = useState<'eaten' | 'planned' | null>(
+    null
+  );
+  const canPlan =
+    !isSelectionMode && activeItem.source === 'local' && !!selectedVariantId;
+  const planning =
+    canPlan &&
+    (planChoice ??
+      (compareDays(selectedDate, getTodayDate()) > 0 ? 'planned' : 'eaten')) ===
+      'planned';
+  const { mutateAsync: createPlannedFoodAsync, isPending: isPlanPending } =
+    useCreatePlannedFood();
+
+  const handlePlan = async () => {
+    if (!effectiveMealId || !selectedVariantId) return;
+    try {
+      await createPlannedFoodAsync({
+        date: selectedDate,
+        meal_type_id: effectiveMealId,
+        food_id: activeItem.id,
+        variant_id: selectedVariantId,
+        quantity,
+        unit: displayValues.servingUnit,
+      });
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: t('plannedMeals.planError', {
+          defaultValue: 'Could not plan that food.',
+        }),
+      });
+      return;
+    }
+    const planReturnDepth = route.params?.returnDepth;
+    navigation.dispatch(
+      planReturnDepth
+        ? StackActions.pop(planReturnDepth)
+        : StackActions.popToTop()
+    );
+  };
+
   const isActionPending =
-    isAddPending || isAddMealPending || isSavePending || isCreateVariantPending;
+    isAddPending ||
+    isAddMealPending ||
+    isSavePending ||
+    isCreateVariantPending ||
+    isPlanPending;
 
   // Navigate to FoodForm in adjust-nutrition mode. Shared by the inline header
   // edit button (Android) and the native header Edit item (iOS).
@@ -1728,6 +1782,28 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
         {!isSelectionMode ? (
           <>
+            {canPlan ? (
+              <View className="mt-2">
+                <SegmentedControl
+                  segments={[
+                    {
+                      key: 'eaten',
+                      label: t('foodEntryAdd.labels.logEaten', {
+                        defaultValue: 'Eaten',
+                      }),
+                    },
+                    {
+                      key: 'planned',
+                      label: t('foodEntryAdd.labels.logPlanned', {
+                        defaultValue: 'Planned',
+                      }),
+                    },
+                  ]}
+                  activeKey={planning ? 'planned' : 'eaten'}
+                  onSelect={setPlanChoice}
+                />
+              </View>
+            ) : null}
             <View className="flex-row items-center mt-2">
               <DateSelectRow
                 date={selectedDate}
@@ -1761,49 +1837,53 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               )}
             </View>
 
-            <View className="flex-row items-center mt-2">
-              <TouchableOpacity
-                onPress={() => timeSheetRef.current?.present()}
-                activeOpacity={0.7}
-                className="flex-row items-center"
-              >
-                <Text className="text-text-secondary text-base">
-                  {t('foodEntryAdd.labels.time', { defaultValue: 'Time' })}
-                </Text>
-                <Text className="text-text-primary text-base font-medium mx-1.5">
-                  {formatTimeLabel(entryTime, preferences?.time_format) ??
-                    t('foodEntryAdd.labels.none', { defaultValue: 'None' })}
-                </Text>
-                <Icon
-                  name="chevron-down"
-                  size={12}
-                  color={textPrimary}
-                  weight="medium"
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.7}
-                className="flex-row items-center mx-4"
-                onPress={handleSetEntryTimeNow}
-              >
-                <Text className="text-text-link text-sm font-medium mx-1.5">
-                  {t('foodEntryAdd.actions.now', { defaultValue: 'Now' })}
-                </Text>
-              </TouchableOpacity>
-
-              {entryTime !== '' && (
+            {!planning ? (
+              <View className="flex-row items-center mt-2">
                 <TouchableOpacity
+                  onPress={() => timeSheetRef.current?.present()}
                   activeOpacity={0.7}
                   className="flex-row items-center"
-                  onPress={() => handleSelectEntryTime('')}
+                >
+                  <Text className="text-text-secondary text-base">
+                    {t('foodEntryAdd.labels.time', { defaultValue: 'Time' })}
+                  </Text>
+                  <Text className="text-text-primary text-base font-medium mx-1.5">
+                    {formatTimeLabel(entryTime, preferences?.time_format) ??
+                      t('foodEntryAdd.labels.none', { defaultValue: 'None' })}
+                  </Text>
+                  <Icon
+                    name="chevron-down"
+                    size={12}
+                    color={textPrimary}
+                    weight="medium"
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  className="flex-row items-center mx-4"
+                  onPress={handleSetEntryTimeNow}
                 >
                   <Text className="text-text-link text-sm font-medium mx-1.5">
-                    {t('foodEntryAdd.actions.clear', { defaultValue: 'Clear' })}
+                    {t('foodEntryAdd.actions.now', { defaultValue: 'Now' })}
                   </Text>
                 </TouchableOpacity>
-              )}
-            </View>
+
+                {entryTime !== '' && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    className="flex-row items-center"
+                    onPress={() => handleSelectEntryTime('')}
+                  >
+                    <Text className="text-text-link text-sm font-medium mx-1.5">
+                      {t('foodEntryAdd.actions.clear', {
+                        defaultValue: 'Clear',
+                      })}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
 
             {selectedMealType ? (
               <View className="flex-row items-center mt-2">
@@ -1871,19 +1951,22 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               </View>
             ) : null}
 
-            <View className="mt-3">
-              <MarkdownNotesField
-                images={usableFoodImages(activeItem.images)}
-                value={entryNotes}
-                onCommit={setEntryNotes}
-                label={t('foodEntryAdd.labels.entryNotes', {
-                  defaultValue: 'Note for this entry',
-                })}
-                placeholder={t('foodEntryAdd.labels.entryNotesPlaceholder', {
-                  defaultValue: 'Anything specific about this time you ate it',
-                })}
-              />
-            </View>
+            {!planning ? (
+              <View className="mt-3">
+                <MarkdownNotesField
+                  images={usableFoodImages(activeItem.images)}
+                  value={entryNotes}
+                  onCommit={setEntryNotes}
+                  label={t('foodEntryAdd.labels.entryNotes', {
+                    defaultValue: 'Note for this entry',
+                  })}
+                  placeholder={t('foodEntryAdd.labels.entryNotesPlaceholder', {
+                    defaultValue:
+                      'Anything specific about this time you ate it',
+                  })}
+                />
+              </View>
+            ) : null}
           </>
         ) : null}
       </ScrollView>
@@ -1891,9 +1974,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       {/* Sticky footer */}
       <FooterSaveBar
         label={
-          activeItem.source === 'meal'
-            ? t('foodEntryAdd.actions.addMeal', { defaultValue: 'Add Meal' })
-            : t('foodEntryAdd.actions.addFood', { defaultValue: 'Add Food' })
+          planning
+            ? t('foodEntryAdd.actions.addToPlan', {
+                defaultValue: 'Add to Plan',
+              })
+            : activeItem.source === 'meal'
+              ? t('foodEntryAdd.actions.addMeal', { defaultValue: 'Add Meal' })
+              : t('foodEntryAdd.actions.addFood', { defaultValue: 'Add Food' })
         }
         busy={isActionPending}
         disabled={
@@ -1908,6 +1995,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           }
 
           if (!effectiveMealId) return;
+
+          if (planning) {
+            void handlePlan();
+            return;
+          }
 
           if (activeItem.source === 'meal') {
             addMeal(buildFoodEntryMealPayload());

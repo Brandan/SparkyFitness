@@ -1,4 +1,5 @@
 import express from 'express';
+import { z } from 'zod';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import mealPlanTemplateService from '../services/mealPlanTemplateService.js';
@@ -7,6 +8,8 @@ import plannedMealService, {
 } from '../services/plannedMealService.js';
 import { ValidationError } from '../utils/errors.js';
 import {
+  createPlannedFoodBodySchema,
+  updatePlannedFoodBodySchema,
   plannedMealActionBodySchema,
   plannedMealRestoreBodySchema,
   plannedMealsQuerySchema,
@@ -360,6 +363,91 @@ router.post(
       res.status(204).send();
     } catch (error) {
       next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /meal-plan-templates/planned/items:
+ *   post:
+ *     summary: Plan one food on a day, outside any meal plan
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Creates a one-off planned item. It is listed with the day's other
+ *       planned items (with a null template_id) and is in no total until it
+ *       is added to the diary.
+ *     responses:
+ *       201:
+ *         description: The planned item.
+ *       400:
+ *         description: Invalid request, unknown meal, or a serving that does not belong to the food.
+ */
+router.post(
+  '/planned/items',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = createPlannedFoodBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      res
+        .status(201)
+        .json(
+          await plannedMealService.createPlannedFood(req.userId, parsed.data)
+        );
+    } catch (error) {
+      sendPlannedMealError(error, res, next);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /meal-plan-templates/planned/items/{id}:
+ *   put:
+ *     summary: Change a one-off planned food
+ *     tags: [Nutrition & Meals]
+ *     description: Changes the quantity, unit, serving or meal of an item that is still planned.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: The updated planned item.
+ *       404:
+ *         description: The item is no longer planned.
+ */
+router.put(
+  '/planned/items/:id',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const id = z.string().uuid().safeParse(req.params.id);
+    const parsed = updatePlannedFoodBodySchema.safeParse(req.body);
+    if (!id.success || !parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      res
+        .status(200)
+        .json(
+          await plannedMealService.updatePlannedFood(
+            req.userId,
+            id.data,
+            parsed.data
+          )
+        );
+    } catch (error) {
+      sendPlannedMealError(error, res, next);
     }
   }
 );
