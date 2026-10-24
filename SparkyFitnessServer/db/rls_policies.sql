@@ -44,6 +44,7 @@ BEGIN
     'meal_plan_template_assignments',
     'meal_plan_templates',
     'meal_plan_occurrences',
+    'planned_food_items',
     'meal_plans',
     'meals',
     'meal_types',
@@ -625,6 +626,7 @@ SELECT create_owner_policy('food_assistant_preferences');
 SELECT create_owner_policy('food_assistant_tasks');
 SELECT create_owner_policy('food_assistant_operations');
 SELECT create_diary_policy('meal_plan_occurrences');
+SELECT create_diary_policy('planned_food_items');
 
 -- Profiles: delegates can read (with any meaningful permission) but only owner can write.
 -- Delegates do not need to modify another user's profile to manage their diary.

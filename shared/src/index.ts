@@ -82,6 +82,7 @@ export * from './schemas/database/MealPlans.zod.ts';
 export * from './schemas/database/MealPlanTemplateAssignments.zod.ts';
 export * from './schemas/database/MealPlanTemplates.zod.ts';
 export * from './schemas/database/MealPlanOccurrences.zod.ts';
+export * from './schemas/database/PlannedFoodItems.zod.ts';
 export * from './schemas/database/Meals.zod.ts';
 export * from './schemas/database/MealTypes.zod.ts';
 export * from './schemas/database/MedicationEntries.zod.ts';

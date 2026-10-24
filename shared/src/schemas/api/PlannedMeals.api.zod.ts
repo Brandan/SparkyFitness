@@ -26,8 +26,11 @@ export const plannedMealComponentSchema = z.object({
 
 /** One item of a "show as planned" meal plan on one day, not yet in the diary. */
 export const plannedMealItemSchema = z.object({
-  template_id: z.string().uuid(),
+  /** The meal plan the item comes from; null for a one-off food planned on its own. */
+  template_id: z.string().uuid().nullable(),
+  /** Empty for a one-off food. */
   template_name: z.string(),
+  /** For a one-off food, the id of the planned food item. */
   item_key: z.string().min(1).max(200),
   item_type: z.enum(['meal', 'food']),
   meal_type_id: z.string().uuid(),
@@ -55,7 +58,7 @@ export const plannedMealItemSchema = z.object({
 export const plannedMealsResponseSchema = z.array(plannedMealItemSchema);
 
 const plannedMealTargetShape = {
-  template_id: z.string().uuid(),
+  template_id: z.string().uuid().nullable(),
   date: dayString,
   item_key: z.string().min(1).max(200),
 };
@@ -79,6 +82,33 @@ export const plannedMealRestoreBodySchema = z
   })
   .strict();
 
+/** Plan one food on one day and meal, outside any meal plan. */
+export const createPlannedFoodBodySchema = z
+  .object({
+    date: dayString,
+    meal_type_id: z.string().uuid(),
+    food_id: z.string().uuid(),
+    variant_id: z.string().uuid(),
+    quantity: z.number().positive().max(1_000_000),
+    unit: z.string().min(1).max(50),
+  })
+  .strict();
+
+/** Change a one-off planned food; send only what changed. */
+export const updatePlannedFoodBodySchema = z
+  .object({
+    meal_type_id: z.string().uuid().optional(),
+    variant_id: z.string().uuid().optional(),
+    quantity: z.number().positive().max(1_000_000).optional(),
+    unit: z.string().min(1).max(50).optional(),
+  })
+  .strict()
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'Nothing to update',
+  });
+
+export type CreatePlannedFoodBody = z.infer<typeof createPlannedFoodBodySchema>;
+export type UpdatePlannedFoodBody = z.infer<typeof updatePlannedFoodBodySchema>;
 export type PlannedMealComponent = z.infer<typeof plannedMealComponentSchema>;
 export type PlannedMealItem = z.infer<typeof plannedMealItemSchema>;
 export type PlannedMealActionBody = z.infer<typeof plannedMealActionBodySchema>;

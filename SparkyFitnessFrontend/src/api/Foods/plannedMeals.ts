@@ -1,5 +1,7 @@
 import type {
   AddedPlannedMeal,
+  CreatePlannedFoodBody,
+  UpdatePlannedFoodBody,
   PlannedMealActionBody,
   PlannedMealItem,
   PlannedMealRestoreBody,
@@ -36,4 +38,17 @@ export const restorePlannedMeal = async (
   await api.post('/meal-plan-templates/planned/restore', {
     body: { food_entry_ids: [], food_entry_meal_ids: [], ...target },
   });
+};
+
+export const createPlannedFood = async (
+  body: CreatePlannedFoodBody
+): Promise<PlannedMealItem> => {
+  return await api.post('/meal-plan-templates/planned/items', { body });
+};
+
+export const updatePlannedFood = async (
+  id: string,
+  body: UpdatePlannedFoodBody
+): Promise<PlannedMealItem> => {
+  return await api.put(`/meal-plan-templates/planned/items/${id}`, { body });
 };

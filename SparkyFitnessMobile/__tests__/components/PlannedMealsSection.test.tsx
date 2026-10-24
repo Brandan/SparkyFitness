@@ -19,11 +19,13 @@ jest.mock('../../src/components/FoodImageSourceProvider', () => ({
 const mockAdd = jest.fn();
 const mockSkip = jest.fn();
 const mockRestore = jest.fn();
+const mockUpdate = jest.fn();
 jest.mock('../../src/hooks/usePlannedMeals', () => ({
   usePlannedMealMutations: () => ({
     addPlannedMealAsync: mockAdd,
     skipPlannedMealAsync: mockSkip,
     restorePlannedMealAsync: mockRestore,
+    updatePlannedFoodAsync: mockUpdate,
     isPending: false,
   }),
 }));
@@ -294,5 +296,88 @@ describe('PlannedMealsSection', () => {
     );
 
     expect(queryByText(/Add all/)).toBeNull();
+  });
+
+  describe('a one-off planned food', () => {
+    const oneOff: PlannedMealItem = {
+      ...item,
+      template_id: null,
+      template_name: '',
+      item_key: '44444444-4444-4444-8444-444444444444',
+      item_type: 'food',
+      meal_id: null,
+      food_id: '55555555-5555-4555-8555-555555555555',
+      variant_id: '66666666-6666-4666-8666-666666666666',
+      name: 'Birthday cake',
+      unit: 'slice',
+      foods: [],
+    };
+
+    it('is labelled one-off and can be changed', () => {
+      const { getByText, getByLabelText } = render(
+        <PlannedMealsSection items={[oneOff]} date="2026-10-24" />
+      );
+      expect(getByText('One-off')).toBeTruthy();
+      expect(getByLabelText('Change amount of Birthday cake')).toBeTruthy();
+    });
+
+    it('offers no label or Change for a plan item', () => {
+      const { queryByText } = render(
+        <PlannedMealsSection items={[item]} date="2026-10-24" />
+      );
+      expect(queryByText('One-off')).toBeNull();
+      expect(queryByText('Change')).toBeNull();
+    });
+
+    it('adds it with a null template id', async () => {
+      mockAdd.mockResolvedValue({
+        food_entry_ids: ['e1'],
+        food_entry_meal_ids: [],
+      });
+      const { getByText } = render(
+        <PlannedMealsSection items={[oneOff]} date="2026-10-24" />
+      );
+      fireEvent.press(getByText('Add to diary'));
+      await waitFor(() =>
+        expect(mockAdd).toHaveBeenCalledWith({
+          template_id: null,
+          date: '2026-10-24',
+          item_key: oneOff.item_key,
+        })
+      );
+    });
+
+    it('saves a new amount', async () => {
+      mockUpdate.mockResolvedValue({ ...oneOff, quantity: 2 });
+      const { getByLabelText, getByText } = render(
+        <PlannedMealsSection items={[oneOff]} date="2026-10-24" />
+      );
+      fireEvent.press(getByLabelText('Change amount of Birthday cake'));
+      fireEvent.changeText(
+        getByLabelText('Change amount of Birthday cake'),
+        '2'
+      );
+      fireEvent.press(getByText('Save'));
+      await waitFor(() =>
+        expect(mockUpdate).toHaveBeenCalledWith({
+          id: oneOff.item_key,
+          quantity: 2,
+        })
+      );
+    });
+
+    it('will not save an amount of zero', () => {
+      const { getByLabelText, getByText } = render(
+        <PlannedMealsSection items={[oneOff]} date="2026-10-24" />
+      );
+      fireEvent.press(getByLabelText('Change amount of Birthday cake'));
+      fireEvent.changeText(
+        getByLabelText('Change amount of Birthday cake'),
+        '0'
+      );
+      fireEvent.press(getByText('Save'));
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(getByText('Enter an amount above 0.')).toBeTruthy();
+    });
   });
 });

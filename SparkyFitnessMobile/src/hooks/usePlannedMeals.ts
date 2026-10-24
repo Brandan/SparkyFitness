@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PlannedMealActionBody } from '@workspace/shared';
+import type {
+  PlannedMealActionBody,
+  UpdatePlannedFoodBody,
+} from '@workspace/shared';
 import {
   addPlannedMeal,
+  createPlannedFood,
+  updatePlannedFood,
   fetchPlannedMeals,
   restorePlannedMeal,
   skipPlannedMeal,
@@ -45,12 +50,34 @@ function usePlannedMealMutations(date: string) {
     onSuccess: refresh,
   });
 
+  const update = useMutation({
+    mutationFn: ({ id, ...body }: UpdatePlannedFoodBody & { id: string }) =>
+      updatePlannedFood(id, body),
+    onSuccess: refresh,
+  });
+
   return {
+    updatePlannedFoodAsync: update.mutateAsync,
     addPlannedMealAsync: add.mutateAsync,
     skipPlannedMealAsync: skip.mutateAsync,
     restorePlannedMealAsync: restore.mutateAsync,
-    isPending: add.isPending || skip.isPending || restore.isPending,
+    isPending:
+      add.isPending || skip.isPending || restore.isPending || update.isPending,
   };
 }
 
-export { usePlannedMealMutations };
+/** Plans one food on a day and meal outside any meal plan. */
+function useCreatePlannedFood() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createPlannedFood,
+    onSuccess: (_planned, body) => {
+      void queryClient.invalidateQueries({
+        queryKey: plannedMealsRootQueryKey,
+      });
+      invalidateFoodCache(queryClient, body.date);
+    },
+  });
+}
+
+export { usePlannedMealMutations, useCreatePlannedFood };

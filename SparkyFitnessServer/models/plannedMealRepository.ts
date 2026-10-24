@@ -15,7 +15,8 @@ import {
 export type PlannedOccurrenceStatus = 'added' | 'skipped';
 
 export interface PlannedItemRow {
-  template_id: string;
+  /** Null for a one-off food planned outside any meal plan. */
+  template_id: string | null;
   template_name: string;
   item_key: string;
   item_type: 'meal' | 'food';
@@ -72,13 +73,13 @@ interface MealFoodRow {
   variant: NutrientSource | null;
 }
 
-const usableImages = (images: string[] | null | undefined): string[] =>
+export const usableImages = (images: string[] | null | undefined): string[] =>
   Array.isArray(images)
     ? images.filter((image) => typeof image === 'string' && image.trim() !== '')
     : [];
 
 /** Calories of `quantity` of a variant that lists `calories` per `servingSize`. */
-function scaledCalories(
+export function scaledCalories(
   calories: string | number | null,
   servingSize: string | number | null,
   quantity: number
@@ -94,7 +95,7 @@ function addCalories(total: number | null, part: number | null): number | null {
 }
 
 /** Nutrients of `quantity` of a variant, or null when the variant is missing. */
-function scaledNutrition(
+export function scaledNutrition(
   variant: NutrientSource | null,
   servingSize: string | number | null,
   quantity: number

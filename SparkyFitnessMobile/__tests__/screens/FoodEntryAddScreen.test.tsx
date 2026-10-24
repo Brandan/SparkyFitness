@@ -89,6 +89,14 @@ jest.mock('../../src/hooks/useAddFoodEntryMeal', () => ({
   useAddFoodEntryMeal: jest.fn(),
 }));
 
+const mockCreatePlannedFood = jest.fn();
+jest.mock('../../src/hooks/usePlannedMeals', () => ({
+  useCreatePlannedFood: () => ({
+    mutateAsync: (...args: unknown[]) => mockCreatePlannedFood(...args),
+    isPending: false,
+  }),
+}));
+
 jest.mock('../../src/services/mealBuilderSelection', () => ({
   setPendingMealIngredientSelection: jest.fn(),
 }));
@@ -1432,6 +1440,97 @@ describe('FoodEntryAddScreen', () => {
           notes: null,
         },
       });
+    });
+  });
+
+  describe('planning a food', () => {
+    it('logs a food for today as eaten and offers to plan it instead', async () => {
+      const screen = renderScreen({ item: baseLocalItem });
+
+      expect(screen.getByText('Add Food')).toBeTruthy();
+      expect(screen.queryByText('Add to Plan')).toBeNull();
+      expect(screen.getByText('Planned')).toBeTruthy();
+    });
+
+    it('defaults to Planned on a future day and hides time and note', async () => {
+      const screen = renderScreen({
+        item: baseLocalItem,
+        date: '2999-01-01',
+      });
+
+      expect(screen.getByText('Add to Plan')).toBeTruthy();
+      expect(screen.queryByText('Time')).toBeNull();
+      expect(screen.queryByText('Note for this entry')).toBeNull();
+    });
+
+    it('plans the food on that day and meal instead of logging it', async () => {
+      const screen = renderScreen({
+        item: baseLocalItem,
+        date: '2999-01-01',
+        returnDepth: 2,
+      });
+
+      fireEvent.press(screen.getByText('Add to Plan'));
+
+      await waitFor(() => {
+        expect(mockCreatePlannedFood).toHaveBeenCalledWith({
+          date: '2999-01-01',
+          meal_type_id: 'meal-1',
+          food_id: 'food-1',
+          variant_id: 'variant-1',
+          quantity: 1,
+          unit: 'cup',
+        });
+      });
+      expect(mockAddEntry).not.toHaveBeenCalled();
+      expect(navigation.dispatch).toHaveBeenCalledWith({
+        type: 'POP',
+        payload: { count: 2 },
+      });
+    });
+
+    it('lets a food for a future day be logged as eaten', async () => {
+      const screen = renderScreen({
+        item: baseLocalItem,
+        date: '2999-01-01',
+      });
+
+      fireEvent.press(screen.getByText('Eaten'));
+      fireEvent.press(screen.getByText('Add Food'));
+
+      await waitFor(() => expect(mockAddEntry).toHaveBeenCalled());
+      expect(mockCreatePlannedFood).not.toHaveBeenCalled();
+    });
+
+    it('lets a food for today be planned', async () => {
+      const screen = renderScreen({ item: baseLocalItem });
+
+      fireEvent.press(screen.getByText('Planned'));
+      fireEvent.press(screen.getByText('Add to Plan'));
+
+      await waitFor(() => expect(mockCreatePlannedFood).toHaveBeenCalled());
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    });
+
+    it('does not offer planning for a food that is not saved yet', async () => {
+      const screen = renderScreen({ item: baseExternalItem });
+
+      expect(screen.queryByText('Eaten')).toBeNull();
+      expect(screen.queryByText('Add to Plan')).toBeNull();
+    });
+
+    it('keeps the choice and does not leave when planning fails', async () => {
+      mockCreatePlannedFood.mockRejectedValueOnce(new Error('offline'));
+      const screen = renderScreen({
+        item: baseLocalItem,
+        date: '2999-01-01',
+      });
+
+      fireEvent.press(screen.getByText('Add to Plan'));
+
+      await waitFor(() => expect(Toast.show).toHaveBeenCalled());
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(screen.getByText('Add to Plan')).toBeTruthy();
     });
   });
 

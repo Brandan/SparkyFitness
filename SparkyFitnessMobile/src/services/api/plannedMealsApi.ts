@@ -1,5 +1,7 @@
 import type {
   AddedPlannedMeal,
+  CreatePlannedFoodBody,
+  UpdatePlannedFoodBody,
   PlannedMealActionBody,
   PlannedMealItem,
   PlannedMealRestoreBody,
@@ -56,5 +58,30 @@ export async function restorePlannedMeal(
     operation: 'restore planned meal',
     method: 'POST',
     body: { food_entry_ids: [], food_entry_meal_ids: [], ...target },
+  });
+}
+
+export async function createPlannedFood(
+  body: CreatePlannedFoodBody
+): Promise<PlannedMealItem> {
+  return apiFetch<PlannedMealItem>({
+    endpoint: `${BASE}/items`,
+    serviceName: SERVICE_NAME,
+    operation: 'plan food',
+    method: 'POST',
+    body,
+  });
+}
+
+export async function updatePlannedFood(
+  id: string,
+  body: UpdatePlannedFoodBody
+): Promise<PlannedMealItem> {
+  return apiFetch<PlannedMealItem>({
+    endpoint: `${BASE}/items/${id}`,
+    serviceName: SERVICE_NAME,
+    operation: 'change planned food',
+    method: 'PUT',
+    body,
   });
 }

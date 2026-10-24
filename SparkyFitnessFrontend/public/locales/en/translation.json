@@ -3982,7 +3982,9 @@
     "fromPlan": "From Plan",
     "editFoodDatabase": "Edit Food Database",
     "editFoodDatabaseDescription": "Edit the nutritional information for this food in your database.",
-    "editingTemporarilyUnavailable": "Editing food details is temporarily unavailable due to schema changes."
+    "editingTemporarilyUnavailable": "Editing food details is temporarily unavailable due to schema changes.",
+    "logEaten": "Eaten",
+    "logPlanned": "Planned"
   },
   "checkIn": {
     "howAreYouFeelingToday": "How are you feeling today?",
@@ -7528,7 +7530,9 @@
       "genericEstimateVerifyIfAccuracy": "Generic estimate - verify if accuracy matters.",
       "useThis": "Use this",
       "estimate2": "- {{confidence}} estimate"
-    }
+    },
+    "planTitle": "Plan {{name}}",
+    "addToPlan": "Add to Plan"
   },
   "healthMetrics": {
     "activeCalories": "Active Calories",
@@ -9366,6 +9370,15 @@
     "protein": "P: {{amount}}g",
     "carbs": "C: {{amount}}g",
     "fat": "F: {{amount}}g",
-    "subtotal": "Planned:"
+    "subtotal": "Planned:",
+    "planned": "Planned {{name}} for {{mealName}}",
+    "oneOffBadge": "Planned · one-off",
+    "changeAmountTitle": "Change {{name}}",
+    "amount": "Amount ({{unit}})",
+    "amountInvalid": "Enter an amount above 0.",
+    "changeNamed": "Change amount of {{name}}",
+    "change": "Change",
+    "planFoodError": "Could not plan that food.",
+    "updateError": "Could not change the planned food."
   }
 }
