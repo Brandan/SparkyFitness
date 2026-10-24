@@ -2,6 +2,7 @@ import mealPlanTemplateRepository from '../models/mealPlanTemplateRepository.js'
 import foodRepository from '../models/foodRepository.js';
 import { log } from '../config/logging.js';
 import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
+import { addDays } from '@workspace/shared';
 
 export interface MealPlanAssignmentData {
   id?: string;
@@ -24,6 +25,8 @@ export interface MealPlanTemplateData {
   start_date?: Date | string;
   end_date?: Date | string | null;
   is_active?: boolean;
+  /** true: write diary entries from the plan; false: show its items as planned. */
+  auto_log?: boolean;
   assignments?: MealPlanAssignmentData[];
   day_presets?: MealPlanAssignmentData[];
   currentClientDate?: string;
@@ -40,7 +43,7 @@ async function createMealPlanTemplate(
       user_id: userId,
     });
     log('info', 'createMealPlanTemplate service - newPlan created:', newPlan);
-    if (newPlan.is_active) {
+    if (newPlan.is_active && newPlan.auto_log) {
       log(
         'info',
         `createMealPlanTemplate service - New plan is active, creating food entries from template ${newPlan.id}`
@@ -118,13 +121,30 @@ async function updateMealPlanTemplate(
       'info',
       `updateMealPlanTemplate service - Deleting old food entries for template ${planId}`
     );
-    await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, today);
+    // A "show as planned" plan never wrote entries itself: what the person added
+    // from it is their own logged food and must survive editing the plan.
+    const wasAutoLog =
+      await mealPlanTemplateRepository.getMealPlanTemplateAutoLog(
+        planId,
+        userId
+      );
+    if (wasAutoLog !== false) {
+      // Switching to "show as planned" turns the plan's future entries into
+      // planned items, but today's are already part of the person's day (they
+      // may be eaten, edited or logged), so they stay as real entries.
+      const switchingToPlanned = planData.auto_log === false;
+      await foodRepository.deleteFoodEntriesByTemplateId(
+        planId,
+        userId,
+        switchingToPlanned ? addDays(today, 1) : today
+      );
+    }
     const updatedPlan = await mealPlanTemplateRepository.updateMealPlanTemplate(
       planId,
       { ...planData, user_id: userId }
     );
     log('info', 'updateMealPlanTemplate service - updatedPlan:', updatedPlan);
-    if (updatedPlan.is_active) {
+    if (updatedPlan.is_active && updatedPlan.auto_log) {
       log(
         'info',
         `updateMealPlanTemplate service - Updated plan is active, creating food entries from template ${updatedPlan.id}`
@@ -163,7 +183,14 @@ async function deleteMealPlanTemplate(
       'info',
       `deleteMealPlanTemplate service - Deleting food entries for template ${planId} starting from ${today}`
     );
-    await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, today);
+    const wasAutoLog =
+      await mealPlanTemplateRepository.getMealPlanTemplateAutoLog(
+        planId,
+        userId
+      );
+    if (wasAutoLog !== false) {
+      await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, today);
+    }
     return await mealPlanTemplateRepository.deleteMealPlanTemplate(
       planId,
       userId
@@ -203,6 +230,7 @@ async function duplicateMealPlanTemplate(
       start_date: new Date(),
       end_date: sourceTemplate.end_date || null,
       is_active: false,
+      auto_log: sourceTemplate.auto_log,
       assignments: sourceTemplate.assignments || [],
       currentClientDate,
     };

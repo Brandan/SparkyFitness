@@ -4,6 +4,10 @@ import { log } from '../config/logging.js';
 import format from 'pg-format';
 import foodEntryMealRepository from './foodEntryMealRepository.js';
 import {
+  plannedItemKey,
+  type PlannedItemKeyParts,
+} from '../utils/plannedItemKey.js';
+import {
   addDays,
   compareDays,
   dayOfWeek,
@@ -82,14 +86,28 @@ async function deleteFoodEntriesByTemplateId(
   }
 }
 
+export interface CreateEntriesFromTemplateOptions {
+  /** Write only this calendar day, even if it is in the past. */
+  onlyDay?: string;
+  /** With `onlyDay`, write only the assignment matching this planned-item key. */
+  itemKey?: string;
+}
+
+export interface CreatedTemplateEntries {
+  foodEntryIds: string[];
+  foodEntryMealIds: string[];
+}
+
 async function createFoodEntriesFromTemplate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  templateId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  today: any
-) {
+  templateId: string,
+  userId: string,
+  today: string,
+  options: CreateEntriesFromTemplateOptions = {}
+): Promise<CreatedTemplateEntries> {
+  const created: CreatedTemplateEntries = {
+    foodEntryIds: [],
+    foodEntryMealIds: [],
+  };
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -130,14 +148,23 @@ async function createFoodEntriesFromTemplate(
     if (templateResult.rows.length === 0) {
       throw new Error('Meal plan template not found or access denied.');
     }
-    const { start_date, end_date, assignments } = templateResult.rows[0];
+    const {
+      start_date,
+      end_date,
+      assignments: allAssignments,
+    } = templateResult.rows[0];
+    const assignments: typeof allAssignments = options.itemKey
+      ? allAssignments.filter(
+          (a: PlannedItemKeyParts) => plannedItemKey(a) === options.itemKey
+        )
+      : allAssignments;
     if (!assignments || assignments.length === 0) {
       log(
         'info',
         `No assignments for template ${templateId}, skipping food entry creation.`
       );
       await client.query('COMMIT');
-      return;
+      return created;
     }
     // start_date/end_date come from pg as Date objects; extract the YYYY-MM-DD string
     const startDay =
@@ -152,6 +179,8 @@ async function createFoodEntriesFromTemplate(
       : addDays(startDay, 365);
     // Start from today if template start_date is in the past
     let currentDay = compareDays(startDay, today) < 0 ? today : startDay;
+    if (options.onlyDay) currentDay = options.onlyDay;
+    const lastDay = options.onlyDay ?? endDay;
     const foodEntriesToInsert = [];
     const mealIds = new Set();
     const foodIds = new Set();
@@ -226,12 +255,16 @@ async function createFoodEntriesFromTemplate(
           AND entry_date >= $3
           AND entry_date <= $4
     `;
-    const existingEntriesResult = await client.query(existingEntriesQuery, [
-      userId,
-      templateId,
-      currentDay,
-      endDay,
-    ]);
+    // An explicit "add this planned item" must write even if an earlier
+    // entry exists, so the duplicate check only applies to bulk generation.
+    const existingEntriesResult = options.onlyDay
+      ? { rows: [] }
+      : await client.query(existingEntriesQuery, [
+          userId,
+          templateId,
+          currentDay,
+          endDay,
+        ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     existingEntriesResult.rows.forEach((entry: any) => {
       const dateStr =
@@ -241,7 +274,7 @@ async function createFoodEntriesFromTemplate(
       const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${dateStr}-${entry.variant_id}`;
       existingFoodEntries.add(key);
     });
-    while (compareDays(currentDay, endDay) <= 0) {
+    while (compareDays(currentDay, lastDay) <= 0) {
       const dow = dayOfWeek(currentDay);
       const assignmentsForDay = assignments.filter(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -281,6 +314,7 @@ async function createFoodEntriesFromTemplate(
               foodEntryMealData,
               userId
             );
+          created.foodEntryMealIds.push(newFoodEntryMeal.id);
           log(
             'info',
             `Created food_entry_meal ${newFoodEntryMeal.id} for meal ${meal.name}`
@@ -408,10 +442,13 @@ async function createFoodEntriesFromTemplate(
                 saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
                 cholesterol, sodium, potassium, dietary_fiber, sugars,
                 vitamin_a, vitamin_c, calcium, iron, meal_id, created_by_user_id, food_entry_meal_id, custom_nutrients, caffeine_mg, water_ml, alcohol_g
-            ) VALUES %L`,
+            ) VALUES %L RETURNING id`,
         foodEntriesToInsert
       );
-      await client.query(insertQuery);
+      const insertResult = await client.query(insertQuery);
+      created.foodEntryIds.push(
+        ...insertResult.rows.map((row: { id: string }) => row.id)
+      );
       log(
         'info',
         `Inserted ${foodEntriesToInsert.length} food entries for template ${templateId}`
@@ -424,6 +461,7 @@ async function createFoodEntriesFromTemplate(
       'info',
       `Successfully created food entries from template ${templateId}`
     );
+    return created;
   } catch (error) {
     await client.query('ROLLBACK');
     log(

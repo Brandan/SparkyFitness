@@ -9,8 +9,8 @@ async function createMealPlanTemplate(planData: any) {
     log('info', 'createMealPlanTemplate - planData:', planData);
     await client.query('BEGIN');
     const insertTemplateQuery = `
-            INSERT INTO meal_plan_templates (user_id, plan_name, description, start_date, end_date, is_active)
-            VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
+            INSERT INTO meal_plan_templates (user_id, plan_name, description, start_date, end_date, is_active, auto_log)
+            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
     const templateValues = [
       planData.user_id,
       planData.plan_name ?? '',
@@ -18,6 +18,7 @@ async function createMealPlanTemplate(planData: any) {
       planData.start_date ?? new Date(),
       planData.end_date,
       planData.is_active ?? false,
+      planData.auto_log ?? true,
     ];
     log(
       'info',
@@ -187,14 +188,16 @@ async function updateMealPlanTemplate(planId: any, planData: any) {
     await client.query('BEGIN');
     await client.query(
       `UPDATE meal_plan_templates SET
-                plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5, updated_at = now()
-             WHERE id = $6 RETURNING *`,
+                plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5,
+                auto_log = COALESCE($6, auto_log), updated_at = now()
+             WHERE id = $7 RETURNING *`,
       [
         planData.plan_name ?? '',
         planData.description ?? '',
         planData.start_date ?? new Date(),
         planData.end_date,
         planData.is_active ?? false,
+        planData.auto_log ?? null,
         planId,
       ]
     );
@@ -335,6 +338,22 @@ async function deactivateAllMealPlanTemplates(userId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/** Whether the plan writes diary entries itself; null if the plan is not found. */
+async function getMealPlanTemplateAutoLog(
+  templateId: string,
+  userId: string
+): Promise<boolean | null> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'SELECT auto_log FROM meal_plan_templates WHERE id = $1 AND user_id = $2',
+      [templateId, userId]
+    );
+    return result.rows[0]?.auto_log ?? null;
+  } finally {
+    client.release();
+  }
+}
 async function getMealPlanTemplateOwnerId(templateId: any) {
   const client = await getClient(templateId); // User-specific operation (RLS will handle access)
   try {
@@ -447,6 +466,7 @@ export { updateMealPlanTemplate };
 export { deleteMealPlanTemplate };
 export { deactivateAllMealPlanTemplates };
 export { getMealPlanTemplateOwnerId };
+export { getMealPlanTemplateAutoLog };
 export { getActiveMealPlanForDate };
 export { getActiveMealPlansForDate };
 export { getMealPlanTemplatesByMealId };
@@ -458,6 +478,7 @@ export default {
   deleteMealPlanTemplate,
   deactivateAllMealPlanTemplates,
   getMealPlanTemplateOwnerId,
+  getMealPlanTemplateAutoLog,
   getActiveMealPlanForDate,
   getActiveMealPlansForDate,
   getMealPlanTemplatesByMealId,
