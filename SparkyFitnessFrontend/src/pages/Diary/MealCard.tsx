@@ -38,6 +38,8 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import { toast } from '@/hooks/use-toast';
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
+import PlannedMealList from './PlannedMealList';
+import type { PlannedMealItem } from '@workspace/shared';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
@@ -112,6 +114,8 @@ interface MealCardProps {
     toUnit: 'kcal' | 'kJ'
   ) => number;
   customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
+  /** Items a "show as planned" plan has for this meal; not in any total. */
+  plannedItems?: PlannedMealItem[];
   shouldOpenFoodSearch?: boolean;
   onFoodSearchClose?: () => void;
 }
@@ -132,6 +136,7 @@ const MealCard = ({
   onFoodSearchClose,
   selectedDate,
   customNutrients = [], // Default to empty array
+  plannedItems = [],
 }: MealCardProps) => {
   const { t } = useTranslation();
   const {
@@ -887,6 +892,12 @@ const MealCard = ({
               </div>
             </div>
           )}
+          <PlannedMealList
+            items={plannedItems}
+            selectedDate={selectedDate}
+            mealName={meal.name}
+            onOpenImages={openLightbox}
+          />
         </CardContent>
       </Card>
 
