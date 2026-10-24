@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { CalendarClock } from 'lucide-react';
-import type { PlannedMealItem } from '@workspace/shared';
+import { sumPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ToastAction } from '@/components/ui/toast';
@@ -28,6 +28,41 @@ interface PlannedMealListProps {
 
 const formatQuantity = (quantity: number, unit: string) =>
   `${Number.isInteger(quantity) ? quantity : Number(quantity.toFixed(2))} ${unit}`;
+
+const formatMacro = (value: number) =>
+  (Number.isFinite(value) ? value : 0).toFixed(1);
+
+/** Protein, carbs, and fat in the same colors as a meal plan. */
+export const PlannedMacroFigures = ({
+  protein,
+  carbs,
+  fat,
+}: {
+  protein: number;
+  carbs: number;
+  fat: number;
+}) => {
+  const { t } = useTranslation();
+  return (
+    <>
+      <span className="text-blue-500">
+        {t('plannedMeals.protein', 'P: {{amount}}g', {
+          amount: formatMacro(protein),
+        })}
+      </span>
+      <span className="text-green-500">
+        {t('plannedMeals.carbs', 'C: {{amount}}g', {
+          amount: formatMacro(carbs),
+        })}
+      </span>
+      <span className="text-yellow-500">
+        {t('plannedMeals.fat', 'F: {{amount}}g', {
+          amount: formatMacro(fat),
+        })}
+      </span>
+    </>
+  );
+};
 
 /**
  * Items a "show as planned" meal plan has for this meal on this day. They are
@@ -103,6 +138,12 @@ const PlannedMealList = ({
   };
 
   const busy = addMutation.isPending || skipMutation.isPending;
+  const subtotal = sumPlannedNutrition(items);
+  const showSubtotal = items.some((item) => item.nutrition != null);
+  const energyLabel =
+    energyUnit === 'kcal'
+      ? t('common.kcalUnit', 'kcal')
+      : t('common.kJUnit', 'kJ');
 
   const handleAddAll = async () => {
     const added: {
@@ -226,12 +267,17 @@ const PlannedMealList = ({
                     {typeof item.calories === 'number' &&
                       ` · ${Math.round(
                         convertEnergy(item.calories, 'kcal', energyUnit)
-                      )} ${
-                        energyUnit === 'kcal'
-                          ? t('common.kcalUnit', 'kcal')
-                          : t('common.kJUnit', 'kJ')
-                      }`}
+                      )} ${energyLabel}`}
                   </span>
+                  {item.nutrition && (
+                    <span className="inline-flex gap-x-3 text-sm">
+                      <PlannedMacroFigures
+                        protein={item.nutrition.protein}
+                        carbs={item.nutrition.carbs}
+                        fat={item.nutrition.fat}
+                      />
+                    </span>
+                  )}
                 </div>
                 {item.foods.length > 0 && (
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -270,6 +316,23 @@ const PlannedMealList = ({
           );
         })}
       </ul>
+      {showSubtotal && (
+        <div className="mt-2 rounded bg-muted p-2 text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">
+            {t('plannedMeals.subtotal', 'Planned:')}
+          </span>{' '}
+          {Math.round(convertEnergy(subtotal.calories, 'kcal', energyUnit))}{' '}
+          {energyLabel}
+          <span className="mx-1">|</span>
+          <span className="inline-flex gap-x-3">
+            <PlannedMacroFigures
+              protein={subtotal.protein}
+              carbs={subtotal.carbs}
+              fat={subtotal.fat}
+            />
+          </span>
+        </div>
+      )}
     </div>
   );
 };

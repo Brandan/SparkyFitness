@@ -9,7 +9,9 @@ This section provides an overview of meal-related features in SparkyFitness.
 SparkyFitness dynamically suggests the appropriate meal category (e.g., Breakfast, Lunch, Dinner, Snacks, or custom categories) when you log food based on your current time of day.
 
 ### How Suggested Times Work
+
 Each meal category can have a **Default Time** assigned to it:
+
 - When you log food, the app finds the meal category whose `default_time` is the **latest time that is less than or equal to your current time** ($\le \text{now}$).
 - Each meal category's default time defines the start of its window until the next scheduled meal.
 - For example, if **Snacks** is set to `5:00 PM` (`17:00`) and **Dinner** is set to `7:00 PM` (`19:00`):
@@ -17,11 +19,14 @@ Each meal category can have a **Default Time** assigned to it:
   - Logging food at or after `7:00 PM` will automatically suggest **Dinner**.
 
 ### Customizing Default Times
+
 You can customize the target start time for any meal category on both Web and Mobile:
+
 - **Web**: Go to **Settings → Meal Categories** and edit the **Default Time** (`HH:MM`) for any category.
 - **Mobile**: Go to **Settings → Food Settings → Suggested Meal Times** and adjust the target times (`HH:MM`).
 
 ### Deleting a Custom Meal Category
+
 Custom meal categories can be deleted from **Settings → Meal Categories** on Web. System defaults (Breakfast, Lunch, Dinner, Snacks) cannot be deleted, only hidden.
 
 If the category has never been used, it is removed immediately. If anything still references it, a dialog shows exactly what is affected — diary entries, logged meals, planned items, and meal plan template items — and offers two choices:
@@ -52,8 +57,8 @@ A meal plan lists foods and meals for each day of the week, between a start date
 
 Each plan has an **Add to diary** choice (a switch on mobile):
 
-* **I add them** (the default for new plans). The plan's items appear in the matching meal of the Diary, marked **Planned**. They are not part of that day's totals until you tap **Add to diary**, which logs the meal and every food in it. A planned item shows its calories, and its picture when the food or meal has one (a meal without one shows the first picture of the foods inside it), and **Add all** logs every planned item of a meal in one tap. Planned items stay on past days, so you can still add something you forgot to log. Use **Skip** to drop an item from just that day; it does not come back, even if you delete the entries you added. **Undo** appears after adding or skipping. If **Add all** stops part way, the message says how many were added and which one failed. The Nutrition Summary on the web and the Summary at the top of the mobile Diary show what the day's planned items would add next to each total (for example **+600 kcal planned**), with the calorie total they would make and a fainter section on each progress bar. The Daily Energy Goal ring draws that same amount as a lighter arc, and each meal's calorie line includes its own planned subtotal (for example **0 / 723kcal · +441 planned**). On the phone, planned foods are grouped under their meal with that meal's calories and the day's planned total, and the Dashboard ring draws the lighter arc too. These figures are never counted in the totals themselves.
-* **Automatically.** The plan writes its entries into your Diary ahead of time, as earlier versions did. Plans you made before this option existed keep working this way.
+- **I add them** (the default for new plans). The plan's items appear in the matching meal of the Diary, marked **Planned**. They are not part of that day's totals until you tap **Add to diary**, which logs the meal and every food in it. A planned item shows its calories and its protein, carbs, and fat, colored the same way as in the plan, and each meal subtotals them. The same food planned more than once is listed once for each time it is on the plan. A planned item also shows its picture when the food or meal has one (a meal without one shows the first picture of the foods inside it), and **Add all** logs every planned item of a meal in one tap. Planned items stay on past days, so you can still add something you forgot to log. Use **Skip** to drop an item from just that day; it does not come back, even if you delete the entries you added. **Undo** appears after adding or skipping. If **Add all** stops part way, the message says how many were added and which one failed. The Nutrition Summary on the web and the Summary at the top of the mobile Diary show what the day's planned items would add next to each total (for example **+600 kcal planned**), with the calorie total they would make and a fainter section on each progress bar. The Daily Energy Goal ring draws that same amount as a lighter arc, and each meal's calorie line includes its own planned subtotal, with protein, carbs, and fat (for example **0 / 723kcal · +441 planned · P: 34.8g C: 24.5g F: 48.8g**). On the phone, planned foods are grouped under their meal with that meal's calories, macros, and the day's planned total, and the Dashboard ring draws the lighter arc too. These figures are never counted in the totals themselves.
+- **Automatically.** The plan writes its entries into your Diary ahead of time, as earlier versions did. Plans you made before this option existed keep working this way.
 
 To fill the week quickly, plan one day, then use **Copy to…** (web) or **Copy to other days…** (mobile) to copy it onto the other days. Days that are still empty are ticked for you, so for a new plan it is one tap; a day that already has items says it will be replaced and stays unticked unless you pick it. **Undo** appears after copying.
 

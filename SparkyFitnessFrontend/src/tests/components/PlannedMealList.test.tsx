@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { PlannedMealItem } from '@workspace/shared';
+import { emptyPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
 import PlannedMealList from '../../pages/Diary/PlannedMealList';
 import { renderWithClient } from '../test-utils';
 
@@ -102,6 +102,43 @@ describe('PlannedMealList', () => {
     renderList();
 
     expect(screen.getByText(/1 serving · 420 kcal/)).toBeInTheDocument();
+  });
+
+  it('shows protein, carbs, and fat, and subtotals them', () => {
+    const nutrition = {
+      ...emptyPlannedNutrition(),
+      calories: 86,
+      protein: 1.1,
+      carbs: 4.3,
+      fat: 7.5,
+    };
+    const second: PlannedMealItem = {
+      ...item,
+      item_key: 'food:type:cream:v:1',
+      name: 'Heavy Whipping Cream',
+      calories: 99,
+      foods: [],
+      nutrition: {
+        ...nutrition,
+        calories: 99,
+        protein: 2,
+        carbs: 2,
+        fat: 9.9,
+      },
+    };
+    renderList([
+      { ...item, name: 'MCT oil', calories: 86, foods: [], nutrition },
+      second,
+    ]);
+
+    expect(screen.getByText('P: 1.1g').className).toContain('text-blue-500');
+    expect(screen.getByText('C: 4.3g').className).toContain('text-green-500');
+    expect(screen.getByText('F: 7.5g').className).toContain('text-yellow-500');
+    expect(screen.getByText('Planned:')).toBeInTheDocument();
+    expect(screen.getByText(/185 kcal/)).toBeInTheDocument();
+    expect(screen.getByText('P: 3.1g')).toBeInTheDocument();
+    expect(screen.getByText('C: 6.3g')).toBeInTheDocument();
+    expect(screen.getByText('F: 17.4g')).toBeInTheDocument();
   });
 
   it('leaves calories out when they are not known', () => {

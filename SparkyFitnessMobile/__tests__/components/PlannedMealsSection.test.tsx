@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
-import type { PlannedMealItem } from '@workspace/shared';
+import { emptyPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
 import PlannedMealsSection from '../../src/components/PlannedMealsSection';
 
 jest.mock('react-native-toast-message', () => ({
@@ -108,6 +108,48 @@ describe('PlannedMealsSection', () => {
     expect(getByText('+420 kcal')).toBeTruthy();
     expect(getByText('+180 kcal')).toBeTruthy();
     expect(getByText('+600 kcal planned')).toBeTruthy();
+  });
+
+  it('shows protein, carbs, and fat, and subtotals the meal and the day', () => {
+    const nutrition = {
+      ...emptyPlannedNutrition(),
+      calories: 86,
+      protein: 1.1,
+      carbs: 4.3,
+      fat: 7.5,
+    };
+    const second: PlannedMealItem = {
+      ...item,
+      item_key: 'food:type:cream:v:1',
+      name: 'Heavy Whipping Cream',
+      calories: 99,
+      foods: [],
+      nutrition: {
+        ...emptyPlannedNutrition(),
+        calories: 99,
+        protein: 2,
+        carbs: 2,
+        fat: 9.9,
+      },
+    };
+    const { getByText, getAllByText } = render(
+      <PlannedMealsSection
+        items={[
+          { ...item, name: 'MCT oil', calories: 86, foods: [], nutrition },
+          second,
+        ]}
+        date="2026-10-24"
+      />
+    );
+
+    expect(getByText('P: 1.1g')).toBeTruthy();
+    expect(getByText('C: 4.3g')).toBeTruthy();
+    expect(getByText('F: 7.5g')).toBeTruthy();
+    expect(getByText(/Planned:/)).toBeTruthy();
+    // Once under the day, once under the meal.
+    expect(getAllByText('P: 3.1g')).toHaveLength(2);
+    expect(getAllByText('C: 6.3g')).toHaveLength(2);
+    expect(getAllByText('F: 17.4g')).toHaveLength(2);
   });
 
   it('leaves calories out when they are not known', () => {

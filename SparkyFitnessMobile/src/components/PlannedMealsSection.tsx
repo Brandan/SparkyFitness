@@ -2,7 +2,12 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { sumPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
+import { useCSSVariable } from 'uniwind';
+import {
+  sumPlannedNutrition,
+  type PlannedMealItem,
+  type PlannedNutrition,
+} from '@workspace/shared';
 import Button from './ui/Button';
 import FoodThumbnail from './FoodThumbnail';
 import { useFoodImageSourceContext } from './FoodImageSourceProvider';
@@ -18,6 +23,49 @@ interface PlannedMealsSectionProps {
 
 const formatQuantity = (quantity: number, unit: string) =>
   `${Number.isInteger(quantity) ? quantity : Number(quantity.toFixed(2))} ${unit}`;
+
+const formatMacro = (value: number) =>
+  (Number.isFinite(value) ? value : 0).toFixed(1);
+
+/** Protein, carbs, and fat in the same colors as the meal plan's daily total. */
+const PlannedMacroFigures = ({
+  nutrition,
+  colors,
+}: {
+  nutrition: PlannedNutrition;
+  colors: { protein: string; carbs: string; fat: string };
+}) => {
+  const { t } = useTranslation();
+  return (
+    <Text className="text-sm">
+      <Text style={{ color: colors.protein }}>
+        {t('plannedMeals.protein', {
+          defaultValue: 'P: {{amount}}g',
+          amount: formatMacro(nutrition.protein),
+        })}
+      </Text>
+      <Text className="text-text-secondary">{'  '}</Text>
+      <Text style={{ color: colors.carbs }}>
+        {t('plannedMeals.carbs', {
+          defaultValue: 'C: {{amount}}g',
+          amount: formatMacro(nutrition.carbs),
+        })}
+      </Text>
+      <Text className="text-text-secondary">{'  '}</Text>
+      <Text style={{ color: colors.fat }}>
+        {t('plannedMeals.fat', {
+          defaultValue: 'F: {{amount}}g',
+          amount: formatMacro(nutrition.fat),
+        })}
+      </Text>
+    </Text>
+  );
+};
+
+const macrosOf = (items: PlannedMealItem[]): PlannedNutrition | null =>
+  items.some((item) => item.nutrition != null)
+    ? sumPlannedNutrition(items)
+    : null;
 
 interface PlannedMealGroup {
   id: string;
@@ -74,6 +122,16 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
   } = usePlannedMealMutations(date);
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
+  const [proteinColor, carbsColor, fatColor] = useCSSVariable([
+    '--color-cat-blue',
+    '--color-cat-amber',
+    '--color-cat-purple',
+  ]) as [string, string, string];
+  const macroColors = {
+    protein: proteinColor,
+    carbs: carbsColor,
+    fat: fatColor,
+  };
 
   const targetOf = (item: PlannedMealItem) => ({
     template_id: item.template_id,
@@ -188,6 +246,7 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
 
   const groups = groupPlannedByMeal(items);
   const dayKcal = plannedKcal(items);
+  const dayMacros = macrosOf(items);
 
   const handleSkip = async (item: PlannedMealItem) => {
     try {
@@ -238,9 +297,13 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
             })}
           </Text>
         ) : null}
+        {dayMacros ? (
+          <PlannedMacroFigures nutrition={dayMacros} colors={macroColors} />
+        ) : null}
       </View>
       {groups.map((group) => {
         const mealKcal = plannedKcal(group.items);
+        const mealMacros = macrosOf(group.items);
         return (
           <View key={group.id} className="gap-2">
             <View className="flex-row items-center justify-between px-1">
@@ -289,6 +352,12 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
                             : ''}
                         </Text>
                       </Text>
+                      {item.nutrition ? (
+                        <PlannedMacroFigures
+                          nutrition={item.nutrition}
+                          colors={macroColors}
+                        />
+                      ) : null}
                       {item.foods.length > 0 && (
                         <Text className="text-sm text-text-secondary">
                           {item.foods
@@ -328,6 +397,25 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
                 </View>
               );
             })}
+            {mealMacros ? (
+              <View className="flex-row flex-wrap items-center gap-x-3 px-1">
+                <Text className="text-sm text-text-secondary">
+                  <Text className="font-semibold text-text-primary">
+                    {t('plannedMeals.subtotal', { defaultValue: 'Planned:' })}
+                  </Text>
+                  {mealKcal !== null
+                    ? ` ${formatLocalizedNumber(mealKcal)} ${t(
+                        'nutrition.caloriesShort',
+                        { defaultValue: 'kcal' }
+                      )}`
+                    : ''}
+                </Text>
+                <PlannedMacroFigures
+                  nutrition={mealMacros}
+                  colors={macroColors}
+                />
+              </View>
+            ) : null}
           </View>
         );
       })}
