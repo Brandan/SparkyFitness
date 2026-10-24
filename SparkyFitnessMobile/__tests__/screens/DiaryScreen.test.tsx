@@ -174,6 +174,15 @@ jest.mock('../../src/components/ServingAdjustSheet', () => {
   return { __esModule: true, default: () => <View testID="serving-sheet" /> };
 });
 
+jest.mock('../../src/components/CopyFoodEntrySheet', () => {
+  const ReactModule = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ReactModule.forwardRef(() => <View testID="copy-entry-sheet" />),
+  };
+});
+
 jest.mock('../../src/components/DateNavigator', () => {
   const { Pressable, Text, View } = require('react-native');
   return {

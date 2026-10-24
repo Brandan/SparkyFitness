@@ -2349,7 +2349,9 @@
     "adjustServing": "Adjust serving",
     "caloriesShort": "kcal",
     "caloriesUnit": "Cal",
-    "deleteFood": "Delete food"
+    "deleteFood": "Delete food",
+    "copy": "Copy",
+    "copyFood": "Copy food"
   },
   "exerciseRow": {
     "deleteExercise": "Delete exercise"
