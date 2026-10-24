@@ -896,6 +896,8 @@ const MealCard = ({
             items={plannedItems}
             selectedDate={selectedDate}
             mealName={meal.name}
+            energyUnit={energyUnit}
+            convertEnergy={convertEnergy}
             onOpenImages={openLightbox}
           />
         </CardContent>

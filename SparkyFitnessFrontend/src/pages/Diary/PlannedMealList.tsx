@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { CalendarClock, X } from 'lucide-react';
+import { CalendarClock } from 'lucide-react';
 import type { PlannedMealItem } from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,12 @@ interface PlannedMealListProps {
   items: PlannedMealItem[];
   selectedDate: string;
   mealName: string;
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (
+    value: number,
+    fromUnit: 'kcal' | 'kJ',
+    toUnit: 'kcal' | 'kJ'
+  ) => number;
   /** Opens the card's picture viewer; the thumbnail is a button when given. */
   onOpenImages?: (images: string[], index: number, title?: string) => void;
 }
@@ -32,6 +38,8 @@ const PlannedMealList = ({
   items,
   selectedDate,
   mealName,
+  energyUnit,
+  convertEnergy,
   onOpenImages,
 }: PlannedMealListProps) => {
   const { t } = useTranslation();
@@ -78,7 +86,7 @@ const PlannedMealList = ({
     skipMutation.mutate(targetOf(item), {
       onSuccess: () => {
         toast({
-          title: t('plannedMeals.skipped', 'Removed {{name}} from this day', {
+          title: t('plannedMeals.skipped', 'Skipped {{name}} for this day', {
             name: item.name,
           }),
           action: (
@@ -101,26 +109,42 @@ const PlannedMealList = ({
       item: PlannedMealItem;
       ids: { food_entry_ids: string[]; food_entry_meal_ids: string[] };
     }[] = [];
-    try {
-      for (const item of items) {
+    let failed: PlannedMealItem | null = null;
+    for (const item of items) {
+      try {
         added.push({
           item,
           ids: await addMutation.mutateAsync(targetOf(item)),
         });
+      } catch {
+        failed = item;
+        break;
       }
-    } catch {
-      // The failed item stays planned; the error toast comes from the mutation.
     }
+    // Nothing was added: the mutation's own error toast already says so.
     if (added.length === 0) return;
+    // One toast only (they replace each other), so a partial failure is
+    // said here instead of being hidden by the success message.
     toast({
-      title: t(
-        'plannedMeals.addedAll',
-        'Added {{count}} items to {{mealName}}',
-        {
-          count: added.length,
-          mealName,
-        }
-      ),
+      title: failed
+        ? t(
+            'plannedMeals.addedSome',
+            'Added {{count}} of {{total}} to {{mealName}}',
+            {
+              count: added.length,
+              total: items.length,
+              mealName,
+            }
+          )
+        : t('plannedMeals.addedAll', 'Added {{count}} items to {{mealName}}', {
+            count: added.length,
+            mealName,
+          }),
+      description: failed
+        ? t('plannedMeals.couldNotAdd', "Couldn't add {{name}}. Try again.", {
+            name: failed.name,
+          })
+        : undefined,
       action: (
         <ToastAction
           altText={t('plannedMeals.undo', 'Undo')}
@@ -170,7 +194,7 @@ const PlannedMealList = ({
               {image && (
                 <button
                   type="button"
-                  className="flex-shrink-0 self-start rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 sm:self-center"
+                  className="flex-shrink-0 self-start rounded-md focus:outline-none focus:ring-2 focus:ring-ring sm:self-center"
                   disabled={!onOpenImages}
                   onClick={() => onOpenImages?.(images, 0, item.name)}
                   aria-label={t('food.viewImages', 'View images')}
@@ -178,15 +202,17 @@ const PlannedMealList = ({
                   <img
                     src={image}
                     alt={item.name}
-                    className="h-16 w-16 rounded-md object-cover opacity-80"
+                    className="h-16 w-16 rounded-md object-cover"
                     loading="lazy"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none';
+                      // Hide the button too, so no empty target is left behind.
+                      const button = e.currentTarget.parentElement;
+                      if (button) button.style.display = 'none';
                     }}
                   />
                 </button>
               )}
-              <div className="min-w-0 flex-1 opacity-80">
+              <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="gap-1 text-[11px]">
                     <CalendarClock className="h-3 w-3" aria-hidden="true" />
@@ -195,8 +221,16 @@ const PlannedMealList = ({
                   <span className="font-semibold leading-tight">
                     {item.name}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-sm text-muted-foreground">
                     {formatQuantity(item.quantity, item.unit)}
+                    {typeof item.calories === 'number' &&
+                      ` · ${Math.round(
+                        convertEnergy(item.calories, 'kcal', energyUnit)
+                      )} ${
+                        energyUnit === 'kcal'
+                          ? t('common.kcalUnit', 'kcal')
+                          : t('common.kJUnit', 'kJ')
+                      }`}
                   </span>
                 </div>
                 {item.foods.length > 0 && (
@@ -220,21 +254,16 @@ const PlannedMealList = ({
                 </Button>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-11 w-11"
+                  className="min-h-11"
                   disabled={busy}
                   onClick={() => handleSkip(item)}
-                  title={t(
-                    'plannedMeals.removeFromDay',
-                    'Remove from this day'
-                  )}
                   aria-label={t(
-                    'plannedMeals.removeFromDayNamed',
-                    'Remove {{name}} from this day',
+                    'plannedMeals.skipNamed',
+                    'Skip {{name}} for this day',
                     { name: item.name }
                   )}
                 >
-                  <X className="h-4 w-4" aria-hidden="true" />
+                  {t('plannedMeals.skip', 'Skip')}
                 </Button>
               </div>
             </li>

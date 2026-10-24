@@ -5,7 +5,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -50,26 +49,19 @@ const CopyDayForm = ({
     );
 
   return (
-    <DialogContent className="sm:max-w-[420px]">
+    <DialogContent className="sm:max-w-[420px]" aria-describedby={undefined}>
       <DialogHeader>
         <DialogTitle>
           {t('mealPlanTemplateForm.copyDayTitle', 'Copy {{day}} to', {
             day: dayNames[fromDay],
           })}
         </DialogTitle>
-        <DialogDescription>
-          {t(
-            'mealPlanTemplateForm.copyDayDescription',
-            'Everything planned for {{day}} is copied to the days you pick.',
-            { day: dayNames[fromDay] }
-          )}
-        </DialogDescription>
       </DialogHeader>
       <div className="space-y-1">
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          className="min-h-11"
           onClick={() => setSelected(allSelected ? [] : days)}
         >
           {allSelected
@@ -92,7 +84,7 @@ const CopyDayForm = ({
               />
               <span className="flex-1">{dayNames[day]}</span>
               {count > 0 && (
-                <span className="text-xs font-normal text-muted-foreground">
+                <span className="text-sm font-medium">
                   {t(
                     'mealPlanTemplateForm.copyDayReplaces',
                     'Replaces {{count}} items',
@@ -105,17 +97,29 @@ const CopyDayForm = ({
         })}
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          onClick={onClose}
+        >
           {t('common.cancel', 'Cancel')}
         </Button>
         <Button
           type="button"
+          className="min-h-11"
           disabled={selected.length === 0}
           onClick={() => onCopy(selected)}
         >
-          {t('mealPlanTemplateForm.copyDayConfirm', 'Copy to {{count}} days', {
-            count: selected.length,
-          })}
+          {selected.length === 0
+            ? t('mealPlanTemplateForm.copyDayConfirmNone', 'Copy')
+            : t(
+                'mealPlanTemplateForm.copyDayConfirm',
+                'Copy to {{count}} days',
+                {
+                  count: selected.length,
+                }
+              )}
         </Button>
       </DialogFooter>
     </DialogContent>

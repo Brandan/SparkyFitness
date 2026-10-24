@@ -9,6 +9,8 @@ type ToastVariant = 'success' | 'error' | 'info';
 // told apart from no action.
 interface ToastTapProps {
   onPress?: () => void;
+  /** A visible button on the toast, e.g. Undo; the toast itself stays inert. */
+  action?: { label: string; onPress: () => void };
 }
 
 const variantTokens: Record<
@@ -40,11 +42,13 @@ function ToastContent({
   text1,
   text2,
   onPress,
+  action,
 }: {
   variant: ToastVariant;
   text1?: string;
   text2?: string;
   onPress?: () => void;
+  action?: ToastTapProps['action'];
 }) {
   const tokens = variantTokens[variant];
   const [bgColor, textColor] = useCSSVariable([tokens.bg, tokens.text]) as [
@@ -52,21 +56,8 @@ function ToastContent({
     string,
   ];
 
-  const body = (
-    <View
-      style={{
-        backgroundColor: bgColor,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        marginHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 4,
-        borderRadius: 8,
-      }}
-    >
+  const messages = (
+    <View style={{ flex: 1 }}>
       {text1 ? (
         <Text style={{ color: textColor, fontWeight: '600', fontSize: 14 }}>
           {text1}
@@ -83,6 +74,49 @@ function ToastContent({
         >
           {text2}
         </Text>
+      ) : null}
+    </View>
+  );
+
+  const body = (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: bgColor,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginHorizontal: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 4,
+        borderRadius: 8,
+      }}
+    >
+      {messages}
+      {action ? (
+        <TouchableOpacity
+          onPress={action.onPress}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          style={{
+            minHeight: 44,
+            minWidth: 44,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 8,
+            borderRadius: 6,
+            borderWidth: 1,
+            borderColor: textColor,
+          }}
+        >
+          <Text style={{ color: textColor, fontWeight: '700', fontSize: 14 }}>
+            {action.label}
+          </Text>
+        </TouchableOpacity>
       ) : null}
     </View>
   );
@@ -106,6 +140,7 @@ export const toastConfig: ToastConfig = {
       text1={text1}
       text2={text2}
       onPress={(props as ToastTapProps | undefined)?.onPress}
+      action={(props as ToastTapProps | undefined)?.action}
     />
   ),
   error: ({ text1, text2, props }) => (
@@ -114,6 +149,7 @@ export const toastConfig: ToastConfig = {
       text1={text1}
       text2={text2}
       onPress={(props as ToastTapProps | undefined)?.onPress}
+      action={(props as ToastTapProps | undefined)?.action}
     />
   ),
   info: ({ text1, text2, props }) => (
@@ -122,6 +158,7 @@ export const toastConfig: ToastConfig = {
       text1={text1}
       text2={text2}
       onPress={(props as ToastTapProps | undefined)?.onPress}
+      action={(props as ToastTapProps | undefined)?.action}
     />
   ),
 };

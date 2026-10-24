@@ -18,6 +18,8 @@ export interface PlannedItemRow {
   quantity: number;
   unit: string;
   foods: { name: string; quantity: number; unit: string }[];
+  /** Calories Add to diary will write; null when a variant is missing. */
+  calories: number | null;
   /** Picture(s) to show: the meal's or food's own, else the first food in the meal that has one. */
   images: string[];
 }
@@ -36,6 +38,10 @@ interface PlannedAssignmentRow {
   meal_name: string | null;
   food_name: string | null;
   food_brand: string | null;
+  variant_calories: string | number | null;
+  variant_serving_size: string | number | null;
+  meal_serving_size: string | number | null;
+  meal_total_servings: string | number | null;
   meal_images: string[] | null;
   food_images: string[] | null;
 }
@@ -46,12 +52,57 @@ interface MealFoodRow {
   quantity: string | number;
   unit: string;
   images: string[] | null;
+  variant_calories: string | number | null;
+  variant_serving_size: string | number | null;
 }
 
 const usableImages = (images: string[] | null | undefined): string[] =>
   Array.isArray(images)
     ? images.filter((image) => typeof image === 'string' && image.trim() !== '')
     : [];
+
+/** Calories of `quantity` of a variant that lists `calories` per `servingSize`. */
+function scaledCalories(
+  calories: string | number | null,
+  servingSize: string | number | null,
+  quantity: number
+): number | null {
+  const perServing = Number(servingSize);
+  if (calories === null || !(perServing > 0)) return null;
+  return (Number(calories) * quantity) / perServing;
+}
+
+/** Sums calories, staying null once any part is unknown. */
+function addCalories(total: number | null, part: number | null): number | null {
+  return total === null || part === null ? null : total + part;
+}
+
+/**
+ * What "Add to diary" will write, worked out like the entries themselves: a food
+ * scales its variant by quantity over serving size; a meal scales its foods by
+ * quantity over (serving size x total servings).
+ */
+function plannedCalories(
+  row: PlannedAssignmentRow,
+  mealFoodsCalories: number | null | undefined
+): number | null {
+  const quantity = Number(row.quantity ?? 1);
+  if (row.item_type === 'food') {
+    return scaledCalories(
+      row.variant_calories,
+      row.variant_serving_size,
+      quantity
+    );
+  }
+  if (mealFoodsCalories === undefined || mealFoodsCalories === null) {
+    return null;
+  }
+  const denominator =
+    Number(row.meal_serving_size || 1) * Number(row.meal_total_servings || 1);
+  return denominator > 0
+    ? (mealFoodsCalories * quantity) / denominator
+    : mealFoodsCalories;
+}
 
 /**
  * Items of active "show as planned" meal plans that fall on `day` (with its
@@ -81,6 +132,10 @@ async function getPlannedItemsForDay(
          m.name AS meal_name,
          f.name AS food_name,
          f.brand AS food_brand,
+         fv.calories AS variant_calories,
+         fv.serving_size AS variant_serving_size,
+         m.serving_size AS meal_serving_size,
+         m.total_servings AS meal_total_servings,
          m.images AS meal_images,
          f.images AS food_images
        FROM meal_plan_templates t
@@ -88,6 +143,7 @@ async function getPlannedItemsForDay(
        LEFT JOIN meal_types mt ON mt.id = a.meal_type_id
        LEFT JOIN meals m ON m.id = a.meal_id
        LEFT JOIN foods f ON f.id = a.food_id
+       LEFT JOIN food_variants fv ON fv.id = a.variant_id
        WHERE t.user_id = $1
          AND t.is_active = TRUE
          AND t.auto_log = FALSE
@@ -146,12 +202,17 @@ async function getPlannedItemsForDay(
       ),
     ];
     const componentsByMeal = new Map<string, PlannedItemRow['foods']>();
+    // Calories of one full pass over a meal's foods, before scaling to the plan.
+    const componentCaloriesByMeal = new Map<string, number | null>();
     const componentImagesByMeal = new Map<string, string[]>();
     if (mealIds.length > 0) {
       const components = await client.query(
-        `SELECT mf.meal_id, f.name, mf.quantity, mf.unit, f.images
+        `SELECT mf.meal_id, f.name, mf.quantity, mf.unit, f.images,
+                fv.calories AS variant_calories,
+                fv.serving_size AS variant_serving_size
          FROM meal_foods mf
          JOIN foods f ON f.id = mf.food_id
+         LEFT JOIN food_variants fv ON fv.id = mf.variant_id
          WHERE mf.meal_id = ANY($1::uuid[])
          ORDER BY mf.created_at ASC, f.name ASC, mf.id ASC`,
         [mealIds]
@@ -164,6 +225,19 @@ async function getPlannedItemsForDay(
           unit: component.unit,
         });
         componentsByMeal.set(component.meal_id, list);
+        componentCaloriesByMeal.set(
+          component.meal_id,
+          addCalories(
+            componentCaloriesByMeal.has(component.meal_id)
+              ? (componentCaloriesByMeal.get(component.meal_id) ?? null)
+              : 0,
+            scaledCalories(
+              component.variant_calories,
+              component.variant_serving_size,
+              Number(component.quantity)
+            )
+          )
+        );
         // A meal with no picture of its own shows its first food that has one.
         const componentImages = usableImages(component.images);
         if (
@@ -191,6 +265,10 @@ async function getPlannedItemsForDay(
       brand: row.item_type === 'food' ? row.food_brand : null,
       quantity: Number(row.quantity ?? 1),
       unit: row.unit ?? 'serving',
+      calories: plannedCalories(
+        row,
+        row.meal_id ? componentCaloriesByMeal.get(row.meal_id) : undefined
+      ),
       foods:
         row.item_type === 'meal' && row.meal_id
           ? (componentsByMeal.get(row.meal_id) ?? [])
