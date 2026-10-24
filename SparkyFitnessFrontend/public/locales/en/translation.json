@@ -1098,6 +1098,7 @@
       "burnedEnergyBreakdown": "Burned Energy Breakdown:",
       "dailyBurn": "Device Projection",
       "dailyEnergyGoal": "Daily Energy Goal",
+      "plannedCalories": "+{{planned}} {{unit}} planned",
       "dataPoints": "Data Points",
       "days": "days",
       "energyBurnedBreakdownTitle": "Energy Burned Breakdown",

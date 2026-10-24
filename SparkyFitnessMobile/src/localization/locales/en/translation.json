@@ -850,6 +850,7 @@
     "consumed": "Consumed",
     "remaining": "remaining",
     "ofCalories": "of {{value}} kcal",
+    "plannedCalories": "+{{planned}} kcal planned",
     "burned": "Burned",
     "hydration": "Hydration",
     "ofVolume": "of {{value}} {{unit}}",
@@ -8156,6 +8157,8 @@
     "addedSome": "Added {{added}} of {{total}} to your diary",
     "couldNotAdd": "Couldn't add {{name}}. Try again.",
     "addedAll_one": "Added {{count}} item to your diary",
-    "addedAll_other": "Added {{count}} items to your diary"
+    "addedAll_other": "Added {{count}} items to your diary",
+    "rollup": "+{{calories}} kcal planned",
+    "mealCalories": "+{{calories}} kcal"
   }
 }

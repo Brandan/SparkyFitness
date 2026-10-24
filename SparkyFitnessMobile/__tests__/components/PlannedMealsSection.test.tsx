@@ -85,6 +85,29 @@ describe('PlannedMealsSection', () => {
     );
 
     expect(getByText(/1 serving · 420 kcal/)).toBeTruthy();
+    expect(getByText('+420 kcal')).toBeTruthy();
+    expect(getByText('+420 kcal planned')).toBeTruthy();
+  });
+
+  it('groups planned foods by meal and totals each meal and the day', () => {
+    const lunch: PlannedMealItem = {
+      ...item,
+      item_key: 'meal:type:lunch:',
+      meal_type_id: '44444444-4444-4444-8444-444444444444',
+      meal_type_name: 'Lunch',
+      name: 'Salad',
+      calories: 180,
+      foods: [],
+    };
+    const { getByText } = render(
+      <PlannedMealsSection items={[item, lunch]} date="2026-10-24" />
+    );
+
+    expect(getByText('Breakfast')).toBeTruthy();
+    expect(getByText('Lunch')).toBeTruthy();
+    expect(getByText('+420 kcal')).toBeTruthy();
+    expect(getByText('+180 kcal')).toBeTruthy();
+    expect(getByText('+600 kcal planned')).toBeTruthy();
   });
 
   it('leaves calories out when they are not known', () => {

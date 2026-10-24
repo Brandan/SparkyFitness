@@ -25,6 +25,8 @@ interface CalorieRingCardProps {
   calorieGoal: number;
   remainingCalories: number;
   progressPercent: number;
+  /** Calories the day's planned meals would add. Not part of remaining. */
+  plannedCalories?: number;
 }
 
 const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
@@ -33,6 +35,7 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
   calorieGoal,
   remainingCalories,
   progressPercent,
+  plannedCalories = 0,
 }) => {
   const { t } = useTranslation();
   const [progressTrackColor, progressFillColor] = useCSSVariable([
@@ -41,6 +44,9 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
   ]) as [string, string];
 
   const displayRemaining = Math.round(remainingCalories) || 0;
+  const roundedPlanned = Math.round(plannedCalories);
+  const plannedFraction =
+    calorieGoal > 0 && roundedPlanned > 0 ? roundedPlanned / calorieGoal : 0;
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
@@ -54,6 +60,7 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
           <View>
             <ProgressRing
               progress={progressPercent}
+              extra={plannedFraction}
               size={160}
               strokeWidth={12}
               color={progressFillColor}
@@ -81,6 +88,14 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
           value={caloriesBurned}
         />
       </View>
+      {roundedPlanned > 0 ? (
+        <Text className="text-sm text-text-muted text-center mt-2">
+          {t('dashboard.plannedCalories', {
+            defaultValue: '+{{planned}} kcal planned',
+            planned: formatLocalizedNumber(roundedPlanned),
+          })}
+        </Text>
+      ) : null}
     </View>
   );
 };

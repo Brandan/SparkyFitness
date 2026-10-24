@@ -39,7 +39,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
 import PlannedMealList from './PlannedMealList';
-import type { PlannedMealItem } from '@workspace/shared';
+import { sumPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
@@ -291,6 +291,14 @@ const MealCard = ({
     );
   };
 
+  const plannedDisplay = Math.round(
+    convertEnergy(
+      sumPlannedNutrition(plannedItems).calories,
+      'kcal',
+      energyUnit
+    )
+  );
+
   return (
     <>
       <Card>
@@ -308,6 +316,9 @@ const MealCard = ({
                   )}`}</span>
                 )}
                 {getEnergyUnitString(energyUnit)}
+                {plannedDisplay > 0 && (
+                  <span>{` · +${plannedDisplay} ${t('diary.planned', 'planned')}`}</span>
+                )}
               </span>
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
