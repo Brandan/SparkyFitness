@@ -39,6 +39,11 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+// `LastLogged` reads the account timezone to say how long ago a food was logged.
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({ timezone: 'UTC' }),
+}));
+
 jest.mock('@/hooks/use-mobile', () => ({
   useIsMobile: () => false,
 }));
