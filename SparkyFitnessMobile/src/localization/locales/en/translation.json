@@ -8159,6 +8159,10 @@
     "addedAll_one": "Added {{count}} item to your diary",
     "addedAll_other": "Added {{count}} items to your diary",
     "rollup": "+{{calories}} kcal planned",
-    "mealCalories": "+{{calories}} kcal"
+    "mealCalories": "+{{calories}} kcal",
+    "protein": "P: {{amount}}g",
+    "carbs": "C: {{amount}}g",
+    "fat": "F: {{amount}}g",
+    "subtotal": "Planned:"
   }
 }
