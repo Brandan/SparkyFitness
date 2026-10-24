@@ -11,6 +11,9 @@ import CopyMealSheet, {
   type CopyMealSheetRef,
 } from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
+import CopyFoodEntrySheet, {
+  type CopyFoodEntrySheetRef,
+} from '../components/CopyFoodEntrySheet';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDailySummary, useServerConnection, useMealTypes } from '../hooks';
@@ -45,6 +48,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
   const copySheetRef = useRef<CopyMealSheetRef>(null);
+  const copyEntrySheetRef = useRef<CopyFoodEntrySheetRef>(null);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -246,6 +250,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
               onAdjustServing={(foodEntry) =>
                 servingSheetRef.current?.present(foodEntry)
               }
+              onCopy={(foodEntry) =>
+                copyEntrySheetRef.current?.present(foodEntry)
+              }
             />
           ))}
         </View>
@@ -312,6 +319,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
         isPending={isCopying}
         onCopy={copyMeal}
       />
+      <CopyFoodEntrySheet ref={copyEntrySheetRef} />
     </View>
   );
 };

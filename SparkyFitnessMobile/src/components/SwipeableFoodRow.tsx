@@ -5,7 +5,7 @@ import Button from './ui/Button';
 import { useNavigation } from '@react-navigation/native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated from 'react-native-reanimated';
-import { DeleteRowAction } from './SwipeableDeleteRow';
+import { DeleteRowAction, DELETE_ACTION_WIDTH } from './SwipeableDeleteRow';
 import { useRowCollapse } from '../hooks/useRowCollapse';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
@@ -23,12 +23,15 @@ interface SwipeableFoodRowProps {
   entry: FoodEntry;
   nutrition: EntryNutrition;
   onAdjustServing?: (entry: FoodEntry) => void;
+  /** Shows a Copy swipe action and menu item when set. */
+  onCopy?: (entry: FoodEntry) => void;
 }
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   entry,
   nutrition,
   onAdjustServing,
+  onCopy,
 }) => {
   const { t } = useTranslation();
   const { preferences } = usePreferences();
@@ -82,14 +85,36 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
     foodEntryDelete.invalidateCache,
   ]);
 
+  const handleCopy = () => {
+    swipeableRef.current?.close();
+    onCopy?.(entry);
+  };
+
   const renderRightActions = () => (
-    <DeleteRowAction
-      onPress={confirmAndDelete}
-      className="ml-4"
-      accessibilityLabel={t('foodRow.deleteFood', {
-        defaultValue: 'Delete food',
-      })}
-    />
+    <View className="flex-row ml-4">
+      {onCopy && (
+        <TouchableOpacity
+          className="bg-accent-primary justify-center items-center"
+          style={{ width: DELETE_ACTION_WIDTH }}
+          onPress={handleCopy}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t('foodRow.copyFood', {
+            defaultValue: 'Copy food',
+          })}
+        >
+          <Text className="text-white font-semibold text-sm">
+            {t('foodRow.copy', { defaultValue: 'Copy' })}
+          </Text>
+        </TouchableOpacity>
+      )}
+      <DeleteRowAction
+        onPress={confirmAndDelete}
+        accessibilityLabel={t('foodRow.deleteFood', {
+          defaultValue: 'Delete food',
+        })}
+      />
+    </View>
   );
 
   const canQuickAdjust =
@@ -119,6 +144,12 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
       buttons.push({
         text: t('foodRow.adjustServing', { defaultValue: 'Adjust serving' }),
         onPress: () => onAdjustServing!(entry),
+      });
+    }
+    if (onCopy) {
+      buttons.push({
+        text: t('foodRow.copy', { defaultValue: 'Copy' }),
+        onPress: () => onCopy(entry),
       });
     }
     buttons.push({

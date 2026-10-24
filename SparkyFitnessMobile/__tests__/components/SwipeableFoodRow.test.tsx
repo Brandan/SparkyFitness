@@ -132,4 +132,70 @@ describe('SwipeableFoodRow', () => {
 
     alertSpy.mockRestore();
   });
+
+  it('offers Copy in the long-press menu when onCopy is set', () => {
+    const entry = createEntry({ food_entry_meal_id: 'fem-1' });
+    const onCopy = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const screen = renderRow(
+      <SwipeableFoodRow
+        entry={entry}
+        nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
+        onCopy={onCopy}
+      />
+    );
+
+    fireEvent(screen.getByText(/Greek Yogurt/), 'longPress');
+
+    const buttons = alertSpy.mock.calls[0][2] as {
+      text: string;
+      onPress?: () => void;
+    }[];
+    const copy = buttons.find((b) => b.text === 'Copy');
+    expect(copy).toBeDefined();
+    copy?.onPress?.();
+    expect(onCopy).toHaveBeenCalledWith(entry);
+
+    alertSpy.mockRestore();
+  });
+
+  it('shows a Copy swipe action beside Delete when onCopy is set', () => {
+    const entry = createEntry();
+    const onCopy = jest.fn();
+
+    const screen = renderRow(
+      <SwipeableFoodRow
+        entry={entry}
+        nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
+        onCopy={onCopy}
+      />
+    );
+
+    fireEvent.press(
+      screen.getByLabelText('Copy food', { includeHiddenElements: true })
+    );
+    expect(onCopy).toHaveBeenCalledWith(entry);
+    expect(
+      screen.getByLabelText('Delete food', { includeHiddenElements: true })
+    ).toBeTruthy();
+  });
+
+  it('leaves Copy out of the menu without onCopy', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const screen = renderRow(
+      <SwipeableFoodRow
+        entry={createEntry()}
+        nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
+      />
+    );
+
+    fireEvent(screen.getByText(/Greek Yogurt/), 'longPress');
+
+    const labels = (alertSpy.mock.calls[0][2] as { text: string }[]).map(
+      (b) => b.text
+    );
+    expect(labels).not.toContain('Copy');
+    alertSpy.mockRestore();
+  });
 });

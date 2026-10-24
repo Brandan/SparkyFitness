@@ -24,6 +24,7 @@ interface FoodSummaryProps {
   calorieGoal?: number;
   onAddFood?: () => void;
   onAdjustServing?: (entry: FoodEntry) => void;
+  onCopyEntry?: (entry: FoodEntry) => void;
   onPressMealType?: (
     mealTypeId: string | null,
     mealTypeName: string,
@@ -36,6 +37,7 @@ interface MealSectionProps {
   goals?: DailyGoals;
   calorieGoal?: number;
   onAdjustServing?: (entry: FoodEntry) => void;
+  onCopyEntry?: (entry: FoodEntry) => void;
   onPressMealType?: (
     mealTypeId: string | null,
     mealTypeName: string,
@@ -66,6 +68,7 @@ const MealSection: React.FC<MealSectionProps> = ({
   goals,
   calorieGoal,
   onAdjustServing,
+  onCopyEntry,
   onPressMealType,
 }) => {
   const { t } = useTranslation();
@@ -136,6 +139,7 @@ const MealSection: React.FC<MealSectionProps> = ({
             entry={entry}
             nutrition={nutrition}
             onAdjustServing={onAdjustServing}
+            onCopy={onCopyEntry}
           />
         );
       })}
@@ -150,6 +154,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
   calorieGoal,
   onAddFood,
   onAdjustServing,
+  onCopyEntry,
   onPressMealType,
 }) => {
   if (foodEntries.length === 0) {
@@ -177,6 +182,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
           goals={goals}
           calorieGoal={calorieGoal}
           onAdjustServing={onAdjustServing}
+          onCopyEntry={onCopyEntry}
           onPressMealType={onPressMealType}
         />
       ))}

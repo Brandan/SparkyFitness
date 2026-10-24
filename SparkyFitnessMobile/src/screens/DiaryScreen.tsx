@@ -40,6 +40,9 @@ import FoodSummary from '../components/FoodSummary';
 import PlannedMealsSection from '../components/PlannedMealsSection';
 import { usePlannedMeals } from '../hooks/usePlannedMeals';
 import MeasurementsSummary from '../components/MeasurementsSummary';
+import CopyFoodEntrySheet, {
+  type CopyFoodEntrySheetRef,
+} from '../components/CopyFoodEntrySheet';
 import ServingAdjustSheet, {
   type ServingAdjustSheetRef,
 } from '../components/ServingAdjustSheet';
@@ -123,6 +126,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
   const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
+  const copyEntrySheetRef = useRef<CopyFoodEntrySheetRef>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -684,6 +688,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               onAdjustServing={(entry) =>
                 servingSheetRef.current?.present(entry)
               }
+              onCopyEntry={(entry) => copyEntrySheetRef.current?.present(entry)}
               onPressMealType={openMealTypeDetail}
             />
             <PlannedMealsSection items={plannedMeals} date={selectedDate} />
@@ -815,6 +820,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             navigation.navigate('FoodEntryView', { entry })
           }
         />
+        <CopyFoodEntrySheet ref={copyEntrySheetRef} />
       </>
     );
   }
@@ -859,6 +865,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         ref={servingSheetRef}
         onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })}
       />
+      <CopyFoodEntrySheet ref={copyEntrySheetRef} />
     </>
   );
 
