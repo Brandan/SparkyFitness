@@ -215,7 +215,7 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
                   {item.name}
                   <Text className="text-sm font-normal text-text-secondary">
                     {`  ${formatQuantity(item.quantity, item.unit)}`}
-                    {item.calories !== null
+                    {typeof item.calories === 'number'
                       ? ` · ${Math.round(item.calories)} ${t(
                           'nutrition.caloriesShort',
                           { defaultValue: 'kcal' }

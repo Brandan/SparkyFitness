@@ -223,7 +223,7 @@ const PlannedMealList = ({
                   </span>
                   <span className="text-sm text-muted-foreground">
                     {formatQuantity(item.quantity, item.unit)}
-                    {item.calories !== null &&
+                    {typeof item.calories === 'number' &&
                       ` · ${Math.round(
                         convertEnergy(item.calories, 'kcal', energyUnit)
                       )} ${
