@@ -12,6 +12,10 @@ import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn } from '@/utils/logging';
 import type { Meal } from '@/types/meal';
+import {
+  nutritionMultiplier,
+  scaleAssignmentNutrition,
+} from '@/utils/mealPlanAssignmentNutrition';
 
 import { useTranslation } from 'react-i18next';
 interface MealUnitSelectorProps {
@@ -81,20 +85,22 @@ const MealUnitSelector = ({
     let totalFat = 0;
 
     meal.foods.forEach((foodItem) => {
-      const scale = foodItem.quantity / (foodItem.serving_size || 1);
-      totalCalories += (foodItem.calories || 0) * scale;
-      totalProtein += (foodItem.protein || 0) * scale;
-      totalCarbs += (foodItem.carbs || 0) * scale;
-      totalFat += (foodItem.fat || 0) * scale;
+      const scaled = scaleAssignmentNutrition(foodItem);
+      totalCalories += scaled.calories;
+      totalProtein += scaled.protein;
+      totalCarbs += scaled.carbs;
+      totalFat += scaled.fat;
     });
 
-    // Uniform multiplier: quantity / (serving_size × total_servings).
-    // For pre-migration data where total_servings defaults to 1, this collapses
-    // to quantity/serving_size — matches today's non-serving behavior.
-    const mealServingSize = meal.serving_size || 1.0;
-    const mealTotalServings = meal.total_servings || 1;
-    const denominator = mealServingSize * mealTotalServings;
-    const multiplier = denominator > 0 ? quantity / denominator : 1;
+    // Quantity / (serving size × total servings). A quantity in a compatible
+    // unit is converted into the meal's serving unit first.
+    const multiplier = nutritionMultiplier(
+      quantity,
+      unit,
+      meal.serving_size,
+      meal.serving_unit,
+      meal.total_servings
+    );
 
     const result = {
       calories: totalCalories * multiplier,

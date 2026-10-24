@@ -2,6 +2,7 @@ import {
   resolveFoodImageSrc,
   usableFoodImages,
   primaryImageOf,
+  mealDisplayImages,
   diaryEntryImageSrc,
 } from '@/utils/foodImages';
 import type { FoodEntry } from '@/types/food';
@@ -54,6 +55,34 @@ describe('primaryImageOf', () => {
   it('returns null when there are no images', () => {
     expect(primaryImageOf({ images: [] })).toBeNull();
     expect(primaryImageOf(null)).toBeNull();
+  });
+});
+
+describe('mealDisplayImages', () => {
+  it("uses the meal's own pictures", () => {
+    expect(
+      mealDisplayImages({
+        images: ['/uploads/meals/m1/plate.png'],
+        foods: [{ food_images: ['/uploads/foods/f1/egg.png'] }],
+      })
+    ).toEqual(['/uploads/meals/m1/plate.png']);
+  });
+
+  it('falls back to the first ingredient food that has a picture', () => {
+    expect(
+      mealDisplayImages({
+        images: [],
+        foods: [
+          { food_images: [] },
+          { food_images: ['[]', '/uploads/foods/f2/toast.png'] },
+        ],
+      })
+    ).toEqual(['/uploads/foods/f2/toast.png']);
+  });
+
+  it('returns nothing when neither the meal nor its foods have a picture', () => {
+    expect(mealDisplayImages({ images: null, foods: [{}] })).toEqual([]);
+    expect(mealDisplayImages(null)).toEqual([]);
   });
 });
 

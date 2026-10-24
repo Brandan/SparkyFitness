@@ -48,6 +48,34 @@ export function primaryImageOf(
 }
 
 /**
+ * Pictures to show for a meal in a plan.
+ *
+ * The meal's own pictures win. A meal with none shows the first ingredient
+ * food that has any, which is the same picture a planned diary row uses.
+ */
+export function mealDisplayImages(
+  meal:
+    | {
+        images?: string[] | null;
+        foods?: Array<{ food_images?: string[] | null }> | null;
+      }
+    | null
+    | undefined
+): string[] {
+  const own = usableFoodImages(meal?.images);
+  if (own.length > 0) {
+    return own;
+  }
+  for (const food of meal?.foods ?? []) {
+    const images = usableFoodImages(food.food_images);
+    if (images.length > 0) {
+      return images;
+    }
+  }
+  return [];
+}
+
+/**
  * Picks the image to show for a diary entry.
  *
  * Precedence: the entry's own override photo, then the parent food's or meal's

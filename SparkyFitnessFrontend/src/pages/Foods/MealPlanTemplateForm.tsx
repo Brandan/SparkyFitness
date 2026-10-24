@@ -2,6 +2,7 @@ import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { Trans, useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -33,6 +34,11 @@ import { Copy, Edit, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { mealViewOptions } from '@/hooks/Foods/useMeals';
 import { foodViewOptions } from '@/hooks/Foods/useFoods';
+import { foodVariantsOptions } from '@/hooks/Foods/useFoodVariants';
+import {
+  scaleAssignmentNutrition,
+  selectVariantForQuantity,
+} from '@/utils/mealPlanAssignmentNutrition';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import {
@@ -51,8 +57,12 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import SortableRow from '@/components/SortableRow';
+import ImageLightbox from '@/components/ImageLightbox';
+import { useImageLightbox } from '@/hooks/Foods/useImageLightbox';
+import { mealDisplayImages, usableFoodImages } from '@/utils/foodImages';
 
-// Extended assignment type with nutrition data for display
+// Extended assignment type with nutrition data for display.
+// `images` and `brand` are display-only and are never saved with the plan.
 interface ExtendedAssignment extends MealPlanTemplateAssignment {
   calories?: number;
   protein?: number;
@@ -61,6 +71,13 @@ interface ExtendedAssignment extends MealPlanTemplateAssignment {
   serving_size?: number;
   serving_unit?: string;
   total_servings?: number;
+  images?: string[];
+  brand?: string | null;
+}
+
+function displayBrand(brand: string | null | undefined): string | null {
+  const trimmed = brand?.trim() ?? '';
+  return trimmed === '' ? null : trimmed;
 }
 
 interface MealPlanTemplateFormProps {
@@ -114,6 +131,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
   const queryClient = useQueryClient();
   const { data: availableMealTypes = [] } = useMealTypes();
+  const { lightboxProps, openLightbox } = useImageLightbox();
   // Helper function to fetch nutrition data for an assignment
   const fetchNutritionForAssignment = useCallback(
     async (
@@ -124,49 +142,82 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
           const meal = await queryClient.fetchQuery(
             mealViewOptions(assignment.meal_id)
           );
-          if (meal && meal.foods) {
-            // Calculate total nutrition from meal's component foods
-            let totalCalories = 0;
-            let totalProtein = 0;
-            let totalCarbs = 0;
-            let totalFat = 0;
+          if (meal) {
+            const images = mealDisplayImages(meal);
+            if (meal.foods) {
+              // Calculate total nutrition from meal's component foods
+              let totalCalories = 0;
+              let totalProtein = 0;
+              let totalCarbs = 0;
+              let totalFat = 0;
 
-            meal.foods.forEach((mf) => {
-              const scale = mf.quantity / (mf.serving_size || 1);
-              totalCalories += (mf.calories || 0) * scale;
-              totalProtein += (mf.protein || 0) * scale;
-              totalCarbs += (mf.carbs || 0) * scale;
-              totalFat += (mf.fat || 0) * scale;
-            });
+              meal.foods.forEach((mf) => {
+                const scaled = scaleAssignmentNutrition(mf);
+                totalCalories += scaled.calories;
+                totalProtein += scaled.protein;
+                totalCarbs += scaled.carbs;
+                totalFat += scaled.fat;
+              });
 
-            return {
-              ...assignment,
-              calories: totalCalories,
-              protein: totalProtein,
-              carbs: totalCarbs,
-              fat: totalFat,
-              serving_size: meal.serving_size || 1,
-              serving_unit: meal.serving_unit || 'serving',
-              total_servings: meal.total_servings || 1,
-            };
+              return {
+                ...assignment,
+                calories: totalCalories,
+                protein: totalProtein,
+                carbs: totalCarbs,
+                fat: totalFat,
+                serving_size: meal.serving_size || 1,
+                serving_unit: meal.serving_unit || 'serving',
+                total_servings: meal.total_servings || 1,
+                images,
+              };
+            }
+            return { ...assignment, images };
           }
         } else if (assignment.item_type === 'food' && assignment.food_id) {
           const food = await queryClient.fetchQuery(
             foodViewOptions(assignment.food_id)
           );
+          const images = usableFoodImages(food?.images);
+          const brand = displayBrand(food?.brand);
 
-          if (food && food.default_variant) {
-            const variant = food.default_variant;
+          // The plan stores the serving the person picked (often ounces).
+          // Dividing that quantity into the default serving treats 1 oz as
+          // 1 ml or 1 g. Use the saved serving when its unit matches, and
+          // otherwise a serving the row's unit can be converted into.
+          let variants: FoodVariant[] = food?.default_variant
+            ? [food.default_variant]
+            : [];
+          try {
+            const loaded = await queryClient.fetchQuery(
+              foodVariantsOptions(assignment.food_id)
+            );
+            if (loaded.length > 0) variants = loaded;
+          } catch (variantError) {
+            error(
+              loggingLevel,
+              'Failed to fetch food variants for plan nutrition:',
+              variantError
+            );
+          }
+          const variant = selectVariantForQuantity(
+            variants,
+            assignment.variant_id,
+            assignment.unit
+          );
+          if (variant) {
             return {
               ...assignment,
-              calories: variant.calories,
-              protein: variant.protein,
-              carbs: variant.carbs,
-              fat: variant.fat,
-              serving_size: variant.serving_size,
-              serving_unit: variant.serving_unit,
+              calories: Number(variant.calories) || 0,
+              protein: Number(variant.protein) || 0,
+              carbs: Number(variant.carbs) || 0,
+              fat: Number(variant.fat) || 0,
+              serving_size: Number(variant.serving_size) || 1,
+              serving_unit: variant.serving_unit ?? undefined,
+              images,
+              brand,
             };
           }
+          return { ...assignment, images, brand };
         }
       } catch (err) {
         error(loggingLevel, `Failed to fetch nutrition for assignment:`, err);
@@ -197,6 +248,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   ]); // Only run when template ID changes
 
   const handleAddFood = (day: number, mealType: string) => {
+    setEditingAssignmentIndex(null);
     setCurrentDay(day);
     setCurrentMealType(mealType);
     setIsFoodSelectionOpen(true);
@@ -302,6 +354,8 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
           fat: selectedVariant.fat,
           serving_size: selectedVariant.serving_size,
           serving_unit: selectedVariant.serving_unit,
+          images: usableFoodImages(food.images),
+          brand: displayBrand(food.brand),
         };
         const updatedExtended = [...extendedAssignments];
         updatedExtended[editingAssignmentIndex] = extendedAssignment;
@@ -332,6 +386,8 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
         fat: selectedVariant.fat,
         serving_size: selectedVariant.serving_size,
         serving_unit: selectedVariant.serving_unit,
+        images: usableFoodImages(food.images),
+        brand: displayBrand(food.brand),
       };
       setExtendedAssignments((prev) => [...prev, extendedAssignment]);
     }
@@ -439,16 +495,14 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     let totalFat = 0;
 
     relevantAssignments.forEach((assignment) => {
-      // Meal assignments use uniform math: quantity / (serving_size × total_servings).
-      // Food assignments leave total_servings undefined, defaulting to 1 — math
-      // reduces to today's quantity/serving_size for those.
-      const denominator =
-        (assignment.serving_size || 1) * (assignment.total_servings || 1);
-      const scale = (assignment.quantity || 1) / denominator;
-      totalCalories += (assignment.calories || 0) * scale;
-      totalProtein += (assignment.protein || 0) * scale;
-      totalCarbs += (assignment.carbs || 0) * scale;
-      totalFat += (assignment.fat || 0) * scale;
+      // Meals scale by quantity / (serving size × total servings). Foods leave
+      // total servings unset, so that factor is 1. A row logged in ounces is
+      // converted into a gram or ounce serving before that division.
+      const scaled = scaleAssignmentNutrition(assignment);
+      totalCalories += scaled.calories;
+      totalProtein += scaled.protein;
+      totalCarbs += scaled.carbs;
+      totalFat += scaled.fat;
     });
 
     return { totalCalories, totalProtein, totalCarbs, totalFat };
@@ -466,13 +520,11 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     let totalFat = 0;
 
     relevantAssignments.forEach((assignment) => {
-      const denominator =
-        (assignment.serving_size || 1) * (assignment.total_servings || 1);
-      const scale = (assignment.quantity || 1) / denominator;
-      totalCalories += (assignment.calories || 0) * scale;
-      totalProtein += (assignment.protein || 0) * scale;
-      totalCarbs += (assignment.carbs || 0) * scale;
-      totalFat += (assignment.fat || 0) * scale;
+      const scaled = scaleAssignmentNutrition(assignment);
+      totalCalories += scaled.calories;
+      totalProtein += scaled.protein;
+      totalCarbs += scaled.carbs;
+      totalFat += scaled.fat;
     });
 
     return { totalCalories, totalProtein, totalCarbs, totalFat };
@@ -727,18 +779,12 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                                       assignment.item_type === 'meal'
                                         ? assignment.meal_name
                                         : assignment.food_name;
-                                    const denominator =
-                                      (assignment.serving_size || 1) *
-                                      (assignment.total_servings || 1);
-                                    const scale =
-                                      (assignment.quantity || 1) / denominator;
-                                    const calories =
-                                      (assignment.calories || 0) * scale;
-                                    const protein =
-                                      (assignment.protein || 0) * scale;
-                                    const carbs =
-                                      (assignment.carbs || 0) * scale;
-                                    const fat = (assignment.fat || 0) * scale;
+                                    const { calories, protein, carbs, fat } =
+                                      scaleAssignmentNutrition(assignment);
+                                    const images = usableFoodImages(
+                                      assignment.images
+                                    );
+                                    const image = images[0] ?? null;
 
                                     return (
                                       <SortableRow
@@ -757,99 +803,146 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                                         }
                                       >
                                         {(handle) => (
-                                          <div className="flex flex-col p-3 border rounded-md space-y-2 bg-gray-50 dark:bg-gray-800">
-                                            <div className="flex items-center justify-between">
-                                              <span className="font-medium">
-                                                {itemName}
-                                              </span>
-                                              <div className="flex items-center gap-1">
-                                                <Button
-                                                  type="button"
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  className="h-11 w-11"
-                                                  onClick={() =>
-                                                    handleEditAssignment(
-                                                      actualIndex
-                                                    )
-                                                  }
-                                                  title={t(
-                                                    'mealPlanTemplateForm.editQuantity',
-                                                    'Edit quantity'
-                                                  )}
-                                                  aria-label={t(
-                                                    'mealPlanTemplateForm.editQuantity',
-                                                    'Edit quantity'
-                                                  )}
-                                                >
-                                                  <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                  type="button"
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  className="h-11 w-11"
-                                                  onClick={() =>
-                                                    handleRemoveAssignment(
-                                                      actualIndex
-                                                    )
-                                                  }
-                                                  title={t(
-                                                    'mealPlanTemplateForm.remove',
-                                                    'Remove'
-                                                  )}
-                                                  aria-label={t(
-                                                    'mealPlanTemplateForm.remove',
-                                                    'Remove'
-                                                  )}
-                                                >
-                                                  <X className="h-4 w-4" />
-                                                </Button>
-                                                {assignmentsForMealType.length >
-                                                  1 && (
-                                                  <span className="ml-1 inline-flex">
-                                                    {handle}
-                                                  </span>
+                                          <div className="flex items-start gap-3 rounded-md border bg-gray-50 p-3 dark:bg-gray-800">
+                                            {image && (
+                                              <button
+                                                type="button"
+                                                className="flex-shrink-0 self-center rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                                                onClick={() =>
+                                                  openLightbox(
+                                                    images,
+                                                    0,
+                                                    itemName ?? undefined
+                                                  )
+                                                }
+                                                aria-label={t(
+                                                  'food.viewImages',
+                                                  'View images'
                                                 )}
-                                              </div>
-                                            </div>
-                                            <div className="flex flex-col sm:flex-row justify-between text-sm text-muted-foreground">
-                                              <div>
-                                                {assignment.quantity || 1}{' '}
-                                                {assignment.unit ||
-                                                  t(
-                                                    'mealPlanTemplateForm.serving',
-                                                    'serving'
-                                                  )}
-                                              </div>
-                                              <div className="flex space-x-3 mt-1 sm:mt-0">
-                                                <span>
-                                                  {calories.toFixed(0)} kcal
-                                                </span>
-                                                <span className="text-blue-500">
-                                                  {t(
-                                                    'mealPlanTemplateForm.pProteing',
-                                                    'P: {{protein}}g',
-                                                    {
-                                                      protein:
-                                                        protein.toFixed(1),
+                                              >
+                                                <img
+                                                  src={image}
+                                                  alt={itemName ?? ''}
+                                                  className="h-16 w-16 rounded-md object-cover"
+                                                  loading="lazy"
+                                                  onError={(e) => {
+                                                    const button =
+                                                      e.currentTarget
+                                                        .parentElement;
+                                                    if (button) {
+                                                      button.style.display =
+                                                        'none';
                                                     }
+                                                  }}
+                                                />
+                                              </button>
+                                            )}
+                                            <div className="min-w-0 flex-1 space-y-2">
+                                              <div className="flex items-start justify-between gap-2">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                  <span className="font-medium">
+                                                    {itemName}
+                                                  </span>
+                                                  {assignment.brand ? (
+                                                    <Badge
+                                                      variant="secondary"
+                                                      className="text-xs"
+                                                    >
+                                                      {assignment.brand}
+                                                    </Badge>
+                                                  ) : null}
+                                                </div>
+                                                <div className="flex shrink-0 items-center gap-1">
+                                                  <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-11 w-11"
+                                                    onClick={() =>
+                                                      handleEditAssignment(
+                                                        actualIndex
+                                                      )
+                                                    }
+                                                    title={t(
+                                                      'mealPlanTemplateForm.editQuantity',
+                                                      'Edit quantity'
+                                                    )}
+                                                    aria-label={t(
+                                                      'mealPlanTemplateForm.editQuantity',
+                                                      'Edit quantity'
+                                                    )}
+                                                  >
+                                                    <Edit className="h-4 w-4" />
+                                                  </Button>
+                                                  <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-11 w-11"
+                                                    onClick={() =>
+                                                      handleRemoveAssignment(
+                                                        actualIndex
+                                                      )
+                                                    }
+                                                    title={t(
+                                                      'mealPlanTemplateForm.remove',
+                                                      'Remove'
+                                                    )}
+                                                    aria-label={t(
+                                                      'mealPlanTemplateForm.remove',
+                                                      'Remove'
+                                                    )}
+                                                  >
+                                                    <X className="h-4 w-4" />
+                                                  </Button>
+                                                  {assignmentsForMealType.length >
+                                                    1 && (
+                                                    <span className="ml-1 inline-flex">
+                                                      {handle}
+                                                    </span>
                                                   )}
-                                                </span>
-                                                <span className="text-green-500">
-                                                  {t(
-                                                    'mealPlanTemplateForm.cCarbsg',
-                                                    'C: {{carbs}}g',
-                                                    { carbs: carbs.toFixed(1) }
-                                                  )}
-                                                </span>
-                                                <span className="text-yellow-500">
-                                                  {t(
-                                                    'mealPlanTemplateForm.fFatg',
-                                                    'F: {{fat}}g',
-                                                    { fat: fat.toFixed(1) }
-                                                  )}
-                                                </span>
+                                                </div>
+                                              </div>
+                                              <div className="flex flex-col sm:flex-row justify-between text-sm text-muted-foreground">
+                                                <div>
+                                                  {assignment.quantity || 1}{' '}
+                                                  {assignment.unit ||
+                                                    t(
+                                                      'mealPlanTemplateForm.serving',
+                                                      'serving'
+                                                    )}
+                                                </div>
+                                                <div className="flex space-x-3 mt-1 sm:mt-0">
+                                                  <span>
+                                                    {calories.toFixed(0)} kcal
+                                                  </span>
+                                                  <span className="text-blue-500">
+                                                    {t(
+                                                      'mealPlanTemplateForm.pProteing',
+                                                      'P: {{protein}}g',
+                                                      {
+                                                        protein:
+                                                          protein.toFixed(1),
+                                                      }
+                                                    )}
+                                                  </span>
+                                                  <span className="text-green-500">
+                                                    {t(
+                                                      'mealPlanTemplateForm.cCarbsg',
+                                                      'C: {{carbs}}g',
+                                                      {
+                                                        carbs: carbs.toFixed(1),
+                                                      }
+                                                    )}
+                                                  </span>
+                                                  <span className="text-yellow-500">
+                                                    {t(
+                                                      'mealPlanTemplateForm.fFatg',
+                                                      'F: {{fat}}g',
+                                                      { fat: fat.toFixed(1) }
+                                                    )}
+                                                  </span>
+                                                </div>
                                               </div>
                                             </div>
                                           </div>
@@ -949,6 +1042,8 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
         </DialogContent>
       </Dialog>
 
+      <ImageLightbox {...lightboxProps} />
+
       <FoodSearchDialog
         open={isFoodSelectionOpen}
         onOpenChange={setIsFoodSelectionOpen}
@@ -959,10 +1054,26 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
       {selectedFood && (
         <FoodUnitSelector
+          key={`${selectedFood.id}-${editingAssignmentIndex ?? 'new'}`}
           food={selectedFood}
           open={isFoodUnitSelectorOpen}
           onOpenChange={setIsFoodUnitSelectorOpen}
           onSelect={handleFoodUnitSelected}
+          initialQuantity={
+            editingAssignmentIndex !== null
+              ? extendedAssignments[editingAssignmentIndex]?.quantity
+              : undefined
+          }
+          initialUnit={
+            editingAssignmentIndex !== null
+              ? extendedAssignments[editingAssignmentIndex]?.unit
+              : undefined
+          }
+          initialVariantId={
+            editingAssignmentIndex !== null
+              ? extendedAssignments[editingAssignmentIndex]?.variant_id
+              : undefined
+          }
         />
       )}
 
