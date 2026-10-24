@@ -9,6 +9,7 @@ import {
   CopyFoodEntryItemBodySchema,
   CopyReviewedFoodEntriesFromUserBodySchema,
   CopySelectedFoodEntriesFromUserBodySchema,
+  SetFoodEntryTimesBodySchema,
   isEntryTimeString,
 } from '@workspace/shared';
 import {
@@ -885,6 +886,74 @@ router.post(
         );
       clearUserTdeeCache(req.userId);
       res.status(201).json(copiedEntries);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /food-entries/times:
+ *   put:
+ *     summary: Set the time of several logged foods and meals
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Changes only entry_time, in one transaction. Used to reorder a meal
+ *       in the diary, which is sorted by time. A logged meal's foods take
+ *       the meal's new time. Nothing else about an entry changes, including
+ *       its nutrition snapshot. If any entry is not found, nothing changes.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [entries]
+ *             properties:
+ *               entries:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 200
+ *                 items:
+ *                   type: object
+ *                   required: [kind, id, entry_time]
+ *                   properties:
+ *                     kind:
+ *                       type: string
+ *                       enum: [foodEntry, foodEntryMeal]
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     entry_time:
+ *                       type: string
+ *                       nullable: true
+ *                       description: HH:MM (24h), or null to clear the time.
+ *     responses:
+ *       200:
+ *         description: Number of entries updated.
+ *       400:
+ *         description: Invalid request body.
+ *       404:
+ *         description: One or more entries were not found; nothing changed.
+ */
+router.put(
+  '/times',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = SetFoodEntryTimesBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      const updated = await foodEntryService.setFoodEntryTimes(
+        req.userId,
+        req.originalUserId || req.userId,
+        parsed.data.entries
+      );
+      clearUserTdeeCache(req.userId);
+      res.status(200).json({ updated });
     } catch (error) {
       next(error);
     }

@@ -627,6 +627,7 @@ async function getFoodEntriesByDate(userId: string, selectedDate: string) {
     const result = await client.query(
       `SELECT
         fe.id,
+        fe.created_at,
         fe.user_id,
         fe.food_id,
         fe.meal_id,

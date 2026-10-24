@@ -24,6 +24,7 @@ export * from './schemas/api/ExerciseAlternatives.api.zod.ts';
 export * from './schemas/api/WorkoutCoaching.api.zod.ts';
 export * from './schemas/api/FoodEntries.api.zod.ts';
 export * from './schemas/api/FoodEntryCopy.api.zod.ts';
+export * from './schemas/api/FoodEntryTimes.api.zod.ts';
 export * from './schemas/api/PlannedMeals.api.zod.ts';
 export * from './schemas/api/FoodPhotoEstimate.api.zod.ts';
 export * from './schemas/api/SupplementLookup.api.zod.ts';

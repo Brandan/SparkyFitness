@@ -148,6 +148,8 @@ export interface FoodEntryMeal {
   meal_type: string;
   entry_date: string;
   entry_time?: string | null;
+  /** When the entry was logged; orders entries that share a time. */
+  created_at?: string;
   name: string;
   description?: string;
   /** Per-occurrence markdown note; independent of the template's `notes`. */
