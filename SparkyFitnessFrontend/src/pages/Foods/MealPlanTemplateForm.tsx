@@ -35,6 +35,22 @@ import { mealViewOptions } from '@/hooks/Foods/useMeals';
 import { foodViewOptions } from '@/hooks/Foods/useFoods';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import SortableRow from '@/components/SortableRow';
 
 // Extended assignment type with nutrition data for display
 interface ExtendedAssignment extends MealPlanTemplateAssignment {
@@ -322,6 +338,24 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
     setIsFoodUnitSelectorOpen(false);
     setSelectedFood(null);
+  };
+
+  // Drag to reorder within a day's meal. Rows are identified by their index
+  // in the whole list, and one move applied to both index-aligned lists keeps
+  // every other day and meal in its place. The server numbers items in the
+  // order they are saved, and the plan adds them to the diary in that order.
+  const reorderSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  const handleReorder = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = Number(active.id);
+    const to = Number(over.id);
+    setAssignments((prev) => arrayMove(prev, from, to));
+    setExtendedAssignments((prev) => arrayMove(prev, from, to));
   };
 
   const handleRemoveAssignment = (index: number) => {
@@ -671,100 +705,161 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                             <h4 className="font-semibold capitalize">
                               {mealType}
                             </h4>
-                            <div className="space-y-2 mt-2">
-                              {assignmentsForMealType.map((assignment, idx) => {
-                                const actualIndex =
-                                  extendedAssignments.indexOf(assignment);
-                                const denominator =
-                                  (assignment.serving_size || 1) *
-                                  (assignment.total_servings || 1);
-                                const scale =
-                                  (assignment.quantity || 1) / denominator;
-                                const calories =
-                                  (assignment.calories || 0) * scale;
-                                const protein =
-                                  (assignment.protein || 0) * scale;
-                                const carbs = (assignment.carbs || 0) * scale;
-                                const fat = (assignment.fat || 0) * scale;
+                            <DndContext
+                              sensors={reorderSensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handleReorder}
+                            >
+                              <SortableContext
+                                items={assignmentsForMealType.map(
+                                  (assignment) =>
+                                    String(
+                                      extendedAssignments.indexOf(assignment)
+                                    )
+                                )}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                <div className="space-y-2 mt-2">
+                                  {assignmentsForMealType.map((assignment) => {
+                                    const actualIndex =
+                                      extendedAssignments.indexOf(assignment);
+                                    const itemName =
+                                      assignment.item_type === 'meal'
+                                        ? assignment.meal_name
+                                        : assignment.food_name;
+                                    const denominator =
+                                      (assignment.serving_size || 1) *
+                                      (assignment.total_servings || 1);
+                                    const scale =
+                                      (assignment.quantity || 1) / denominator;
+                                    const calories =
+                                      (assignment.calories || 0) * scale;
+                                    const protein =
+                                      (assignment.protein || 0) * scale;
+                                    const carbs =
+                                      (assignment.carbs || 0) * scale;
+                                    const fat = (assignment.fat || 0) * scale;
 
-                                return (
-                                  <div
-                                    key={idx}
-                                    className="flex flex-col p-3 border rounded-md space-y-2 bg-gray-50 dark:bg-gray-800"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span className="font-medium">
-                                        {assignment.item_type === 'meal'
-                                          ? assignment.meal_name
-                                          : assignment.food_name}
-                                      </span>
-                                      <div className="flex items-center space-x-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() =>
-                                            handleEditAssignment(actualIndex)
-                                          }
-                                          title={t(
-                                            'mealPlanTemplateForm.editQuantity',
-                                            'Edit quantity'
-                                          )}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() =>
-                                            handleRemoveAssignment(actualIndex)
-                                          }
-                                          title={t(
-                                            'mealPlanTemplateForm.remove',
-                                            'Remove'
-                                          )}
-                                        >
-                                          <X className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row justify-between text-sm text-muted-foreground">
-                                      <div>
-                                        {assignment.quantity || 1}{' '}
-                                        {assignment.unit ||
-                                          t(
-                                            'mealPlanTemplateForm.serving',
-                                            'serving'
-                                          )}
-                                      </div>
-                                      <div className="flex space-x-3 mt-1 sm:mt-0">
-                                        <span>{calories.toFixed(0)} kcal</span>
-                                        <span className="text-blue-500">
-                                          {t(
-                                            'mealPlanTemplateForm.pProteing',
-                                            'P: {{protein}}g',
-                                            { protein: protein.toFixed(1) }
-                                          )}
-                                        </span>
-                                        <span className="text-green-500">
-                                          {t(
-                                            'mealPlanTemplateForm.cCarbsg',
-                                            'C: {{carbs}}g',
-                                            { carbs: carbs.toFixed(1) }
-                                          )}
-                                        </span>
-                                        <span className="text-yellow-500">
-                                          {t(
-                                            'mealPlanTemplateForm.fFatg',
-                                            'F: {{fat}}g',
-                                            { fat: fat.toFixed(1) }
-                                          )}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                                    return (
+                                      <SortableRow
+                                        key={actualIndex}
+                                        id={String(actualIndex)}
+                                        handleLabel={t(
+                                          'mealPlanTemplateForm.reorder',
+                                          'Reorder {{name}}',
+                                          { name: itemName ?? '' }
+                                        )}
+                                        // Nutrition still loading: the two lists
+                                        // are not aligned yet.
+                                        disabled={
+                                          extendedAssignments.length !==
+                                          assignments.length
+                                        }
+                                      >
+                                        {(handle) => (
+                                          <div className="flex flex-col p-3 border rounded-md space-y-2 bg-gray-50 dark:bg-gray-800">
+                                            <div className="flex items-center justify-between">
+                                              <span className="font-medium">
+                                                {itemName}
+                                              </span>
+                                              <div className="flex items-center gap-1">
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-11 w-11"
+                                                  onClick={() =>
+                                                    handleEditAssignment(
+                                                      actualIndex
+                                                    )
+                                                  }
+                                                  title={t(
+                                                    'mealPlanTemplateForm.editQuantity',
+                                                    'Edit quantity'
+                                                  )}
+                                                  aria-label={t(
+                                                    'mealPlanTemplateForm.editQuantity',
+                                                    'Edit quantity'
+                                                  )}
+                                                >
+                                                  <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-11 w-11"
+                                                  onClick={() =>
+                                                    handleRemoveAssignment(
+                                                      actualIndex
+                                                    )
+                                                  }
+                                                  title={t(
+                                                    'mealPlanTemplateForm.remove',
+                                                    'Remove'
+                                                  )}
+                                                  aria-label={t(
+                                                    'mealPlanTemplateForm.remove',
+                                                    'Remove'
+                                                  )}
+                                                >
+                                                  <X className="h-4 w-4" />
+                                                </Button>
+                                                {assignmentsForMealType.length >
+                                                  1 && (
+                                                  <span className="ml-1 inline-flex">
+                                                    {handle}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="flex flex-col sm:flex-row justify-between text-sm text-muted-foreground">
+                                              <div>
+                                                {assignment.quantity || 1}{' '}
+                                                {assignment.unit ||
+                                                  t(
+                                                    'mealPlanTemplateForm.serving',
+                                                    'serving'
+                                                  )}
+                                              </div>
+                                              <div className="flex space-x-3 mt-1 sm:mt-0">
+                                                <span>
+                                                  {calories.toFixed(0)} kcal
+                                                </span>
+                                                <span className="text-blue-500">
+                                                  {t(
+                                                    'mealPlanTemplateForm.pProteing',
+                                                    'P: {{protein}}g',
+                                                    {
+                                                      protein:
+                                                        protein.toFixed(1),
+                                                    }
+                                                  )}
+                                                </span>
+                                                <span className="text-green-500">
+                                                  {t(
+                                                    'mealPlanTemplateForm.cCarbsg',
+                                                    'C: {{carbs}}g',
+                                                    { carbs: carbs.toFixed(1) }
+                                                  )}
+                                                </span>
+                                                <span className="text-yellow-500">
+                                                  {t(
+                                                    'mealPlanTemplateForm.fFatg',
+                                                    'F: {{fat}}g',
+                                                    { fat: fat.toFixed(1) }
+                                                  )}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </SortableRow>
+                                    );
+                                  })}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
                             {assignmentsForMealType.length > 0 && (
                               <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
                                 <Trans

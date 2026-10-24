@@ -43,7 +43,7 @@ async function createMealPlanTemplate(planData: any) {
         mealTypeMap.set(r.name.toLowerCase(), r.id)
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const assignmentValues = assignments.map((a: any) => {
+      const assignmentValues = assignments.map((a: any, index: number) => {
         let typeId = a.meal_type_id;
         if (!typeId && a.meal_type) {
           typeId = mealTypeMap.get(a.meal_type.toLowerCase());
@@ -64,6 +64,7 @@ async function createMealPlanTemplate(planData: any) {
             null,
             a.quantity || 1.0,
             a.unit || 'serving',
+            index, // the item's place in the list the form sent
           ];
         } else if (a.item_type === 'food') {
           return [
@@ -76,12 +77,13 @@ async function createMealPlanTemplate(planData: any) {
             a.variant_id,
             a.quantity,
             a.unit,
+            index,
           ];
         }
         return []; // Should not happen
       });
       const assignmentQuery = format(
-        'INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L',
+        'INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit, sort_order) VALUES %L',
         assignmentValues
       );
       log('info', 'createMealPlanTemplate - assignmentQuery:', assignmentQuery);
@@ -108,8 +110,9 @@ async function createMealPlanTemplate(planData: any) {
                                 'food_name', f.name,
                                 'variant_id', a.variant_id,
                                 'quantity', a.quantity,
-                                'unit', a.unit
-                            ) ORDER BY mt.sort_order ASC
+                                'unit', a.unit,
+                                'sort_order', a.sort_order
+                            ) ORDER BY a.day_of_week, mt.sort_order, a.sort_order, a.id
                         )
                         FROM meal_plan_template_assignments a
                         LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
@@ -167,13 +170,14 @@ async function getMealPlanTemplateAssignments(templateId: any, userId: any) {
                 f.name as food_name,
                 a.variant_id,
                 a.quantity,
-                a.unit
+                a.unit,
+                a.sort_order
             FROM meal_plan_template_assignments a
             LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
             LEFT JOIN meals m ON a.meal_id = m.id
             LEFT JOIN foods f ON a.food_id = f.id
             WHERE a.template_id = $1
-            ORDER BY a.day_of_week, mt.sort_order
+            ORDER BY a.day_of_week, mt.sort_order, a.sort_order, a.id
         `;
     const result = await client.query(query, [templateId]);
     return result.rows;
@@ -216,43 +220,47 @@ async function updateMealPlanTemplate(planId: any, planData: any) {
         mealTypeMap.set(r.name.toLowerCase(), r.id)
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const assignmentValues = planData.assignments.map((a: any) => {
-        let typeId = a.meal_type_id;
-        if (!typeId && a.meal_type) {
-          typeId = mealTypeMap.get(a.meal_type.toLowerCase());
+      const assignmentValues = planData.assignments.map(
+        (a: any, index: number) => {
+          let typeId = a.meal_type_id;
+          if (!typeId && a.meal_type) {
+            typeId = mealTypeMap.get(a.meal_type.toLowerCase());
+          }
+          if (!typeId) {
+            throw new Error(`Invalid meal type: ${a.meal_type}`);
+          }
+          if (a.item_type === 'meal') {
+            return [
+              planId,
+              a.day_of_week,
+              typeId,
+              a.item_type,
+              a.meal_id,
+              null,
+              null,
+              a.quantity || 1.0,
+              a.unit || 'serving',
+              index, // the item's place in the list the form sent
+            ];
+          } else if (a.item_type === 'food') {
+            return [
+              planId,
+              a.day_of_week,
+              typeId,
+              a.item_type,
+              null,
+              a.food_id,
+              a.variant_id,
+              a.quantity,
+              a.unit,
+              index,
+            ];
+          }
+          return []; // Should not happen
         }
-        if (!typeId) {
-          throw new Error(`Invalid meal type: ${a.meal_type}`);
-        }
-        if (a.item_type === 'meal') {
-          return [
-            planId,
-            a.day_of_week,
-            typeId,
-            a.item_type,
-            a.meal_id,
-            null,
-            null,
-            a.quantity || 1.0,
-            a.unit || 'serving',
-          ];
-        } else if (a.item_type === 'food') {
-          return [
-            planId,
-            a.day_of_week,
-            typeId,
-            a.item_type,
-            null,
-            a.food_id,
-            a.variant_id,
-            a.quantity,
-            a.unit,
-          ];
-        }
-        return []; // Should not happen
-      });
+      );
       const assignmentQuery = format(
-        'INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L',
+        'INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit, sort_order) VALUES %L',
         assignmentValues
       );
       await client.query(assignmentQuery);
@@ -276,8 +284,9 @@ async function updateMealPlanTemplate(planId: any, planData: any) {
                                 'food_name', f.name,
                                 'variant_id', a.variant_id,
                                 'quantity', a.quantity,
-                                'unit', a.unit
-                            )
+                                'unit', a.unit,
+                                'sort_order', a.sort_order
+                            ) ORDER BY a.day_of_week, mt.sort_order, a.sort_order, a.id
                         )
                         FROM meal_plan_template_assignments a
                         LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
@@ -387,8 +396,9 @@ async function getActiveMealPlansForDate(userId: string, date: Date | string) {
                                 'food_name', f.name,
                                 'variant_id', a.variant_id,
                                 'quantity', a.quantity,
-                                'unit', a.unit
-                            )
+                                'unit', a.unit,
+                                'sort_order', a.sort_order
+                            ) ORDER BY a.day_of_week, mt.sort_order, a.sort_order, a.id
                         )
                         FROM meal_plan_template_assignments a
                         LEFT JOIN meal_types mt ON a.meal_type_id = mt.id
@@ -438,8 +448,9 @@ async function getMealPlanTemplatesByMealId(mealId: any) {
                                 'food_name', f.name,
                                 'variant_id', a.variant_id,
                                 'quantity', a.quantity,
-                                'unit', a.unit
-                            )
+                                'unit', a.unit,
+                                'sort_order', a.sort_order
+                            ) ORDER BY a.day_of_week, mt.sort_order, a.sort_order, a.id
                         )
                         FROM meal_plan_template_assignments a
                         LEFT JOIN meal_types mt ON a.meal_type_id = mt.id

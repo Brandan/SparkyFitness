@@ -225,7 +225,7 @@ async function getPlannedItemsForDay(
                      AND fem.meal_type_id = a.meal_type_id))
              )
          )
-       ORDER BY mt.sort_order ASC, t.start_date ASC, a.id ASC`,
+       ORDER BY mt.sort_order ASC, t.start_date ASC, a.sort_order ASC, a.id ASC`,
       [userId, day, weekday]
     );
     const assignmentRows = assignmentResult.rows as PlannedAssignmentRow[];
