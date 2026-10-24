@@ -33,15 +33,20 @@ const assignment = (overrides: Record<string, unknown>) => ({
   ...overrides,
 });
 
-/** A client that answers the three queries getPlannedItemsForDay makes, in order. */
+/**
+ * A client that answers the queries getPlannedItemsForDay makes, in order:
+ * assignments, occurrences, already-logged copies, then meal components.
+ */
 const mockQueries = (
   assignments: unknown[],
-  components: unknown[] = []
+  components: unknown[] = [],
+  extras?: { occurrences?: unknown[]; logged?: unknown[] }
 ): void => {
   const query = vi
     .fn()
     .mockResolvedValueOnce({ rows: assignments })
-    .mockResolvedValueOnce({ rows: [] })
+    .mockResolvedValueOnce({ rows: extras?.occurrences ?? [] })
+    .mockResolvedValueOnce({ rows: extras?.logged ?? [] })
     .mockResolvedValueOnce({ rows: components });
   vi.mocked(getClient).mockResolvedValue({
     query,
@@ -277,5 +282,87 @@ describe('plannedMealRepository nutrition', () => {
     );
 
     expect(await nutritionOf()).toBeNull();
+  });
+});
+
+const foodKey = `food:${mealTypeId}:${foodId}:v1`;
+
+const loggedFood = (count: number) => ({
+  template_id: templateId,
+  meal_type_id: mealTypeId,
+  item_type: 'food',
+  subject_id: foodId,
+  variant_id: 'v1',
+  entry_count: count,
+});
+
+describe('plannedMealRepository repeated foods', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('keeps every copy of the same food, in plan order', async () => {
+    mockQueries([
+      assignment({ food_name: 'Cream', quantity: '1' }),
+      assignment({ food_name: 'Cream', quantity: '2' }),
+    ]);
+
+    const items = await plannedMealRepository.getPlannedItemsForDay(
+      'user-1',
+      '2026-10-24',
+      5
+    );
+
+    expect(items.map((item) => item.item_key)).toEqual([
+      foodKey,
+      `${foodKey}:1`,
+    ]);
+    expect(items.map((item) => item.quantity)).toEqual([1, 2]);
+  });
+
+  it('hides one copy per entry auto-add already wrote', async () => {
+    mockQueries(
+      [
+        assignment({ food_name: 'Cream' }),
+        assignment({ food_name: 'Cream' }),
+        assignment({ food_name: 'Cream' }),
+      ],
+      [],
+      { logged: [loggedFood(1)] }
+    );
+
+    const items = await plannedMealRepository.getPlannedItemsForDay(
+      'user-1',
+      '2026-10-24',
+      5
+    );
+
+    expect(items.map((item) => item.item_key)).toEqual([
+      `${foodKey}:1`,
+      `${foodKey}:2`,
+    ]);
+  });
+
+  it('hides only the copy that was added or skipped', async () => {
+    mockQueries(
+      [assignment({ food_name: 'Cream' }), assignment({ food_name: 'Cream' })],
+      [],
+      {
+        occurrences: [
+          {
+            template_id: templateId,
+            item_key: `${foodKey}:1`,
+            status: 'added',
+          },
+        ],
+        logged: [loggedFood(1)],
+      }
+    );
+
+    const items = await plannedMealRepository.getPlannedItemsForDay(
+      'user-1',
+      '2026-10-24',
+      5
+    );
+
+    expect(items.map((item) => item.item_key)).toEqual([foodKey]);
   });
 });

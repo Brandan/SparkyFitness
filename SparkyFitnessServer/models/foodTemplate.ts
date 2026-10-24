@@ -4,7 +4,7 @@ import { log } from '../config/logging.js';
 import format from 'pg-format';
 import foodEntryMealRepository from './foodEntryMealRepository.js';
 import {
-  plannedItemKey,
+  assignPlannedItemKeys,
   type PlannedItemKeyParts,
 } from '../utils/plannedItemKey.js';
 import {
@@ -154,11 +154,21 @@ async function createFoodEntriesFromTemplate(
       end_date,
       assignments: allAssignments,
     } = templateResult.rows[0];
-    const assignments: typeof allAssignments = options.itemKey
-      ? allAssignments.filter(
-          (a: PlannedItemKeyParts) => plannedItemKey(a) === options.itemKey
-        )
-      : allAssignments;
+    // Number copies before filtering, so "add the second scoop" matches the
+    // second row and not every row of that food.
+    const keyedAssignments = assignPlannedItemKeys(
+      allAssignments as (PlannedItemKeyParts & {
+        day_of_week?: number;
+        quantity?: number;
+        unit?: string;
+      })[],
+      (assignment) => String(assignment.day_of_week ?? '')
+    );
+    const assignments = (
+      options.itemKey
+        ? keyedAssignments.filter((entry) => entry.itemKey === options.itemKey)
+        : keyedAssignments
+    ).map((entry) => entry.item);
     if (!assignments || assignments.length === 0) {
       log(
         'info',
@@ -247,7 +257,7 @@ async function createFoodEntriesFromTemplate(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       variantsResult.rows.forEach((row: any) => variantsMap.set(row.id, row));
     }
-    const existingFoodEntries = new Set();
+    const existingCounts = new Map<string, number>();
     const existingEntriesQuery = `
         SELECT food_id, meal_id, meal_type_id, entry_date, variant_id
         FROM food_entries
@@ -273,8 +283,16 @@ async function createFoodEntriesFromTemplate(
           ? entry.entry_date.slice(0, 10)
           : localDateToDay(entry.entry_date);
       const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${dateStr}-${entry.variant_id}`;
-      existingFoodEntries.add(key);
+      existingCounts.set(key, (existingCounts.get(key) ?? 0) + 1);
     });
+    // Skip one already-written row per existing entry. Further copies of the
+    // same food are new and must be written.
+    const alreadyLogged = (entryKey: string): boolean => {
+      const remaining = existingCounts.get(entryKey) ?? 0;
+      if (remaining <= 0) return false;
+      existingCounts.set(entryKey, remaining - 1);
+      return true;
+    };
     // Rows written together share one transaction time, and the diary orders
     // untimed entries by created_at, so stamp each item a millisecond apart
     // in plan order. That keeps the plan's order without inventing a time.
@@ -292,7 +310,7 @@ async function createFoodEntriesFromTemplate(
           const mealFoods = mealFoodsMap.get(assignment.meal_id) || [];
           if (mealFoods.length === 0) continue;
           const entryKey = `${assignment.meal_id}-${assignment.meal_type_id}-${currentDay}-null`;
-          if (existingFoodEntries.has(entryKey)) continue;
+          if (alreadyLogged(entryKey)) continue;
           const meal = mealsMap.get(assignment.meal_id);
           if (!meal) continue;
           const mealQuantity = assignment.quantity || 1.0;
@@ -393,13 +411,12 @@ async function createFoodEntriesFromTemplate(
             'info',
             `Created ${mealFoods.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}`
           );
-          existingFoodEntries.add(entryKey);
         } else if (assignment.item_type === 'food') {
           const food = foodsMap.get(assignment.food_id);
           const variant = variantsMap.get(assignment.variant_id);
           if (!food || !variant) continue;
           const entryKey = `${assignment.food_id}-${assignment.meal_type_id}-${currentDay}-${assignment.variant_id}`;
-          if (existingFoodEntries.has(entryKey)) continue;
+          if (alreadyLogged(entryKey)) continue;
           foodEntriesToInsert.push([
             userId,
             assignment.food_id,
@@ -439,7 +456,6 @@ async function createFoodEntriesFromTemplate(
             variant.alcohol_g,
             nextAddedAt(),
           ]);
-          existingFoodEntries.add(entryKey);
         }
       }
       currentDay = addDays(currentDay, 1);

@@ -38,7 +38,7 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import { toast } from '@/hooks/use-toast';
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
-import PlannedMealList from './PlannedMealList';
+import PlannedMealList, { PlannedMacroFigures } from './PlannedMealList';
 import { sumPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
@@ -291,12 +291,12 @@ const MealCard = ({
     );
   };
 
+  const plannedNutrition = sumPlannedNutrition(plannedItems);
   const plannedDisplay = Math.round(
-    convertEnergy(
-      sumPlannedNutrition(plannedItems).calories,
-      'kcal',
-      energyUnit
-    )
+    convertEnergy(plannedNutrition.calories, 'kcal', energyUnit)
+  );
+  const plannedMacrosKnown = plannedItems.some(
+    (item) => item.nutrition != null
   );
 
   return (
@@ -317,7 +317,19 @@ const MealCard = ({
                 )}
                 {getEnergyUnitString(energyUnit)}
                 {plannedDisplay > 0 && (
-                  <span>{` · +${plannedDisplay} ${t('diary.planned', 'planned')}`}</span>
+                  <span>
+                    {` · +${plannedDisplay} ${t('diary.planned', 'planned')}`}
+                    {plannedMacrosKnown && (
+                      <>
+                        {' · '}
+                        <PlannedMacroFigures
+                          protein={plannedNutrition.protein}
+                          carbs={plannedNutrition.carbs}
+                          fat={plannedNutrition.fat}
+                        />
+                      </>
+                    )}
+                  </span>
                 )}
               </span>
             </div>

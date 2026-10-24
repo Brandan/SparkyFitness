@@ -9362,6 +9362,10 @@
     "addedSome": "Added {{count}} of {{total}} to {{mealName}}",
     "couldNotAdd": "Couldn't add {{name}}. Try again.",
     "addedAll_one": "Added {{count}} item to {{mealName}}",
-    "addedAll_other": "Added {{count}} items to {{mealName}}"
+    "addedAll_other": "Added {{count}} items to {{mealName}}",
+    "protein": "P: {{amount}}g",
+    "carbs": "C: {{amount}}g",
+    "fat": "F: {{amount}}g",
+    "subtotal": "Planned:"
   }
 }

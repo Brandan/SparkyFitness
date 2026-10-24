@@ -1,5 +1,9 @@
 import { getClient } from '../db/poolManager.js';
-import { plannedItemKey } from '../utils/plannedItemKey.js';
+import {
+  assignPlannedItemKeys,
+  plannedItemBaseKey,
+  plannedItemKey,
+} from '../utils/plannedItemKey.js';
 import {
   addPlannedNutrition,
   emptyPlannedNutrition,
@@ -160,11 +164,57 @@ function plannedCalories(
     : mealFoodsCalories;
 }
 
+interface LoggedCopyRow {
+  template_id: string;
+  meal_type_id: string;
+  item_type: 'meal' | 'food';
+  subject_id: string | null;
+  variant_id: string | null;
+  entry_count: string | number;
+}
+
+/**
+ * Diary rows this plan already wrote, minus copies an "added" occurrence
+ * accounts for. What remains was written by auto-add (a plan switched to
+ * "show as planned" keeps today's entries) and hides that many copies, in
+ * plan order, so one logged scoop does not hide the other scoops.
+ */
+function unexplainedLoggedCopies(
+  loggedRows: LoggedCopyRow[],
+  occurrences: { template_id: string; item_key: string; status: string }[]
+): Map<string, number> {
+  const logged = new Map<string, number>();
+  for (const row of loggedRows) {
+    if (!row.subject_id) continue;
+    const base = plannedItemKey({
+      item_type: row.item_type,
+      meal_type_id: row.meal_type_id,
+      meal_id: row.item_type === 'meal' ? row.subject_id : null,
+      food_id: row.item_type === 'food' ? row.subject_id : null,
+      variant_id: row.variant_id,
+    });
+    const identity = `${row.template_id}|${base}`;
+    logged.set(identity, (logged.get(identity) ?? 0) + Number(row.entry_count));
+  }
+  const added = new Map<string, number>();
+  for (const row of occurrences) {
+    if (row.status !== 'added') continue;
+    const identity = `${row.template_id}|${plannedItemBaseKey(row.item_key)}`;
+    added.set(identity, (added.get(identity) ?? 0) + 1);
+  }
+  const unexplained = new Map<string, number>();
+  for (const [identity, count] of logged) {
+    const extra = count - (added.get(identity) ?? 0);
+    if (extra > 0) unexplained.set(identity, extra);
+  }
+  return unexplained;
+}
+
 /**
  * Items of active "show as planned" meal plans that fall on `day` (with its
  * weekday `weekday`, 0 = Sunday) and that the person has not yet added to the
- * diary or skipped. Plans whose entries were already written for that day (a
- * plan switched from auto-add) are left out so nothing shows twice.
+ * diary or skipped. The same food planned twice is two items. Copies already
+ * written for that day by auto-add are left out so nothing shows twice.
  */
 async function getPlannedItemsForDay(
   userId: string,
@@ -207,47 +257,64 @@ async function getPlannedItemsForDay(
          AND t.start_date <= $2
          AND (t.end_date IS NULL OR t.end_date >= $2)
          AND a.day_of_week = $3
-         AND NOT EXISTS (
-           SELECT 1 FROM food_entries fe
-           WHERE fe.user_id = t.user_id
-             AND fe.meal_plan_template_id = t.id
-             AND fe.entry_date = $2
-             AND fe.meal_type_id = a.meal_type_id
-             AND (
-               (a.item_type = 'food'
-                 AND fe.food_id = a.food_id
-                 AND fe.variant_id IS NOT DISTINCT FROM a.variant_id)
-               OR (a.item_type = 'meal'
-                 AND fe.food_entry_meal_id IN (
-                   SELECT fem.id FROM food_entry_meals fem
-                   WHERE fem.meal_template_id = a.meal_id
-                     AND fem.entry_date = $2
-                     AND fem.meal_type_id = a.meal_type_id))
-             )
-         )
        ORDER BY mt.sort_order ASC, t.start_date ASC, a.sort_order ASC, a.id ASC`,
       [userId, day, weekday]
     );
     const assignmentRows = assignmentResult.rows as PlannedAssignmentRow[];
 
     const handled = await client.query(
-      `SELECT template_id, item_key
+      `SELECT template_id, item_key, status
        FROM meal_plan_occurrences
        WHERE user_id = $1 AND plan_date = $2`,
       [userId, day]
     );
+    const occurrences = handled.rows as {
+      template_id: string;
+      item_key: string;
+      status: string;
+    }[];
     const handledKeys = new Set(
-      (handled.rows as { template_id: string; item_key: string }[]).map(
-        (row) => `${row.template_id}|${row.item_key}`
-      )
+      occurrences.map((row) => `${row.template_id}|${row.item_key}`)
+    );
+    // Standalone foods count as themselves. Foods inside a logged meal count
+    // as that meal, once, so one meal does not look like several foods.
+    const logged = await client.query(
+      `SELECT
+         fe.meal_plan_template_id AS template_id,
+         fe.meal_type_id,
+         CASE WHEN fe.food_entry_meal_id IS NULL THEN 'food' ELSE 'meal' END AS item_type,
+         CASE
+           WHEN fe.food_entry_meal_id IS NULL THEN fe.food_id
+           ELSE fem.meal_template_id
+         END AS subject_id,
+         CASE WHEN fe.food_entry_meal_id IS NULL THEN fe.variant_id ELSE NULL END AS variant_id,
+         COUNT(DISTINCT COALESCE(fe.food_entry_meal_id, fe.id))::int AS entry_count
+       FROM food_entries fe
+       LEFT JOIN food_entry_meals fem ON fem.id = fe.food_entry_meal_id
+       WHERE fe.user_id = $1
+         AND fe.entry_date = $2
+         AND fe.meal_plan_template_id IS NOT NULL
+         AND (fe.food_entry_meal_id IS NULL OR fem.meal_template_id IS NOT NULL)
+       GROUP BY 1, 2, 3, 4, 5`,
+      [userId, day]
+    );
+    const unexplained = unexplainedLoggedCopies(
+      logged.rows as LoggedCopyRow[],
+      occurrences
     );
 
-    const seen = new Set<string>();
-    const open = assignmentRows.flatMap((row) => {
-      const itemKey = plannedItemKey(row);
+    const open = assignPlannedItemKeys(
+      assignmentRows,
+      (row) => row.template_id
+    ).flatMap(({ item: row, itemKey }) => {
       const identity = `${row.template_id}|${itemKey}`;
-      if (handledKeys.has(identity) || seen.has(identity)) return [];
-      seen.add(identity);
+      if (handledKeys.has(identity)) return [];
+      const baseIdentity = `${row.template_id}|${plannedItemBaseKey(itemKey)}`;
+      const leftover = unexplained.get(baseIdentity) ?? 0;
+      if (leftover > 0) {
+        unexplained.set(baseIdentity, leftover - 1);
+        return [];
+      }
       return [{ row, itemKey }];
     });
 
