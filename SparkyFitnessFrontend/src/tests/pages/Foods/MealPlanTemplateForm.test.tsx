@@ -20,9 +20,13 @@ jest.mock('@/pages/Foods/CopyDayDialog', () => () => null);
 
 const getFoodById = jest.fn();
 const getMealById = jest.fn();
+const loadFoodVariants = jest.fn();
 
 jest.mock('@/api/Foods/foodService', () => ({
   getFoodById: (...args: unknown[]) => getFoodById(...args),
+}));
+jest.mock('@/api/Foods/enhancedCustomFoodFormService', () => ({
+  loadFoodVariants: (...args: unknown[]) => loadFoodVariants(...args),
 }));
 jest.mock('@/api/Foods/meals', () => ({
   getMealById: (...args: unknown[]) => getMealById(...args),
@@ -77,6 +81,7 @@ const variant = {
 
 describe('MealPlanTemplateForm pictures', () => {
   beforeEach(() => {
+    loadFoodVariants.mockResolvedValue([]);
     getFoodById.mockImplementation(async (foodId: string) => {
       if (foodId === 'eggs') {
         return {
@@ -150,5 +155,81 @@ describe('MealPlanTemplateForm pictures', () => {
       'src',
       '/uploads/foods/eggs.png'
     );
+  });
+});
+
+describe('MealPlanTemplateForm calories', () => {
+  beforeEach(() => {
+    getFoodById.mockResolvedValue({
+      id: 'cream',
+      name: 'Heavy Whipping Cream',
+      images: [],
+      default_variant: {
+        id: 'ml',
+        is_default: true,
+        serving_size: 15,
+        serving_unit: 'ml',
+        calories: 50,
+        protein: 0,
+        carbs: 1,
+        fat: 5,
+      },
+    });
+    loadFoodVariants.mockResolvedValue([
+      {
+        id: 'ml',
+        is_default: true,
+        serving_size: 15,
+        serving_unit: 'ml',
+        calories: 50,
+        protein: 0,
+        carbs: 1,
+        fat: 5,
+      },
+      {
+        id: 'oz',
+        is_default: false,
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 98.56666666666666,
+        protein: 0,
+        carbs: 1.9713333333333334,
+        fat: 9.856666666666667,
+      },
+    ]);
+    getMealById.mockResolvedValue(null);
+  });
+
+  it('shows 99 kcal for 1 oz of heavy whipping cream, not the 15 ml default', async () => {
+    renderWithClient(
+      <MealPlanTemplateForm
+        template={{
+          id: 'plan-1',
+          plan_name: 'Weekday',
+          start_date: '2026-10-24',
+          end_date: '2026-10-31',
+          is_active: true,
+          auto_log: false,
+          assignments: [
+            {
+              item_type: 'food',
+              day_of_week: 0,
+              meal_type: 'Breakfast',
+              food_id: 'cream',
+              food_name: 'Heavy Whipping Cream',
+              variant_id: 'oz',
+              quantity: 1,
+              unit: 'oz',
+            },
+          ],
+        }}
+        onSave={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(await screen.findAllByText('99 kcal')).toHaveLength(2);
+    expect(screen.queryByText('3 kcal')).not.toBeInTheDocument();
+    expect(screen.getByText('1 oz')).toBeInTheDocument();
   });
 });
