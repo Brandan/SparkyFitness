@@ -8151,7 +8151,7 @@
     "skipError": "Could not skip the planned meal.",
     "addAll_one": "Add {{count}} to diary",
     "addAll_other": "Add all {{count}} to diary",
-    "addedSome": "Added {{count}} of {{total}} to your diary",
+    "addedSome": "Added {{added}} of {{total}} to your diary",
     "couldNotAdd": "Couldn't add {{name}}. Try again.",
     "addedAll_one": "Added {{count}} item to your diary",
     "addedAll_other": "Added {{count}} items to your diary"
