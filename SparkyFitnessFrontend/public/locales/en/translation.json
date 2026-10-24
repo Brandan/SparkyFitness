@@ -4579,7 +4579,7 @@
     "planNameEmptyError": "Plan Name cannot be empty.",
     "endDateError": "End Date cannot be before Start Date.",
     "removeButton": "X",
-    "multipleActiveHint": "Multiple meal plans can be active at the same time. Active plans automatically populate diary entries.",
+    "multipleActiveHint": "Multiple meal plans can be active at the same time.",
     "mealTotal": "Total:",
     "dailyTotal": "Daily Total for {{day}}",
     "editQuantity": "Edit quantity",
@@ -4594,7 +4594,23 @@
     "totalKcalPGC": "<strong>Total:</strong> {{totalCalories}} kcal | P: {{totalProtein}}g | C: {{totalCarbs}}g | F: {{totalFat}}g",
     "pTotalProteing": "P: {{totalProtein}}g",
     "cTotalCarbsg": "C: {{totalCarbs}}g",
-    "fTotalFatg": "F: {{totalFat}}g"
+    "fTotalFatg": "F: {{totalFat}}g",
+    "autoLogLabel": "When a day comes up",
+    "autoLogPlanned": "Show it as planned, and I add it",
+    "autoLogAuto": "Add it to my diary automatically",
+    "copyDay": "Copy to…",
+    "copyDayNamed": "Copy {{day}} to other days",
+    "copyDayTitle": "Copy {{day}} to",
+    "copyDayDescription": "Everything planned for {{day}} is copied to the days you pick.",
+    "copyDaySelectAll": "Select all",
+    "copyDayClear": "Clear",
+    "copyDayReplaces_one": "Replaces {{count}} item",
+    "copyDayReplaces_other": "Replaces {{count}} items",
+    "copyDayConfirm_one": "Copy to {{count}} day",
+    "copyDayConfirm_other": "Copy to {{count}} days",
+    "dayCopied_one": "Copied {{day}} to {{count}} day",
+    "dayCopied_other": "Copied {{day}} to {{count}} days",
+    "undoCopy": "Undo"
   },
   "workoutPresetForm": {
     "createTitle": "Create New Workout Preset",
@@ -9294,5 +9310,23 @@
       "titleRun": "Week {{week}}, run {{run}}",
       "titleWalk": "Week {{week}}, walk {{walk}}"
     }
+  },
+  "plannedMeals": {
+    "badge": "Planned",
+    "addToDiary": "Add to diary",
+    "undo": "Undo",
+    "added": "Added {{name}} to {{mealName}}",
+    "skipped": "Removed {{name}} from this day",
+    "removeFromDay": "Remove from this day",
+    "removeFromDayNamed": "Remove {{name}} from this day",
+    "listLabel": "Planned for {{mealName}}",
+    "loadError": "Failed to load planned meals.",
+    "addError": "Could not add the planned meal to your diary.",
+    "skipError": "Could not remove the planned meal.",
+    "undoError": "Could not undo that.",
+    "addAll_one": "Add {{count}} to diary",
+    "addAll_other": "Add all {{count}} to diary",
+    "addedAll_one": "Added {{count}} item to {{mealName}}",
+    "addedAll_other": "Added {{count}} items to {{mealName}}"
   }
 }

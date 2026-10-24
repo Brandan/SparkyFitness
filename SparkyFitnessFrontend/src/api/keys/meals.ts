@@ -42,6 +42,11 @@ export const mealPlanKeys = {
   byUser: (userId: string) => [...mealPlanKeys.all, userId] as const,
 };
 
+export const plannedMealKeys = {
+  all: ['plannedMeals'] as const,
+  byDate: (date: string) => [...plannedMealKeys.all, 'date', date] as const,
+};
+
 export const customNutrientsKeys = {
   all: ['customNutrients'] as const,
   one: (id: string) => [...customNutrientsKeys.all, id] as const,
