@@ -1,6 +1,8 @@
 import type {
+  FoodEntryTimeChange,
   FoodPhotoLogRequest,
   FoodPhotoLogResponse,
+  SetFoodEntryTimesResponse,
 } from '@workspace/shared';
 import { apiCall } from '../api';
 import { buildImageFormData } from '../imageRequest';
@@ -239,6 +241,18 @@ export const updateFoodEntryMeal = async (
   const response = await apiCall(`/food-entry-meals/${foodEntryMealId}`, {
     method: 'PUT',
     body: data,
+  });
+  return response;
+};
+
+// Sets only the time of several logged foods and meals, in one transaction.
+// The diary orders a meal by time, so this is how a meal gets reordered.
+export const setFoodEntryTimes = async (
+  entries: FoodEntryTimeChange[]
+): Promise<SetFoodEntryTimesResponse> => {
+  const response = await apiCall('/food-entries/times', {
+    method: 'PUT',
+    body: { entries },
   });
   return response;
 };

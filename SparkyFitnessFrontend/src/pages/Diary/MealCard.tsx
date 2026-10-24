@@ -43,6 +43,14 @@ import type { PlannedMealItem } from '@workspace/shared';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { mealEntryKey, useMealReorder } from '@/hooks/Diary/useMealReorder';
+import SortableMealEntry from './SortableMealEntry';
+import MealRetimeDialog from './MealRetimeDialog';
 interface MealTotals {
   calories: number;
   protein: number;
@@ -181,6 +189,13 @@ const MealCard = ({
   debug(loggingLevel, 'MealCard: Component rendered for meal:', meal.name);
   debug(loggingLevel, 'MealCard: meal.entries:', meal.entries);
   const [editingFood, setEditingFood] = useState<Food | null>(null); // Changed from editingFoodEntry to editingFood
+  // Drag to reorder. The meal is sorted by time, so a move sets times.
+  const reorder = useMealReorder({
+    entries: meal.entries,
+    mealType: meal.type,
+    timeFormat,
+  });
+  const canReorder = reorder.entries.length > 1;
 
   const quickInfoPreferences =
     nutrientDisplayPreferences.find(
@@ -418,479 +433,616 @@ const MealCard = ({
               {t('foodDiary.noFoodsAddedYet', 'No foods added yet')}
             </div>
           ) : (
-            <div className="space-y-3">
-              {meal.entries.map((item) => {
-                // Changed entry to item
-                const entryNutrition = getEntryNutrition(item);
-                const isFoodEntryMeal = 'foods' in item && 'entry_date' in item; // More robust check for FoodEntryMeal
-                const isFoodEntry = !isFoodEntryMeal;
-                const isFromMealPlan =
-                  isFoodEntry && (item as FoodEntry).meal_plan_template_id;
-                const entryName = isFoodEntryMeal
-                  ? (item as FoodEntryMeal).name
-                  : (item as FoodEntry).food_name;
-                const entryDescription = isFoodEntryMeal
-                  ? (item as FoodEntryMeal).description
-                  : (item as FoodEntry).brand_name;
-                const quantity = (item as FoodEntry | FoodEntryMeal).quantity;
-                const unit = (item as FoodEntry | FoodEntryMeal).unit;
-                const servingLabel = [quantity, unit]
-                  .filter((value) => value !== undefined && value !== null)
-                  .join(' ');
-                const entryIsHighlighted =
-                  'food_id' in item &&
-                  (item as FoodEntry).food_id === highlightFoodId;
-                // Food entries: per-entry override, else the food's own image.
-                // Logged meals: the meal template's image.
-                const entryImages = isFoodEntry
-                  ? diaryEntryImages(item as FoodEntry)
-                  : (() => {
-                      const override = usableFoodImages(
-                        (item as FoodEntryMeal).images
+            <>
+              <DndContext
+                sensors={reorder.sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={reorder.handleDragEnd}
+              >
+                <SortableContext
+                  items={reorder.itemKeys}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {reorder.entries.map((item) => {
+                      // Changed entry to item
+                      const entryNutrition = getEntryNutrition(item);
+                      const isFoodEntryMeal =
+                        'foods' in item && 'entry_date' in item; // More robust check for FoodEntryMeal
+                      const isFoodEntry = !isFoodEntryMeal;
+                      const isFromMealPlan =
+                        isFoodEntry &&
+                        (item as FoodEntry).meal_plan_template_id;
+                      const entryName = isFoodEntryMeal
+                        ? (item as FoodEntryMeal).name
+                        : (item as FoodEntry).food_name;
+                      const entryDescription = isFoodEntryMeal
+                        ? (item as FoodEntryMeal).description
+                        : (item as FoodEntry).brand_name;
+                      const quantity = (item as FoodEntry | FoodEntryMeal)
+                        .quantity;
+                      const unit = (item as FoodEntry | FoodEntryMeal).unit;
+                      const servingLabel = [quantity, unit]
+                        .filter(
+                          (value) => value !== undefined && value !== null
+                        )
+                        .join(' ');
+                      const entryIsHighlighted =
+                        'food_id' in item &&
+                        (item as FoodEntry).food_id === highlightFoodId;
+                      // Food entries: per-entry override, else the food's own image.
+                      // Logged meals: the meal template's image.
+                      const entryImages = isFoodEntry
+                        ? diaryEntryImages(item as FoodEntry)
+                        : (() => {
+                            const override = usableFoodImages(
+                              (item as FoodEntryMeal).images
+                            );
+                            return override.length > 0
+                              ? override
+                              : usableFoodImages(
+                                  (item as FoodEntryMeal).meal_images
+                                );
+                          })();
+                      const entryImageSrc = entryImages[0] ?? null;
+
+                      // Determine glycemic index directly from the entryNutrition object
+                      const giValue: GlycemicIndex | undefined | null =
+                        entryNutrition.glycemic_index ?? null;
+                      const validGiValues: GlycemicIndex[] = [
+                        'Very Low',
+                        'Low',
+                        'Medium',
+                        'High',
+                        'Very High',
+                      ];
+
+                      debug(
+                        loggingLevel,
+                        `MealCard: Rendering item: ${
+                          isFoodEntryMeal
+                            ? (item as FoodEntryMeal).name
+                            : (item as FoodEntry).food_name
+                        }, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes(
+                          'glycemic_index'
+                        )}, giValue is valid: ${
+                          giValue != null &&
+                          validGiValues.includes(giValue as GlycemicIndex)
+                        }`
                       );
-                      return override.length > 0
-                        ? override
-                        : usableFoodImages((item as FoodEntryMeal).meal_images);
-                    })();
-                const entryImageSrc = entryImages[0] ?? null;
 
-                // Determine glycemic index directly from the entryNutrition object
-                const giValue: GlycemicIndex | undefined | null =
-                  entryNutrition.glycemic_index ?? null;
-                const validGiValues: GlycemicIndex[] = [
-                  'Very Low',
-                  'Low',
-                  'Medium',
-                  'High',
-                  'Very High',
-                ];
+                      const getNutrientDisplay = (nutrient: string) => {
+                        const metadata = getNutrientMetadata(
+                          nutrient,
+                          customNutrients
+                        );
+                        const value =
+                          (entryNutrition[
+                            nutrient as keyof MealTotals
+                          ] as number) ??
+                          entryNutrition.custom_nutrients?.[nutrient] ??
+                          0;
 
-                debug(
-                  loggingLevel,
-                  `MealCard: Rendering item: ${
-                    isFoodEntryMeal
-                      ? (item as FoodEntryMeal).name
-                      : (item as FoodEntry).food_name
-                  }, GI Value: ${giValue}, quickInfoNutrients includes GI: ${quickInfoNutrients.includes(
-                    'glycemic_index'
-                  )}, giValue is valid: ${
-                    giValue != null &&
-                    validGiValues.includes(giValue as GlycemicIndex)
-                  }`
-                );
+                        const displayValue =
+                          nutrient === 'calories'
+                            ? Math.round(
+                                convertEnergy(value, 'kcal', energyUnit)
+                              ).toString()
+                            : formatNutrientValue(
+                                nutrient,
+                                value,
+                                customNutrients
+                              );
 
-                const getNutrientDisplay = (nutrient: string) => {
-                  const metadata = getNutrientMetadata(
-                    nutrient,
-                    customNutrients
-                  );
-                  const value =
-                    (entryNutrition[nutrient as keyof MealTotals] as number) ??
-                    entryNutrition.custom_nutrients?.[nutrient] ??
-                    0;
+                        const unitDisplay =
+                          nutrient === 'calories'
+                            ? getEnergyUnitString(energyUnit)
+                            : metadata.unit;
 
-                  const displayValue =
-                    nutrient === 'calories'
-                      ? Math.round(
-                          convertEnergy(value, 'kcal', energyUnit)
-                        ).toString()
-                      : formatNutrientValue(nutrient, value, customNutrients);
+                        return { metadata, displayValue, unitDisplay };
+                      };
 
-                  const unitDisplay =
-                    nutrient === 'calories'
-                      ? getEnergyUnitString(energyUnit)
-                      : metadata.unit;
+                      const mobileCalories = visibleNutrientsForGrid.includes(
+                        'calories'
+                      )
+                        ? getNutrientDisplay('calories')
+                        : null;
+                      const mobileNutrients = visibleNutrientsForGrid
+                        .filter((nutrient) => nutrient !== 'calories')
+                        .slice(0, MOBILE_ENTRY_NUTRIENT_LIMIT);
 
-                  return { metadata, displayValue, unitDisplay };
-                };
+                      const reorderHandleLabel = t(
+                        'diary.reorder.handle',
+                        'Reorder {{name}}',
+                        { name: entryName ?? '' }
+                      );
+                      const timeChipLabel = t(
+                        'diary.reorder.changeTimes',
+                        'Change times in this meal'
+                      );
 
-                const mobileCalories = visibleNutrientsForGrid.includes(
-                  'calories'
-                )
-                  ? getNutrientDisplay('calories')
-                  : null;
-                const mobileNutrients = visibleNutrientsForGrid
-                  .filter((nutrient) => nutrient !== 'calories')
-                  .slice(0, MOBILE_ENTRY_NUTRIENT_LIMIT);
-
-                if (isMobile) {
-                  return (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        'rounded-xl border bg-card p-4 shadow-sm transition-colors duration-300 dark:bg-secondary/50',
-                        entryIsHighlighted && 'border-2 border-blue-500'
-                      )}
-                    >
-                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
-                        <div className="min-w-0">
-                          <div className="text-base font-semibold leading-tight text-card-foreground">
-                            {entryName}
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                            {entryDescription && (
-                              <span className="break-words">
-                                {entryDescription}
-                              </span>
-                            )}
-                            {entryDescription && servingLabel && (
-                              <span aria-hidden="true">&bull;</span>
-                            )}
-                            {servingLabel && <span>{servingLabel}</span>}
-                            {item.entry_time && (
-                              <>
-                                <span aria-hidden="true">&bull;</span>
-                                <span className="font-medium text-blue-600 dark:text-blue-400">
-                                  {formatTimeOfDayString(
-                                    item.entry_time,
-                                    timeFormat
+                      if (isMobile) {
+                        return (
+                          <SortableMealEntry
+                            key={mealEntryKey(item)}
+                            id={mealEntryKey(item)}
+                            handleLabel={reorderHandleLabel}
+                            disabled={reorder.isSaving}
+                          >
+                            {(handle) => (
+                              <div
+                                className={cn(
+                                  'rounded-xl border bg-card p-4 shadow-sm transition-colors duration-300 dark:bg-secondary/50',
+                                  entryIsHighlighted &&
+                                    'border-2 border-blue-500'
+                                )}
+                              >
+                                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                                  <div className="min-w-0">
+                                    <div className="text-base font-semibold leading-tight text-card-foreground">
+                                      {entryName}
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                      {entryDescription && (
+                                        <span className="break-words">
+                                          {entryDescription}
+                                        </span>
+                                      )}
+                                      {entryDescription && servingLabel && (
+                                        <span aria-hidden="true">&bull;</span>
+                                      )}
+                                      {servingLabel && (
+                                        <span>{servingLabel}</span>
+                                      )}
+                                      {item.entry_time && (
+                                        <>
+                                          <span aria-hidden="true">&bull;</span>
+                                          <button
+                                            type="button"
+                                            onClick={reorder.openRetime}
+                                            title={timeChipLabel}
+                                            aria-label={`${formatTimeOfDayString(item.entry_time, timeFormat)}, ${timeChipLabel}`}
+                                            className="rounded font-medium text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-blue-400"
+                                          >
+                                            {formatTimeOfDayString(
+                                              item.entry_time,
+                                              timeFormat
+                                            )}
+                                          </button>
+                                        </>
+                                      )}
+                                      {isFromMealPlan && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px]"
+                                        >
+                                          {t('mealCard.fromPlan', 'From Plan')}
+                                        </Badge>
+                                      )}
+                                      {giValue &&
+                                        validGiValues.includes(
+                                          giValue as GlycemicIndex
+                                        ) &&
+                                        quickInfoNutrients.includes(
+                                          'glycemic_index'
+                                        ) && (
+                                          <Badge
+                                            variant="secondary"
+                                            className="text-[10px] font-medium"
+                                          >
+                                            {t(
+                                              'diary.mealCard.gi',
+                                              'GI: {{giValue}}',
+                                              {
+                                                giValue,
+                                              }
+                                            )}
+                                          </Badge>
+                                        )}
+                                    </div>
+                                    {isFoodEntry && (
+                                      <AllergenBadges
+                                        allergens={
+                                          (item as FoodEntry).allergens
+                                        }
+                                        traces={(item as FoodEntry).traces}
+                                      />
+                                    )}
+                                  </div>
+                                  {mobileCalories && (
+                                    <div className="text-right">
+                                      <div
+                                        className={cn(
+                                          'text-xl font-semibold leading-none',
+                                          mobileCalories.metadata.color
+                                        )}
+                                      >
+                                        {mobileCalories.displayValue}
+                                      </div>
+                                      <div className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                        {mobileCalories.unitDisplay}
+                                      </div>
+                                    </div>
                                   )}
-                                </span>
-                              </>
+                                </div>
+
+                                {mobileNutrients.length > 0 && (
+                                  <div
+                                    className="mt-3 grid gap-2 border-t pt-3"
+                                    style={{
+                                      gridTemplateColumns: `repeat(${mobileNutrients.length}, minmax(0, 1fr))`,
+                                    }}
+                                  >
+                                    {mobileNutrients.map((nutrient) => {
+                                      const {
+                                        metadata,
+                                        displayValue,
+                                        unitDisplay,
+                                      } = getNutrientDisplay(nutrient);
+                                      const labelOverride =
+                                        MOBILE_NUTRIENT_LABEL_OVERRIDES[
+                                          nutrient
+                                        ];
+
+                                      return (
+                                        <div key={nutrient} className="min-w-0">
+                                          <div
+                                            className={cn(
+                                              'text-sm font-medium leading-tight',
+                                              metadata.color
+                                            )}
+                                          >
+                                            {displayValue}
+                                            {unitDisplay}
+                                          </div>
+                                          <div className="mt-1 truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                            {labelOverride
+                                              ? t(
+                                                  labelOverride.label,
+                                                  labelOverride.defaultLabel
+                                                )
+                                              : t(
+                                                  metadata.label,
+                                                  metadata.defaultLabel
+                                                )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                <div className="mt-3 flex items-center gap-2 border-t pt-2">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-9 w-9 text-muted-foreground"
+                                    onClick={() => {
+                                      debug(
+                                        loggingLevel,
+                                        'MealCard: Edit entry button clicked:',
+                                        item.id
+                                      );
+                                      onEditEntry(item);
+                                    }}
+                                    title={t('common.edit', 'Edit')}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-9 w-9 text-muted-foreground"
+                                    onClick={() =>
+                                      setCopyingItem({
+                                        kind: isFoodEntryMeal
+                                          ? 'foodEntryMeal'
+                                          : 'foodEntry',
+                                        id: item.id,
+                                        name: entryName ?? '',
+                                      })
+                                    }
+                                    title={t('diary.copyItem', 'Copy')}
+                                    aria-label={t('diary.copyItem', 'Copy')}
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-9 w-9 text-muted-foreground"
+                                    onClick={() => {
+                                      debug(
+                                        loggingLevel,
+                                        'MealCard: Remove entry button clicked:',
+                                        item.id
+                                      );
+                                      onRemoveEntry(
+                                        item.id,
+                                        isFoodEntryMeal
+                                          ? 'foodEntryMeal'
+                                          : 'foodEntry'
+                                      );
+                                    }}
+                                    title={t('common.delete', 'Delete')}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                  {canReorder && (
+                                    <div className="ml-auto">{handle}</div>
+                                  )}
+                                </div>
+                              </div>
                             )}
-                            {isFromMealPlan && (
-                              <Badge variant="outline" className="text-[10px]">
-                                {t('mealCard.fromPlan', 'From Plan')}
-                              </Badge>
-                            )}
-                            {giValue &&
-                              validGiValues.includes(
-                                giValue as GlycemicIndex
-                              ) &&
-                              quickInfoNutrients.includes('glycemic_index') && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px] font-medium"
-                                >
-                                  {t('diary.mealCard.gi', 'GI: {{giValue}}', {
-                                    giValue,
-                                  })}
-                                </Badge>
-                              )}
-                          </div>
-                          {isFoodEntry && (
-                            <AllergenBadges
-                              allergens={(item as FoodEntry).allergens}
-                              traces={(item as FoodEntry).traces}
-                            />
-                          )}
-                        </div>
-                        {mobileCalories && (
-                          <div className="text-right">
+                          </SortableMealEntry>
+                        );
+                      }
+
+                      return (
+                        <SortableMealEntry
+                          key={mealEntryKey(item)}
+                          id={mealEntryKey(item)}
+                          handleLabel={reorderHandleLabel}
+                          disabled={reorder.isSaving}
+                        >
+                          {(handle) => (
                             <div
                               className={cn(
-                                'text-xl font-semibold leading-none',
-                                mobileCalories.metadata.color
+                                'flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4 transition-colors duration-300',
+                                entryIsHighlighted && 'border-2 border-blue-500'
                               )}
                             >
-                              {mobileCalories.displayValue}
-                            </div>
-                            <div className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                              {mobileCalories.unitDisplay}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {mobileNutrients.length > 0 && (
-                        <div
-                          className="mt-3 grid gap-2 border-t pt-3"
-                          style={{
-                            gridTemplateColumns: `repeat(${mobileNutrients.length}, minmax(0, 1fr))`,
-                          }}
-                        >
-                          {mobileNutrients.map((nutrient) => {
-                            const { metadata, displayValue, unitDisplay } =
-                              getNutrientDisplay(nutrient);
-                            const labelOverride =
-                              MOBILE_NUTRIENT_LABEL_OVERRIDES[nutrient];
-
-                            return (
-                              <div key={nutrient} className="min-w-0">
-                                <div
-                                  className={cn(
-                                    'text-sm font-medium leading-tight',
-                                    metadata.color
+                              {entryImageSrc && (
+                                <button
+                                  type="button"
+                                  className="flex-shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  onClick={() =>
+                                    openLightbox(
+                                      entryImages,
+                                      0,
+                                      entryName ?? undefined
+                                    )
+                                  }
+                                  aria-label={t(
+                                    'food.viewImages',
+                                    'View images'
                                   )}
                                 >
-                                  {displayValue}
-                                  {unitDisplay}
+                                  <img
+                                    src={entryImageSrc}
+                                    alt={entryName ?? ''}
+                                    className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      // A dead provider link shouldn't leave a broken icon.
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                </button>
+                              )}
+                              <div className="flex-1">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                                  <span className="font-medium">
+                                    {entryName}
+                                  </span>
+                                  {entryDescription ? (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs w-fit"
+                                    >
+                                      {entryDescription}
+                                    </Badge>
+                                  ) : null}
+                                  <span className="text-sm text-gray-500">
+                                    {servingLabel}
+                                  </span>
+                                  {item.entry_time && (
+                                    <button
+                                      type="button"
+                                      onClick={reorder.openRetime}
+                                      title={timeChipLabel}
+                                      aria-label={`${formatTimeOfDayString(item.entry_time, timeFormat)}, ${timeChipLabel}`}
+                                      className="w-fit text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
+                                      {formatTimeOfDayString(
+                                        item.entry_time,
+                                        timeFormat
+                                      )}
+                                    </button>
+                                  )}
+                                  {isFromMealPlan && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs w-fit"
+                                    >
+                                      {t('mealCard.fromPlan', 'From Plan')}
+                                    </Badge>
+                                  )}
+                                  {giValue &&
+                                    validGiValues.includes(
+                                      giValue as GlycemicIndex
+                                    ) &&
+                                    quickInfoNutrients.includes(
+                                      'glycemic_index'
+                                    ) && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-xs w-fit font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-transparent dark:text-purple-600"
+                                      >
+                                        {t(
+                                          'diary.mealCard.gi',
+                                          'GI: {{giValue}}',
+                                          {
+                                            giValue,
+                                          }
+                                        )}
+                                      </Badge>
+                                    )}
                                 </div>
-                                <div className="mt-1 truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                                  {labelOverride
-                                    ? t(
-                                        labelOverride.label,
-                                        labelOverride.defaultLabel
-                                      )
-                                    : t(metadata.label, metadata.defaultLabel)}
+                                <div
+                                  className="grid gap-x-4 gap-y-2 text-xs sm:text-sm mt-2 w-full"
+                                  style={{
+                                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '60px' : '80px'}, 1fr))`,
+                                  }}
+                                >
+                                  {visibleNutrientsForGrid.map((nutrient) => {
+                                    const {
+                                      metadata,
+                                      displayValue,
+                                      unitDisplay,
+                                    } = getNutrientDisplay(nutrient);
+
+                                    return (
+                                      <div
+                                        key={nutrient}
+                                        className="text-center min-w-[60px]"
+                                      >
+                                        <div
+                                          className={`font-medium ${metadata.color}`}
+                                        >
+                                          {displayValue} {unitDisplay}
+                                        </div>
+                                        <div className="text-[10px] sm:text-xs text-gray-500">
+                                          {t(
+                                            metadata.label,
+                                            metadata.defaultLabel
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
+                                {isFoodEntry && (
+                                  <AllergenBadges
+                                    allergens={(item as FoodEntry).allergens}
+                                    traces={(item as FoodEntry).traces}
+                                  />
+                                )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      <div className="mt-3 flex items-center gap-2 border-t pt-2">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-9 w-9 text-muted-foreground"
-                          onClick={() => {
-                            debug(
-                              loggingLevel,
-                              'MealCard: Edit entry button clicked:',
-                              item.id
-                            );
-                            onEditEntry(item);
-                          }}
-                          title={t('common.edit', 'Edit')}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-9 w-9 text-muted-foreground"
-                          onClick={() =>
-                            setCopyingItem({
-                              kind: isFoodEntryMeal
-                                ? 'foodEntryMeal'
-                                : 'foodEntry',
-                              id: item.id,
-                              name: entryName ?? '',
-                            })
-                          }
-                          title={t('diary.copyItem', 'Copy')}
-                          aria-label={t('diary.copyItem', 'Copy')}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-9 w-9 text-muted-foreground"
-                          onClick={() => {
-                            debug(
-                              loggingLevel,
-                              'MealCard: Remove entry button clicked:',
-                              item.id
-                            );
-                            onRemoveEntry(
-                              item.id,
-                              isFoodEntryMeal ? 'foodEntryMeal' : 'foodEntry'
-                            );
-                          }}
-                          title={t('common.delete', 'Delete')}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div
-                    key={item.id} // Use item.id directly
-                    className={cn(
-                      'flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4 transition-colors duration-300',
-                      entryIsHighlighted && 'border-2 border-blue-500'
-                    )}
-                  >
-                    {entryImageSrc && (
-                      <button
-                        type="button"
-                        className="flex-shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onClick={() =>
-                          openLightbox(entryImages, 0, entryName ?? undefined)
-                        }
-                        aria-label={t('food.viewImages', 'View images')}
-                      >
-                        <img
-                          src={entryImageSrc}
-                          alt={entryName ?? ''}
-                          className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
-                          loading="lazy"
-                          onError={(e) => {
-                            // A dead provider link shouldn't leave a broken icon.
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      </button>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                        <span className="font-medium">{entryName}</span>
-                        {entryDescription ? (
-                          <Badge variant="secondary" className="text-xs w-fit">
-                            {entryDescription}
-                          </Badge>
-                        ) : null}
-                        <span className="text-sm text-gray-500">
-                          {servingLabel}
-                        </span>
-                        {item.entry_time && (
-                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
-                            {formatTimeOfDayString(item.entry_time, timeFormat)}
-                          </span>
-                        )}
-                        {isFromMealPlan && (
-                          <Badge variant="outline" className="text-xs w-fit">
-                            {t('mealCard.fromPlan', 'From Plan')}
-                          </Badge>
-                        )}
-                        {giValue &&
-                          validGiValues.includes(giValue as GlycemicIndex) &&
-                          quickInfoNutrients.includes('glycemic_index') && (
-                            <Badge
-                              variant="secondary"
-                              className="text-xs w-fit font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-transparent dark:text-purple-600"
-                            >
-                              {t('diary.mealCard.gi', 'GI: {{giValue}}', {
-                                giValue,
-                              })}
-                            </Badge>
-                          )}
-                      </div>
-                      <div
-                        className="grid gap-x-4 gap-y-2 text-xs sm:text-sm mt-2 w-full"
-                        style={{
-                          gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '60px' : '80px'}, 1fr))`,
-                        }}
-                      >
-                        {visibleNutrientsForGrid.map((nutrient) => {
-                          const { metadata, displayValue, unitDisplay } =
-                            getNutrientDisplay(nutrient);
-
-                          return (
-                            <div
-                              key={nutrient}
-                              className="text-center min-w-[60px]"
-                            >
-                              <div className={`font-medium ${metadata.color}`}>
-                                {displayValue} {unitDisplay}
-                              </div>
-                              <div className="text-[10px] sm:text-xs text-gray-500">
-                                {t(metadata.label, metadata.defaultLabel)}
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    debug(
+                                      loggingLevel,
+                                      'MealCard: Edit entry button clicked:',
+                                      item.id
+                                    );
+                                    onEditEntry(item); // Pass the item directly
+                                  }}
+                                  title={t('common.edit', 'Edit')}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    setCopyingItem({
+                                      kind: isFoodEntryMeal
+                                        ? 'foodEntryMeal'
+                                        : 'foodEntry',
+                                      id: item.id,
+                                      name: entryName ?? '',
+                                    })
+                                  }
+                                  title={t('diary.copyItem', 'Copy')}
+                                  aria-label={t('diary.copyItem', 'Copy')}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    debug(
+                                      loggingLevel,
+                                      'MealCard: Remove entry button clicked:',
+                                      item.id
+                                    );
+                                    onRemoveEntry(
+                                      item.id,
+                                      isFoodEntryMeal
+                                        ? 'foodEntryMeal'
+                                        : 'foodEntry'
+                                    );
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                                {canReorder && handle}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                      {isFoodEntry && (
-                        <AllergenBadges
-                          allergens={(item as FoodEntry).allergens}
-                          traces={(item as FoodEntry).traces}
-                        />
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          debug(
-                            loggingLevel,
-                            'MealCard: Edit entry button clicked:',
-                            item.id
-                          );
-                          onEditEntry(item); // Pass the item directly
-                        }}
-                        title={t('common.edit', 'Edit')}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          setCopyingItem({
-                            kind: isFoodEntryMeal
-                              ? 'foodEntryMeal'
-                              : 'foodEntry',
-                            id: item.id,
-                            name: entryName ?? '',
-                          })
-                        }
-                        title={t('diary.copyItem', 'Copy')}
-                        aria-label={t('diary.copyItem', 'Copy')}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          debug(
-                            loggingLevel,
-                            'MealCard: Remove entry button clicked:',
-                            item.id
-                          );
-                          onRemoveEntry(
-                            item.id,
-                            isFoodEntryMeal ? 'foodEntryMeal' : 'foodEntry'
-                          );
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                          )}
+                        </SortableMealEntry>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </SortableContext>
+              </DndContext>
 
-              <Separator />
+              <div className="space-y-3 mt-3">
+                <Separator />
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 gap-4">
-                <span className="font-semibold dark:text-slate-300">
-                  {t('mealCard.mealTotal', {
-                    mealName: t(`common.${meal.type}`, meal.name),
-                    defaultValue: `${meal.name} Total:`,
-                  })}
-                </span>
-                <div
-                  className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-[35%] sm:ml-auto"
-                  style={{
-                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '40px' : '60px'}, 1fr))`,
-                  }}
-                >
-                  {visibleNutrientsForGrid.map((nutrient) => {
-                    const metadata = getNutrientMetadata(
-                      nutrient,
-                      customNutrients
-                    );
-                    const val = totals[nutrient as keyof MealTotals];
-                    const value =
-                      (typeof val === 'number' || typeof val === 'string'
-                        ? val
-                        : totals.custom_nutrients?.[nutrient]) ?? 0;
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 gap-4">
+                  <span className="font-semibold dark:text-slate-300">
+                    {t('mealCard.mealTotal', {
+                      mealName: t(`common.${meal.type}`, meal.name),
+                      defaultValue: `${meal.name} Total:`,
+                    })}
+                  </span>
+                  <div
+                    className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-[35%] sm:ml-auto"
+                    style={{
+                      gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '40px' : '60px'}, 1fr))`,
+                    }}
+                  >
+                    {visibleNutrientsForGrid.map((nutrient) => {
+                      const metadata = getNutrientMetadata(
+                        nutrient,
+                        customNutrients
+                      );
+                      const val = totals[nutrient as keyof MealTotals];
+                      const value =
+                        (typeof val === 'number' || typeof val === 'string'
+                          ? val
+                          : totals.custom_nutrients?.[nutrient]) ?? 0;
 
-                    const displayValue =
-                      nutrient === 'calories'
-                        ? Math.round(
-                            convertEnergy(Number(value), 'kcal', energyUnit)
-                          ).toString()
-                        : formatNutrientValue(nutrient, value, customNutrients);
+                      const displayValue =
+                        nutrient === 'calories'
+                          ? Math.round(
+                              convertEnergy(Number(value), 'kcal', energyUnit)
+                            ).toString()
+                          : formatNutrientValue(
+                              nutrient,
+                              value,
+                              customNutrients
+                            );
 
-                    const unitDisplay =
-                      nutrient === 'calories'
-                        ? getEnergyUnitString(energyUnit)
-                        : metadata.unit;
+                      const unitDisplay =
+                        nutrient === 'calories'
+                          ? getEnergyUnitString(energyUnit)
+                          : metadata.unit;
 
-                    return (
-                      <div key={nutrient} className="text-center min-w-[40px]">
-                        <div className={`font-bold ${metadata.color}`}>
-                          {displayValue} {unitDisplay}
+                      return (
+                        <div
+                          key={nutrient}
+                          className="text-center min-w-[40px]"
+                        >
+                          <div className={`font-bold ${metadata.color}`}>
+                            {displayValue} {unitDisplay}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {t(metadata.label, metadata.defaultLabel)}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {t(metadata.label, metadata.defaultLabel)}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
           <PlannedMealList
             items={plannedItems}
@@ -902,6 +1054,12 @@ const MealCard = ({
           />
         </CardContent>
       </Card>
+
+      <MealRetimeDialog
+        mealName={meal.name}
+        timeFormat={timeFormat}
+        {...reorder.retimeDialog}
+      />
 
       <CopyFoodEntryDialog
         isOpen={copyingItem !== null}

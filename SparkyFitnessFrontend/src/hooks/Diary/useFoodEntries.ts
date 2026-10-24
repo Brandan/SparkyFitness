@@ -27,6 +27,7 @@ import {
   type CopyFoodEntriesFromUserPayload,
   type CopyFoodEntriesToUserPayload,
   importFoodDiaryEntriesFromCsv,
+  setFoodEntryTimes,
 } from '@/api/Diary/foodEntryService';
 import type { FoodDiaryImportRow, FoodDiaryImportScope } from '@/types/diary';
 
@@ -132,6 +133,26 @@ export const useUpdateFoodEntryMutation = () => {
     meta: {
       successMessage: t('diary.updateSuccess', 'Entry updated.'),
       errorMessage: t('diary.updateError', 'Failed to update entry.'),
+    },
+  });
+};
+
+/**
+ * Re-times logged foods and meals (how the diary reorders a meal). No success
+ * toast: the caller shows its own with an Undo.
+ */
+export const useSetFoodEntryTimesMutation = () => {
+  const invalidate = useFoodEntryInvalidation();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: setFoodEntryTimes,
+    onSettled: () => invalidate(),
+    meta: {
+      errorMessage: t(
+        'diary.reorder.error',
+        'Could not reorder. Nothing was changed.'
+      ),
     },
   });
 };

@@ -23,12 +23,14 @@ import Papa from 'papaparse';
 import {
   type CopyReviewedFoodEntriesFromUserBody,
   type CopySelectedFoodEntriesFromUserBody,
+  type FoodEntryTimeChange,
   foodEntryCopyFingerprint,
   hasExactReviewedFoodEntrySnapshot,
   isDayString,
   foodVolumeToMl,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
+import { setFoodEntryTimes as setFoodEntryTimesInRepository } from '../models/foodEntryTimeRepository.js';
 import { removeOrphanedImages } from '../middleware/imageUpload.js';
 import express from 'express';
 // Helper functions (already defined)
@@ -4177,6 +4179,18 @@ export { copyReviewedFoodEntriesFromUser };
 export { copyFoodEntriesToUser };
 export { copySelectedFoodEntriesFromUser };
 export { importFoodDiaryEntriesInBulk };
+/**
+ * Sets only the time of several logged foods and meals, in one transaction.
+ * The web diary reorders a meal with this, because a meal is sorted by time.
+ */
+async function setFoodEntryTimes(
+  ownerUserId: string,
+  actingUserId: string,
+  changes: FoodEntryTimeChange[]
+): Promise<number> {
+  return setFoodEntryTimesInRepository(ownerUserId, actingUserId, changes);
+}
+
 export default {
   createFoodEntry,
   deleteFoodEntry,
@@ -4185,6 +4199,7 @@ export default {
   getFoodEntriesByDateRange,
   copyFoodEntries,
   copyFoodEntryItem,
+  setFoodEntryTimes,
   copyFoodEntriesFromYesterday,
   copyAllFoodEntries,
   copyAllFoodEntriesFromYesterday,

@@ -3823,6 +3823,33 @@
     "exerciseEntryDisplay": {
       "wger": "Wger",
       "freeDB": "Free DB"
+    },
+    "reorder": {
+      "handle": "Reorder {{name}}",
+      "changeTimes": "Change times in this meal",
+      "movedTo": "Moved {{name}} to {{time}}",
+      "between": "Between {{above}} ({{aboveTime}}) and {{below}} ({{belowTime}})",
+      "after": "After {{name}} ({{time}})",
+      "before": "Before {{name}} ({{time}})",
+      "adjust": "Adjust times",
+      "undone": "Order restored",
+      "updated_one": "Updated {{count}} time",
+      "updated_other": "Updated {{count}} times",
+      "error": "Could not reorder. Nothing was changed.",
+      "title": "Times for {{mealName}}",
+      "description": "This meal is ordered by time. Each time must be later than the one above it. Items with no time stay at the bottom.",
+      "moved": "Moved",
+      "mustBeAfter": "Must be after {{time}}",
+      "needsTime": "Needs a time",
+      "was": "Was {{time}}",
+      "hadNoTime": "Had no time",
+      "spaceFromFirst": "Space out from the first time",
+      "everyMinutes_one": "Every {{count}} min",
+      "everyMinutes_other": "Every {{count}} min",
+      "applySpacing": "Apply",
+      "saveCount_one": "Save {{count}} time",
+      "saveCount_other": "Save {{count}} times",
+      "saveNone": "No changes"
     }
   },
   "nutrientGoalDirection": {

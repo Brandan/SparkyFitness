@@ -20,6 +20,7 @@ import {
   type CalorieSafetyFloorMode,
 } from '@workspace/shared';
 import { getMealPercentage } from './goals';
+import { sortDiaryEntries } from './diaryReorder';
 import { ExpandedGoals } from '@/types/goals';
 
 // Utility functions for nutrition calculations
@@ -607,7 +608,11 @@ export const getMealData = (
       ? foodEntryMeals.filter((meal) => meal.meal_type === mealType)
       : [];
 
-  const combinedEntries: (FoodEntry | FoodEntryMeal)[] = [...entries, ...meals];
+  // One list in diary order, so a 7:00 logged meal sits above a 9:00 food.
+  const combinedEntries: (FoodEntry | FoodEntryMeal)[] = sortDiaryEntries([
+    ...entries,
+    ...meals,
+  ]);
 
   const percentage = getMealPercentage(mealType, goals);
 

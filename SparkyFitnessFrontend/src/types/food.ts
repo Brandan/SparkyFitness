@@ -144,6 +144,8 @@ export interface FoodEntry {
   brand_name?: string; // Snapshotted brand name
   entry_date: string;
   entry_time?: string | null;
+  /** When the entry was logged; orders entries that share a time. */
+  created_at?: string;
   meal_plan_template_id?: string;
   /**
    * Per-entry override photos. Apply only to this diary entry and never change
