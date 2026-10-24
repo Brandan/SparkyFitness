@@ -3542,6 +3542,8 @@
     },
     "of": "of",
     "over": "over",
+    "planned": "planned",
+    "withPlanned": "with planned",
     "addError": "Failed to add food.",
     "addSuccess": "Food added successfully.",
     "calculateExplanation": {

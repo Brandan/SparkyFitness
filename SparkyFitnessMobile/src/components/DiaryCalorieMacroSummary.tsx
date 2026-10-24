@@ -17,6 +17,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import type { DailySummary } from '../types/dailySummary';
+import type { PlannedNutrition } from '@workspace/shared';
 import type { UserCustomNutrient } from '../hooks/useCustomNutrients';
 import { formatLocalizedNumber } from '../localization';
 
@@ -27,6 +28,8 @@ interface CalorieBarProps {
   goal: number;
   remaining: number;
   progressPercent: number;
+  /** Calories the day's planned meals would add. */
+  planned: number;
 }
 
 const CalorieBar: React.FC<CalorieBarProps> = ({
@@ -34,6 +37,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({
   goal,
   remaining,
   progressPercent,
+  planned,
 }) => {
   const { t } = useTranslation();
   const [barWidth, setBarWidth] = useState(0);
@@ -75,7 +79,24 @@ const CalorieBar: React.FC<CalorieBarProps> = ({
     return Math.max(0, barWidth - gapStart);
   }, [barWidth]);
 
+  // Planned calories continue the fill as a fainter segment, up to the goal.
+  const roundedPlanned = Math.round(planned);
+  const plannedFraction =
+    hasGoal && roundedPlanned > 0 ? roundedPlanned / goal : 0;
+  const plannedWidth = useDerivedValue(() => {
+    const p = animatedProgress.value;
+    if (plannedFraction <= 0 || barWidth <= 0 || p >= 1) return 0;
+    // Share the fill's animation so the segment grows with it.
+    const shown = progressPercent > 0 ? p / progressPercent : 1;
+    const end = Math.min(1, (progressPercent + plannedFraction) * shown);
+    return Math.max(0, (end - p) * barWidth);
+  }, [barWidth, plannedFraction, progressPercent]);
+
   const fillStyle = useAnimatedStyle(() => ({ width: fillWidth.value }));
+  const plannedStyle = useAnimatedStyle(() => ({
+    left: fillWidth.value,
+    width: plannedWidth.value,
+  }));
   const overflowStyle = useAnimatedStyle(() => ({
     left: overflowX.value,
     width: overflowWidth.value,
@@ -151,9 +172,31 @@ const CalorieBar: React.FC<CalorieBarProps> = ({
                   overflowStyle,
                 ]}
               />
+              <Animated.View
+                testID="planned-calorie-bar"
+                style={[
+                  {
+                    position: 'absolute',
+                    top: 0,
+                    height: barHeight,
+                    backgroundColor: fillColor,
+                    opacity: 0.3,
+                  },
+                  plannedStyle,
+                ]}
+              />
             </View>
           )}
         </View>
+      )}
+      {roundedPlanned > 0 && (
+        <Text className="text-sm text-text-muted mt-2">
+          {t('diarySummary.plannedCalories', {
+            defaultValue: '+{{planned}} kcal planned ({{total}} total)',
+            planned: formatLocalizedNumber(roundedPlanned),
+            total: formatLocalizedNumber(Math.round(eaten) + roundedPlanned),
+          })}
+        </Text>
       )}
     </View>
   );
@@ -165,6 +208,8 @@ interface DiaryCalorieMacroSummaryProps {
   /** Diary-specific custom nutrient keys (view_group='diary'), already capped to 4. */
   customNutrientKeys: string[];
   customNutrients: UserCustomNutrient[];
+  /** What the day's planned meals would add; not part of any total. */
+  planned?: PlannedNutrition;
 }
 
 const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
@@ -172,6 +217,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   showNetCarbs,
   customNutrientKeys,
   customNutrients,
+  planned,
 }) => {
   const { t } = useTranslation();
   const diarySummaryVisible = useAppPreferencesStore(
@@ -202,6 +248,13 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   const { eaten, goal, remaining, progress } = summary.calorieBalance;
   const projection = summary.calorieBalance.tdeeProjection;
 
+  const plannedOf = (key: string): number =>
+    planned
+      ? ((planned[key as keyof PlannedNutrition] as number | undefined) ??
+        planned.custom_nutrients[key] ??
+        0)
+      : 0;
+
   const handleToggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setDiarySummaryExpanded(!diarySummaryExpanded);
@@ -212,6 +265,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
       return {
         label: t('nutrients.protein', { defaultValue: 'Protein' }),
         consumed: summary.protein.consumed,
+        planned: plannedOf('protein'),
         goal: summary.protein.goal || undefined,
       };
     }
@@ -224,6 +278,9 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
           ? t('nutrients.netCarbs', { defaultValue: 'Net Carbs' })
           : t('nutrients.carbs', { defaultValue: 'Carbs' }),
         consumed,
+        planned: showNetCarbs
+          ? getNetCarbsValue(plannedOf('carbs'), plannedOf('dietary_fiber'))
+          : plannedOf('carbs'),
         goal: summary.carbs.goal || undefined,
       };
     }
@@ -231,12 +288,14 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
       return {
         label: t('nutrients.fat', { defaultValue: 'Fat' }),
         consumed: summary.fat.consumed,
+        planned: plannedOf('fat'),
         goal: summary.fat.goal || undefined,
       };
     }
     return {
       label: t('nutrients.fiber', { defaultValue: 'Fiber' }),
       consumed: summary.fiber.consumed,
+      planned: plannedOf('dietary_fiber'),
       goal: summary.fiber.goal || undefined,
     };
   };
@@ -269,6 +328,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
           goal={goal}
           remaining={remaining}
           progressPercent={progress / 100}
+          planned={plannedOf('calories')}
         />
       </TouchableOpacity>
       {projection && (
@@ -307,12 +367,18 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
       {diarySummaryExpanded && (
         <View className="flex-row flex-wrap justify-between gap-y-2 mt-3">
           {CORE_MACROS.map((key) => {
-            const { label, consumed, goal: macroGoal } = resolveCoreMacro(key);
+            const {
+              label,
+              consumed,
+              planned: macroPlanned,
+              goal: macroGoal,
+            } = resolveCoreMacro(key);
             return (
               <NutrientPill
                 key={key}
                 label={label}
                 consumed={consumed}
+                planned={macroPlanned}
                 goal={macroGoal}
               />
             );
@@ -333,6 +399,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
                 consumed={consumed}
                 goal={nutrientGoal}
                 unit={unit}
+                planned={plannedOf(name)}
               />
             );
           })}

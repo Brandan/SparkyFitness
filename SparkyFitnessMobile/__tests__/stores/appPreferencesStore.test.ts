@@ -25,8 +25,8 @@ describe('appPreferencesStore', () => {
       expect(state.askSparkyVisible).toBe(true);
       expect(state.liquidGlassTabBarEnabled).toBe(false);
       expect(state.activeWorkoutMetricColumn).toBe('rpe');
-      expect(state.diarySummaryVisible).toBe(false);
-      expect(state.diarySummaryExpanded).toBe(false);
+      expect(state.diarySummaryVisible).toBe(true);
+      expect(state.diarySummaryExpanded).toBe(true);
       expect(state.defaultRestSec).toBe(90);
       expect(state.languagePreference).toBe('system');
       expect(state.restTimerSoundEnabled).toBe(true);
@@ -54,14 +54,14 @@ describe('appPreferencesStore', () => {
         'e1rm'
       );
 
-      store.setDiarySummaryVisible(true);
-      expect(useAppPreferencesStore.getState().diarySummaryVisible).toBe(true);
+      store.setDiarySummaryVisible(false);
+      expect(useAppPreferencesStore.getState().diarySummaryVisible).toBe(false);
+      expect(useAppPreferencesStore.getState().diarySummaryExpanded).toBe(true);
+
+      store.setDiarySummaryExpanded(false);
       expect(useAppPreferencesStore.getState().diarySummaryExpanded).toBe(
         false
       );
-
-      store.setDiarySummaryExpanded(true);
-      expect(useAppPreferencesStore.getState().diarySummaryExpanded).toBe(true);
 
       store.setDefaultRestSec(120);
       expect(useAppPreferencesStore.getState().defaultRestSec).toBe(120);

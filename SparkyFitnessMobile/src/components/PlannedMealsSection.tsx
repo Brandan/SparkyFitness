@@ -125,8 +125,8 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
     showUndo(
       failed
         ? t('plannedMeals.addedSome', {
-            defaultValue: 'Added {{count}} of {{total}} to your diary',
-            count: added.length,
+            defaultValue: 'Added {{added}} of {{total}} to your diary',
+            added: added.length,
             total: items.length,
           })
         : t('plannedMeals.addedAll', {

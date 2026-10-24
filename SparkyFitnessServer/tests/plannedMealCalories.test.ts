@@ -25,6 +25,7 @@ const assignment = (overrides: Record<string, unknown>) => ({
   food_brand: null,
   variant_calories: null,
   variant_serving_size: null,
+  variant: null,
   meal_serving_size: null,
   meal_total_servings: null,
   meal_images: null,
@@ -154,5 +155,127 @@ describe('plannedMealRepository calories', () => {
     );
 
     expect(await caloriesOf()).toBeNull();
+  });
+});
+
+const nutritionOf = async () => {
+  const [item] = await plannedMealRepository.getPlannedItemsForDay(
+    'user-1',
+    '2026-10-24',
+    5
+  );
+  return item.nutrition;
+};
+
+describe('plannedMealRepository nutrition', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('scales every nutrient of a food, custom ones included', async () => {
+    mockQueries([
+      assignment({
+        quantity: '150',
+        variant_serving_size: '100',
+        variant: {
+          calories: 80,
+          protein: '10',
+          carbs: 20,
+          fat: null,
+          custom_nutrients: { Choline: 40 },
+        },
+      }),
+    ]);
+
+    const nutrition = await nutritionOf();
+    expect(nutrition?.calories).toBeCloseTo(120);
+    expect(nutrition?.protein).toBeCloseTo(15);
+    expect(nutrition?.carbs).toBeCloseTo(30);
+    expect(nutrition?.fat).toBe(0);
+    expect(nutrition?.custom_nutrients.Choline).toBeCloseTo(60);
+  });
+
+  it('is null for a food whose variant is gone', async () => {
+    mockQueries([assignment({ variant: null })]);
+
+    expect(await nutritionOf()).toBeNull();
+  });
+
+  it('sums a meal’s foods and scales to the planned servings', async () => {
+    mockQueries(
+      [
+        assignment({
+          item_type: 'meal',
+          meal_id: mealId,
+          food_id: null,
+          variant_id: null,
+          quantity: '2',
+          meal_serving_size: '1',
+          meal_total_servings: '4',
+        }),
+      ],
+      [
+        {
+          meal_id: mealId,
+          name: 'Eggs',
+          quantity: '2',
+          unit: 'large',
+          images: null,
+          variant_calories: '70',
+          variant_serving_size: '1',
+          variant: { calories: 70, protein: 6 },
+        },
+        {
+          meal_id: mealId,
+          name: 'Oats',
+          quantity: '100',
+          unit: 'g',
+          images: null,
+          variant_calories: '380',
+          variant_serving_size: '100',
+          variant: { calories: 380, protein: 13 },
+        },
+      ]
+    );
+
+    const nutrition = await nutritionOf();
+    expect(nutrition?.calories).toBeCloseTo(260);
+    // Protein 12 + 13 = 25, halved.
+    expect(nutrition?.protein).toBeCloseTo(12.5);
+  });
+
+  it('is null for a meal when any of its foods has no variant', async () => {
+    mockQueries(
+      [
+        assignment({
+          item_type: 'meal',
+          meal_id: mealId,
+          food_id: null,
+          variant_id: null,
+          meal_serving_size: '1',
+          meal_total_servings: '1',
+        }),
+      ],
+      [
+        {
+          meal_id: mealId,
+          name: 'Eggs',
+          quantity: '2',
+          unit: 'large',
+          images: null,
+          variant_serving_size: '1',
+          variant: { calories: 70 },
+        },
+        {
+          meal_id: mealId,
+          name: 'Mystery',
+          quantity: '1',
+          unit: 'serving',
+          images: null,
+          variant_serving_size: null,
+          variant: null,
+        },
+      ]
+    );
+
+    expect(await nutritionOf()).toBeNull();
   });
 });

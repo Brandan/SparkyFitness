@@ -148,6 +148,7 @@ export * from './utils/bodyComposition.ts';
 export * from './utils/timezone.ts';
 export * from './utils/calendar.ts';
 export * from './utils/mealPlanDays.ts';
+export * from './utils/plannedNutrition.ts';
 export * from './utils/entryTime.ts';
 export * from './utils/hydrationExample.ts';
 export * from './utils/calorieCalculations.ts';

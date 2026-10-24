@@ -7,6 +7,7 @@ import {
 } from '../../src/stores/appPreferencesStore';
 import type { DailySummary } from '../../src/types/dailySummary';
 import type { UserCustomNutrient } from '../../src/hooks/useCustomNutrients';
+import { scalePlannedNutrition } from '@workspace/shared';
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -78,7 +79,7 @@ describe('DiaryCalorieMacroSummary', () => {
     expect(toJSON()).toBeNull();
   });
 
-  it('renders only the calorie row when collapsed (default)', () => {
+  it('renders only the calorie row when collapsed', () => {
     useAppPreferencesStore.setState({
       diarySummaryVisible: true,
       diarySummaryExpanded: false,
@@ -287,5 +288,66 @@ describe('DiaryCalorieMacroSummary', () => {
       customNutrients: [],
     });
     expect(queryByText('Omega-3')).toBeNull();
+  });
+
+  describe('planned meals', () => {
+    it('shows planned calories with the total they would make', () => {
+      useAppPreferencesStore.setState({
+        diarySummaryVisible: true,
+        diarySummaryExpanded: false,
+      });
+      const { getByText } = renderWidget({
+        summary: buildSummary({
+          calorieBalance: {
+            ...buildSummary().calorieBalance,
+            eaten: 1200,
+            goal: 2000,
+            remaining: 800,
+            progress: 60,
+          },
+        }),
+        planned: scalePlannedNutrition({ calories: 600.4 }, 1),
+      });
+      expect(getByText('+600 kcal planned (1,800 total)')).toBeTruthy();
+    });
+
+    it('shows planned macros on their pills', () => {
+      useAppPreferencesStore.setState({
+        diarySummaryVisible: true,
+        diarySummaryExpanded: true,
+      });
+      const { getByText, getAllByText } = renderWidget({
+        planned: scalePlannedNutrition(
+          { calories: 300, protein: 25, carbs: 30, dietary_fiber: 5 },
+          1
+        ),
+      });
+      expect(getByText('+25g planned')).toBeTruthy();
+      expect(getByText('+30g planned')).toBeTruthy();
+      expect(getByText('+5g planned')).toBeTruthy();
+      // Fat has nothing planned, so it gets no line.
+      expect(getAllByText(/planned/)).toHaveLength(4);
+    });
+
+    it('subtracts planned fiber from planned carbs with net carbs on', () => {
+      useAppPreferencesStore.setState({
+        diarySummaryVisible: true,
+        diarySummaryExpanded: true,
+      });
+      const { getByText } = renderWidget({
+        showNetCarbs: true,
+        planned: scalePlannedNutrition({ carbs: 30, dietary_fiber: 5 }, 1),
+      });
+      expect(getByText('+25g planned')).toBeTruthy();
+    });
+
+    it('shows no planned line when nothing is planned', () => {
+      useAppPreferencesStore.setState({
+        diarySummaryVisible: true,
+        diarySummaryExpanded: true,
+      });
+      const { queryByText } = renderWidget();
+      expect(queryByText(/planned/)).toBeNull();
+    });
   });
 });

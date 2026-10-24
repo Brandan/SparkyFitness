@@ -21,6 +21,7 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
 import { ExpandedGoals } from '@/types/goals';
+import type { PlannedNutrition } from '@workspace/shared';
 
 export interface DayTotals {
   calories: number; // Stored internally as kcal
@@ -56,6 +57,8 @@ interface NutritionSummaryCardProps {
     toUnit: 'kcal' | 'kJ'
   ) => number;
   customNutrients?: UserCustomNutrient[];
+  /** What the day's planned meals would add; shown beside each total. */
+  plannedTotals?: PlannedNutrition;
 }
 
 const NutritionSummaryCard = ({
@@ -65,6 +68,7 @@ const NutritionSummaryCard = ({
   energyUnit,
   convertEnergy,
   customNutrients = [],
+  plannedTotals,
 }: NutritionSummaryCardProps) => {
   const { nutrientDisplayPreferences, showNetCarbs } = usePreferences();
   const { data: goalTypePreferences = {} } = useNutrientGoalPreferences();
@@ -152,6 +156,29 @@ const NutritionSummaryCard = ({
               nutrient === 'carbs' && showNetCarbs
                 ? getNetCarbsValue(dayTotals.carbs, dayTotals.dietary_fiber)
                 : total;
+            const plannedOf = (key: string): number =>
+              plannedTotals
+                ? ((plannedTotals[key as keyof PlannedNutrition] as
+                    number | undefined) ??
+                  plannedTotals.custom_nutrients[key] ??
+                  0)
+                : 0;
+            const planned =
+              nutrient === 'carbs' && showNetCarbs
+                ? getNetCarbsValue(
+                    plannedOf('carbs'),
+                    plannedOf('dietary_fiber')
+                  )
+                : plannedOf(nutrient);
+            const formatAmount = (value: number) =>
+              nutrient === 'calories'
+                ? Math.round(
+                    convertEnergy(value, 'kcal', energyUnit)
+                  ).toString()
+                : formatNutrientValue(nutrient, value, customNutrients);
+            const displayPlanned = formatAmount(planned);
+            // Hide planned amounts that round to nothing.
+            const hasPlanned = planned > 0 && parseFloat(displayPlanned) > 0;
             const rawGoal = goals[nutrient as keyof ExpandedGoals];
             const goal =
               typeof rawGoal === 'number'
@@ -226,6 +253,11 @@ const NutritionSummaryCard = ({
 
             const percentage =
               goal > 0 ? Math.min((comparisonTotal / goal) * 100, 100) : 0;
+            const plannedPercentage =
+              goal > 0 && hasPlanned
+                ? Math.min(((comparisonTotal + planned) / goal) * 100, 100) -
+                  percentage
+                : 0;
 
             const subLine = isTargetType
               ? `${formatNutrientValue(nutrient, targetMinVal, customNutrients)}–${formatNutrientValue(nutrient, targetMaxVal, customNutrients)}${unit}`
@@ -257,15 +289,40 @@ const NutritionSummaryCard = ({
                 >
                   {label}
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1 flex overflow-hidden">
                   <div
-                    className="h-1.5 rounded-full"
+                    className="h-1.5"
                     style={{
                       width: `${percentage}%`,
                       backgroundColor: barColor,
                     }}
                   />
+                  {plannedPercentage > 0 && (
+                    <div
+                      data-testid="planned-bar"
+                      className="h-1.5 opacity-60"
+                      style={{
+                        width: `${plannedPercentage}%`,
+                        backgroundImage: `repeating-linear-gradient(135deg, ${barColor} 0 2px, transparent 2px 4px)`,
+                      }}
+                    />
+                  )}
                 </div>
+                {hasPlanned && (
+                  <div
+                    className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight"
+                    title={`${formatAmount(comparisonTotal + planned)}${unit} ${t('diary.withPlanned', 'with planned')}`}
+                  >
+                    +{displayPlanned}
+                    {unit} {t('diary.planned', 'planned')}
+                    {nutrient === 'calories' && (
+                      <div>
+                        {formatAmount(comparisonTotal + planned)}
+                        {unit} {t('diary.withPlanned', 'with planned')}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

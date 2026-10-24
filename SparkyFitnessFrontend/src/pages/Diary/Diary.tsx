@@ -56,7 +56,11 @@ import {
   useFoodEntries,
   useFoodEntryMeals,
 } from '@/hooks/Diary/useFoodEntries';
-import { todayInZone, prefillEntryTime } from '@workspace/shared';
+import {
+  todayInZone,
+  prefillEntryTime,
+  sumPlannedNutrition,
+} from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 import { usePlannedMeals } from '@/hooks/Foods/usePlannedMeals';
 
@@ -153,6 +157,12 @@ const Diary = () => {
   const dayTotals = addSupplementTotals(
     calculateDayTotals(foodEntries, foodEntryMeals),
     summaryData?.supplementTotals
+  );
+
+  // Planned meals are not entries, so they sit beside the totals, never in them.
+  const plannedTotals = useMemo(
+    () => sumPlannedNutrition(plannedMeals ?? []),
+    [plannedMeals]
   );
 
   // Handle navigation for opening food search dialog
@@ -389,6 +399,7 @@ const Diary = () => {
             energyUnit={energyUnit}
             convertEnergy={convertEnergy}
             customNutrients={customNutrients}
+            plannedTotals={plannedTotals}
           />
         ),
       },
@@ -489,6 +500,7 @@ const Diary = () => {
     visibleMealTypes,
     selectedDate,
     dayTotals,
+    plannedTotals,
     foodEntries,
     foodEntryMeals,
     energyUnit,

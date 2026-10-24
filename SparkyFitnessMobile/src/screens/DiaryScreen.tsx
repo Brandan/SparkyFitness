@@ -6,6 +6,7 @@ import {
   hasSupplementNutrition,
   isCardioModality,
   resolveExerciseModality,
+  sumPlannedNutrition,
   type PresetSessionExerciseRequest,
 } from '@workspace/shared';
 import React, {
@@ -352,6 +353,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       enabled: isConnected,
     }
   );
+  // Planned meals are not entries, so they sit beside the totals, never in them.
+  const plannedTotals = useMemo(
+    () => sumPlannedNutrition(plannedMeals),
+    [plannedMeals]
+  );
   const { presets: allPresets } = useWorkoutPresets();
 
   const handleStartPlanAssignment = useCallback(
@@ -637,9 +643,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         {(summary.foodEntries.length > 0 ||
           hasSupplementNutrition(summary.supplementTotals) ||
           summary.exerciseEntries.length > 0 ||
+          plannedMeals.length > 0 ||
           summary.calorieGoal > 0) && (
           <DiaryCalorieMacroSummary
             summary={summary}
+            planned={plannedTotals}
             showNetCarbs={preferences?.show_net_carbs === true}
             customNutrientKeys={customNutrientKeys}
             customNutrients={customNutrients}
