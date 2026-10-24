@@ -580,31 +580,43 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
             </div>
             <div className="space-y-2">
               <Label id="mealPlanAutoLogLabel">
-                {t('mealPlanTemplateForm.autoLogLabel', 'When a day comes up')}
+                {t('mealPlanTemplateForm.autoLogLabel', 'Add to diary')}
               </Label>
               <RadioGroup
                 aria-labelledby="mealPlanAutoLogLabel"
                 value={autoLog ? 'auto' : 'planned'}
                 onValueChange={(value) => setAutoLog(value === 'auto')}
               >
-                <div className="flex items-center space-x-2">
+                <Label
+                  htmlFor="autoLogPlanned"
+                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-1 hover:bg-muted"
+                >
                   <RadioGroupItem value="planned" id="autoLogPlanned" />
-                  <Label htmlFor="autoLogPlanned">
-                    {t(
-                      'mealPlanTemplateForm.autoLogPlanned',
-                      'Show it as planned, and I add it'
-                    )}
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
+                  <span>
+                    {t('mealPlanTemplateForm.autoLogPlanned', 'I add them')}
+                    <span className="block text-sm font-normal text-muted-foreground">
+                      {t(
+                        'mealPlanTemplateForm.autoLogPlannedHint',
+                        'Items show as Planned each day.'
+                      )}
+                    </span>
+                  </span>
+                </Label>
+                <Label
+                  htmlFor="autoLogAuto"
+                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-1 hover:bg-muted"
+                >
                   <RadioGroupItem value="auto" id="autoLogAuto" />
-                  <Label htmlFor="autoLogAuto">
-                    {t(
-                      'mealPlanTemplateForm.autoLogAuto',
-                      'Add it to my diary automatically'
-                    )}
-                  </Label>
-                </div>
+                  <span>
+                    {t('mealPlanTemplateForm.autoLogAuto', 'Automatically')}
+                    <span className="block text-sm font-normal text-muted-foreground">
+                      {t(
+                        'mealPlanTemplateForm.autoLogAutoHint',
+                        'Each day is filled in ahead of time.'
+                      )}
+                    </span>
+                  </span>
+                </Label>
               </RadioGroup>
             </div>
             <div className="space-y-4">
@@ -622,20 +634,21 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
-                          className="min-h-9"
+                          className="min-h-11"
                           disabled={
                             extendedAssignments.length !== assignments.length
                           }
                           onClick={() => setCopySourceDay(dayIndex)}
                           aria-label={t(
                             'mealPlanTemplateForm.copyDayNamed',
-                            'Copy {{day}} to other days',
+                            'Copy to… ({{day}})',
                             { day }
                           )}
                         >
                           <Copy className="mr-2 h-4 w-4" aria-hidden="true" />
-                          {t('mealPlanTemplateForm.copyDay', 'Copy to…')}
+                          {extendedAssignments.length !== assignments.length
+                            ? t('common.loading', 'Loading…')
+                            : t('mealPlanTemplateForm.copyDay', 'Copy to…')}
                         </Button>
                       )}
                     </div>

@@ -47,6 +47,7 @@ const plannedItem = {
     { name: 'Eggs', quantity: 2, unit: 'large' },
     { name: 'Sausage', quantity: 2, unit: 'link' },
   ],
+  calories: 420,
   images: ['/uploads/food/eggs.jpg'],
 };
 

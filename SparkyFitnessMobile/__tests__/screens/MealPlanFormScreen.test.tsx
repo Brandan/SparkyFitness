@@ -273,7 +273,7 @@ describe('MealPlanFormScreen', () => {
     };
     const screen = renderScreen({ template });
 
-    fireEvent.press(screen.getByText('Copy to other days…'));
+    fireEvent.press(screen.getByText(/Copy .* to other days…/));
     fireEvent.press(screen.getByText('Copy to 6 days'));
     fireEvent.press(screen.getByText('Save'));
 
@@ -301,7 +301,7 @@ describe('MealPlanFormScreen', () => {
   test('offers no copy button on a day with nothing planned', () => {
     const screen = renderScreen();
 
-    expect(screen.queryByText('Copy to other days…')).toBeNull();
+    expect(screen.queryByText(/to other days…/)).toBeNull();
   });
 
   test('uses the selected day and meal type as the unified-search target', () => {

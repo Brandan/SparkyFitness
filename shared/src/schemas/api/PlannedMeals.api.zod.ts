@@ -30,6 +30,8 @@ export const plannedMealItemSchema = z.object({
   unit: z.string(),
   /** The foods inside a planned meal; empty for a planned single food. */
   foods: z.array(plannedMealComponentSchema),
+  /** Calories Add to diary will write, in kcal; null when the foods have none on record. */
+  calories: z.number().nullable(),
   /** The item's own pictures (a meal falls back to its first food that has one); may be empty. */
   images: z.array(z.string()),
 });

@@ -55,6 +55,7 @@ const item: PlannedMealItem = {
     { name: 'Eggs', quantity: 2, unit: 'large' },
     { name: 'Sausage', quantity: 2, unit: 'link' },
   ],
+  calories: 420,
   images: [],
 };
 
@@ -73,6 +74,8 @@ const renderList = (
       items={items}
       selectedDate="2026-10-24"
       mealName="Breakfast"
+      energyUnit="kcal"
+      convertEnergy={(value) => value}
       onOpenImages={onOpenImages}
     />
   );
@@ -93,6 +96,18 @@ describe('PlannedMealList', () => {
     expect(
       screen.getByRole('button', { name: 'Add to diary' })
     ).toBeInTheDocument();
+  });
+
+  it('shows the calories Add to diary will write', () => {
+    renderList();
+
+    expect(screen.getByText(/1 serving · 420 kcal/)).toBeInTheDocument();
+  });
+
+  it('leaves calories out when they are not known', () => {
+    renderList([{ ...item, calories: null }]);
+
+    expect(screen.getByText('1 serving')).toBeInTheDocument();
   });
 
   it('renders nothing when nothing is planned', () => {
@@ -117,13 +132,13 @@ describe('PlannedMealList', () => {
     expect(mockToast.mock.calls[0][0].action).toBeTruthy();
   });
 
-  it('removes the item from this day without adding anything', async () => {
+  it('skips the item for this day without adding anything', async () => {
     mockSkip.mockResolvedValue(undefined);
     renderList();
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: 'Remove Eggs and sausage from this day',
+        name: 'Skip Eggs and sausage for this day',
       })
     );
 
@@ -174,6 +189,25 @@ describe('PlannedMealList', () => {
     });
     await waitFor(() => expect(mockToast).toHaveBeenCalled());
     expect(mockToast.mock.calls[0][0].title).toBe('Added 2 items to Breakfast');
+  });
+
+  it('says which item failed when Add all stops part way', async () => {
+    mockAdd
+      .mockResolvedValueOnce({
+        food_entry_ids: ['e1'],
+        food_entry_meal_ids: [],
+      })
+      .mockRejectedValueOnce(new Error('boom'));
+    const second = { ...item, item_key: 'meal:type:other:', name: 'Toast' };
+    renderList([item, second]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add all 2 to diary' }));
+
+    // The mutation's own error toast comes first; ours is the one that stays.
+    await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(2));
+    const shown = mockToast.mock.calls[1][0];
+    expect(shown.title).toBe('Added 1 of 2 to Breakfast');
+    expect(shown.description).toBe("Couldn't add Toast. Try again.");
   });
 
   it('does not offer Add all for a single item', () => {

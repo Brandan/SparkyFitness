@@ -79,8 +79,6 @@ describe('CopyDayDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
 
-    expect(
-      screen.getByRole('button', { name: 'Copy to 0 days' })
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeDisabled();
   });
 });

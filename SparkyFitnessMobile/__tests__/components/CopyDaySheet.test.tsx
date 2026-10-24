@@ -64,7 +64,7 @@ describe('CopyDaySheet', () => {
     const { view, onCopy } = renderSheet([4, 0, 0, 0, 0, 0, 0]);
 
     fireEvent.press(view.getByText('Clear'));
-    fireEvent.press(view.getByText('Copy to 0 days'));
+    fireEvent.press(view.getByText('Copy'));
 
     expect(onCopy).not.toHaveBeenCalled();
   });

@@ -221,11 +221,15 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
           day: dayOptions[fromDay],
           count: toDays.length,
         }),
-        text2: t('mealPlans.tapToUndo', { defaultValue: 'Tap to undo' }),
         visibilityTime: 6000,
-        onPress: () => {
-          Toast.hide();
-          setDraft((current) => ({ ...current, assignments: previous }));
+        props: {
+          action: {
+            label: t('mealPlans.undo', { defaultValue: 'Undo' }),
+            onPress: () => {
+              Toast.hide();
+              setDraft((current) => ({ ...current, assignments: previous }));
+            },
+          },
         },
       });
     },
@@ -631,12 +635,11 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
             <Text className="text-sm text-text-secondary mt-1">
               {draft.autoLog
                 ? t('mealPlans.autoLogOnHint', {
-                    defaultValue:
-                      'Each day is filled in for you ahead of time.',
+                    defaultValue: 'Each day is filled in ahead of time.',
                   })
                 : t('mealPlans.autoLogOffHint', {
                     defaultValue:
-                      'Items show as planned on each day, and you add them.',
+                      'Items show as Planned each day, and you add them.',
                   })}
             </Text>
           </View>
@@ -715,12 +718,11 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
                 countAssignmentsByDay(draft.assignments)
               )
             }
-            accessibilityLabel={t('mealPlans.copyDayNamed', {
-              defaultValue: 'Copy {{day}} to other days',
+          >
+            {t('mealPlans.copyDay', {
+              defaultValue: 'Copy {{day}} to other days…',
               day: dayOptions[selectedDay],
             })}
-          >
-            {t('mealPlans.copyDay', { defaultValue: 'Copy to other days…' })}
           </Button>
         ) : null}
 

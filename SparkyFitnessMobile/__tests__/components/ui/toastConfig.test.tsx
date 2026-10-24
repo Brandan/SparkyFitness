@@ -47,4 +47,23 @@ describe('toastConfig', () => {
     fireEvent.press(screen.getByRole('button'));
     expect(onPress).toHaveBeenCalled();
   });
+
+  it('shows a labelled button for an action and keeps the toast itself inert', () => {
+    const onPress = jest.fn();
+    const screen = render(
+      <>
+        {toastConfig.info!(
+          buildParams({
+            type: 'info',
+            text1: 'Copied Monday to 3 days',
+            props: { action: { label: 'Undo', onPress } },
+          })
+        )}
+      </>
+    );
+
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    fireEvent.press(screen.getByText('Undo'));
+    expect(onPress).toHaveBeenCalled();
+  });
 });
