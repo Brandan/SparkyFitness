@@ -248,6 +248,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   ]); // Only run when template ID changes
 
   const handleAddFood = (day: number, mealType: string) => {
+    setEditingAssignmentIndex(null);
     setCurrentDay(day);
     setCurrentMealType(mealType);
     setIsFoodSelectionOpen(true);
@@ -1053,10 +1054,26 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
       {selectedFood && (
         <FoodUnitSelector
+          key={`${selectedFood.id}-${editingAssignmentIndex ?? 'new'}`}
           food={selectedFood}
           open={isFoodUnitSelectorOpen}
           onOpenChange={setIsFoodUnitSelectorOpen}
           onSelect={handleFoodUnitSelected}
+          initialQuantity={
+            editingAssignmentIndex !== null
+              ? extendedAssignments[editingAssignmentIndex]?.quantity
+              : undefined
+          }
+          initialUnit={
+            editingAssignmentIndex !== null
+              ? extendedAssignments[editingAssignmentIndex]?.unit
+              : undefined
+          }
+          initialVariantId={
+            editingAssignmentIndex !== null
+              ? extendedAssignments[editingAssignmentIndex]?.variant_id
+              : undefined
+          }
         />
       )}
 
