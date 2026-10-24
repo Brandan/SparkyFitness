@@ -36,6 +36,8 @@ import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import ExerciseSummary from '../components/ExerciseSummary';
 import FoodSummary from '../components/FoodSummary';
+import PlannedMealsSection from '../components/PlannedMealsSection';
+import { usePlannedMeals } from '../hooks/usePlannedMeals';
 import MeasurementsSummary from '../components/MeasurementsSummary';
 import ServingAdjustSheet, {
   type ServingAdjustSheetRef,
@@ -344,6 +346,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const { startLiveWorkout } = useStartLiveWorkout(navigation);
   const { plans: activePlans } = useActiveWorkoutPlans(selectedDate);
+  const { plannedMeals, isLoading: isPlannedLoading } = usePlannedMeals(
+    selectedDate,
+    {
+      enabled: isConnected,
+    }
+  );
   const { presets: allPresets } = useWorkoutPresets();
 
   const handleStartPlanAssignment = useCallback(
@@ -525,7 +533,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       dayPhotos.length === 0 &&
       naps.length === 0 &&
       bedTime === null &&
-      !activePlans.some((plan) => plan.next_assignment)
+      !activePlans.some((plan) => plan.next_assignment) &&
+      // A planned meal is waiting to be added, so the day has something on it.
+      // Gated on the load like sleep and photos: ungated, a day with planned
+      // items flashes the empty illustration until they arrive.
+      !isPlannedLoading &&
+      plannedMeals.length === 0
     );
   }, [
     isSleepLoading,
@@ -537,6 +550,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     naps,
     bedTime,
     activePlans,
+    isPlannedLoading,
+    plannedMeals,
   ]);
 
   const renderContent = () => {
@@ -663,6 +678,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               }
               onPressMealType={openMealTypeDetail}
             />
+            <PlannedMealsSection items={plannedMeals} date={selectedDate} />
             <ExerciseSummary
               exerciseEntries={summary.exerciseEntries}
               entryDate={selectedDate}
