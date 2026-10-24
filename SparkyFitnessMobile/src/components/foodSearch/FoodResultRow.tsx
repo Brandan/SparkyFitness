@@ -15,6 +15,7 @@ import FoodThumbnail from '../FoodThumbnail';
 import { useFoodImageSourceContext } from '../FoodImageSourceProvider';
 import { primaryImageOf, usableFoodImages } from '../../utils/foodImages';
 import { useOpenLightbox } from '../LightboxProvider';
+import { useAppLocale } from '../../localization';
 import type { FoodInfoItem } from '../../types/foodInfo';
 import type { FoodItem, TopFoodItem } from '../../types/foods';
 
@@ -42,7 +43,8 @@ interface FoodResultRowProps {
 
 function formatLastLogged(
   lastUsedDate: string | null | undefined,
-  t: TFunction
+  t: TFunction,
+  locale: string
 ): string | null {
   const age = describeLastLogged(lastUsedDate, getTodayDate());
   if (!age) return null;
@@ -64,7 +66,7 @@ function formatLastLogged(
       const [y, m, d] = age.day.split('-').map(Number);
       return t('foodSearch.labels.lastLoggedOn', {
         defaultValue: 'Last logged {{date}}',
-        date: new Date(y, m - 1, d).toLocaleDateString(undefined, {
+        date: new Date(y, m - 1, d).toLocaleDateString(locale, {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
@@ -83,6 +85,7 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
   selection,
 }) => {
   const { t } = useTranslation();
+  const locale = useAppLocale();
   const status = deriveShareStatus(
     item.user_id,
     item.shared_with_public,
@@ -91,7 +94,7 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
   const images = usableFoodImages(item.images);
-  const lastLoggedLabel = formatLastLogged(item.last_used_date, t);
+  const lastLoggedLabel = formatLastLogged(item.last_used_date, t, locale);
   // The thumbnail is a SIBLING of the row's pressable, never nested inside it —
   // nesting leaves the inner one live while the parent is disabled. Matches
   // FoodLibraryRow.
