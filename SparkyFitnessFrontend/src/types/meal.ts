@@ -35,6 +35,8 @@ export interface MealFood {
   quantity: number;
   unit: string;
   food_name?: string;
+  /** The ingredient food's pictures. Empty when this row is a linked meal. */
+  food_images?: string[] | null;
   food?: Food;
   variant_id?: string;
   calories?: number;

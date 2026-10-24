@@ -47,6 +47,8 @@ const MEAL_FOODS_SELECT = `
   SELECT mf.id, mf.meal_id, mf.food_id, mf.child_meal_id, mf.item_type,
          mf.variant_id, mf.quantity, mf.unit,
          f.name AS food_name, f.brand,
+         -- So a meal with no picture of its own can show an ingredient's.
+         f.images AS food_images,
          cm.name AS child_meal_name,
          cm.serving_size AS child_meal_serving_size,
          cm.serving_unit AS child_meal_serving_unit,
