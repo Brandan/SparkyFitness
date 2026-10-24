@@ -7,6 +7,11 @@ jest.mock('@/components/FoodSearch/NutrientGrid', () => ({
   NutrientGrid: () => <div data-testid="nutrient-grid" />,
 }));
 
+// `LastLogged` reads the account timezone to say how long ago a food was logged.
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({ timezone: 'UTC' }),
+}));
+
 jest.mock('@/hooks/useAllergenPreferences', () => ({
   useAllergenPreferences: () => ({ data: [] }),
 }));
