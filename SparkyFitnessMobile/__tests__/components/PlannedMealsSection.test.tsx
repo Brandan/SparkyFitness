@@ -46,6 +46,7 @@ const item: PlannedMealItem = {
     { name: 'Eggs', quantity: 2, unit: 'large' },
     { name: 'Sausage', quantity: 2, unit: 'link' },
   ],
+  calories: 420,
   images: [],
 };
 
@@ -78,6 +79,25 @@ describe('PlannedMealsSection', () => {
     expect(getByText('Add to diary')).toBeTruthy();
   });
 
+  it('shows the calories Add to diary will write', () => {
+    const { getByText } = render(
+      <PlannedMealsSection items={[item]} date="2026-10-24" />
+    );
+
+    expect(getByText(/1 serving · 420 kcal/)).toBeTruthy();
+  });
+
+  it('leaves calories out when they are not known', () => {
+    const { queryByText } = render(
+      <PlannedMealsSection
+        items={[{ ...item, calories: null }]}
+        date="2026-10-24"
+      />
+    );
+
+    expect(queryByText(/kcal/)).toBeNull();
+  });
+
   it('adds the item and offers undo with the created ids', async () => {
     mockAdd.mockResolvedValue({
       food_entry_ids: ['e1', 'e2'],
@@ -95,7 +115,7 @@ describe('PlannedMealsSection', () => {
     const toast = (Toast.show as jest.Mock).mock.calls[0][0];
     expect(toast.text1).toBe('Added Eggs and sausage to Breakfast');
 
-    toast.onPress();
+    toast.props.action.onPress();
     await waitFor(() =>
       expect(mockRestore).toHaveBeenCalledWith({
         ...target,
@@ -105,13 +125,13 @@ describe('PlannedMealsSection', () => {
     );
   });
 
-  it('removes the item from this day without adding anything', async () => {
+  it('skips the item for this day without adding anything', async () => {
     mockSkip.mockResolvedValue(undefined);
     const { getByText } = render(
       <PlannedMealsSection items={[item]} date="2026-10-24" />
     );
 
-    fireEvent.press(getByText('Remove'));
+    fireEvent.press(getByText('Skip'));
 
     await waitFor(() => expect(mockSkip).toHaveBeenCalledWith(target));
     expect(mockAdd).not.toHaveBeenCalled();
@@ -128,7 +148,7 @@ describe('PlannedMealsSection', () => {
     await waitFor(() => expect(Toast.show).toHaveBeenCalled());
     const toast = (Toast.show as jest.Mock).mock.calls[0][0];
     expect(toast.type).toBe('error');
-    expect(toast.onPress).toBeUndefined();
+    expect(toast.props).toBeUndefined();
   });
 
   it('shows the picture of a planned item that has one', () => {
@@ -173,13 +193,34 @@ describe('PlannedMealsSection', () => {
     const toast = (Toast.show as jest.Mock).mock.calls[0][0];
     expect(toast.text1).toBe('Added 2 items to your diary');
 
-    toast.onPress();
+    toast.props.action.onPress();
     await waitFor(() => expect(mockRestore).toHaveBeenCalledTimes(2));
     expect(mockRestore).toHaveBeenNthCalledWith(1, {
       ...target,
       food_entry_ids: ['e1'],
       food_entry_meal_ids: ['m1'],
     });
+  });
+
+  it('says which item failed when Add all stops part way', async () => {
+    mockAdd
+      .mockResolvedValueOnce({
+        food_entry_ids: ['e1'],
+        food_entry_meal_ids: [],
+      })
+      .mockRejectedValueOnce(new Error('offline'));
+    const second = { ...item, item_key: 'meal:type:other:', name: 'Toast' };
+    const { getByText } = render(
+      <PlannedMealsSection items={[item, second]} date="2026-10-24" />
+    );
+
+    fireEvent.press(getByText('Add all 2 to diary'));
+
+    await waitFor(() => expect(Toast.show).toHaveBeenCalled());
+    const toasts = (Toast.show as jest.Mock).mock.calls;
+    expect(toasts).toHaveLength(1);
+    expect(toasts[0][0].text1).toBe('Added 1 of 2 to your diary');
+    expect(toasts[0][0].text2).toBe("Couldn't add Toast. Try again.");
   });
 
   it('does not offer Add all for a single item', () => {

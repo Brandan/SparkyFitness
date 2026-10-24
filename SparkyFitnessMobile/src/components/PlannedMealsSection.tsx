@@ -42,22 +42,31 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
     item_key: item.item_key,
   });
 
-  const showUndo = (title: string, undo: () => Promise<void>) => {
+  const showUndo = (
+    title: string,
+    undo: () => Promise<void>,
+    detail?: string
+  ) => {
     Toast.show({
       type: 'info',
       text1: title,
-      text2: t('plannedMeals.tapToUndo', { defaultValue: 'Tap to undo' }),
+      text2: detail,
       visibilityTime: 6000,
-      onPress: () => {
-        Toast.hide();
-        undo().catch(() => {
-          Toast.show({
-            type: 'error',
-            text1: t('plannedMeals.undoError', {
-              defaultValue: 'Could not undo that.',
-            }),
-          });
-        });
+      props: {
+        action: {
+          label: t('plannedMeals.undo', { defaultValue: 'Undo' }),
+          onPress: () => {
+            Toast.hide();
+            undo().catch(() => {
+              Toast.show({
+                type: 'error',
+                text1: t('plannedMeals.undoError', {
+                  defaultValue: 'Could not undo that.',
+                }),
+              });
+            });
+          },
+        },
       },
     });
   };
@@ -93,38 +102,57 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
       item: PlannedMealItem;
       ids: { food_entry_ids: string[]; food_entry_meal_ids: string[] };
     }[] = [];
-    try {
-      for (const item of items) {
+    let failed: PlannedMealItem | null = null;
+    for (const item of items) {
+      try {
         added.push({ item, ids: await addPlannedMealAsync(targetOf(item)) });
+      } catch {
+        failed = item;
+        break;
       }
-    } catch {
+    }
+    if (added.length === 0) {
       Toast.show({
         type: 'error',
         text1: t('plannedMeals.addError', {
           defaultValue: 'Could not add the planned meal to your diary.',
         }),
       });
+      return;
     }
-    if (added.length === 0) return;
+    // One toast only (a new one replaces the last), so a partial failure is
+    // said here instead of being hidden by the success message.
     showUndo(
-      t('plannedMeals.addedAll', {
-        defaultValue: 'Added {{count}} items to your diary',
-        count: added.length,
-      }),
+      failed
+        ? t('plannedMeals.addedSome', {
+            defaultValue: 'Added {{count}} of {{total}} to your diary',
+            count: added.length,
+            total: items.length,
+          })
+        : t('plannedMeals.addedAll', {
+            defaultValue: 'Added {{count}} items to your diary',
+            count: added.length,
+          }),
       async () => {
         for (const { item, ids } of added) {
           await restorePlannedMealAsync({ ...targetOf(item), ...ids });
         }
-      }
+      },
+      failed
+        ? t('plannedMeals.couldNotAdd', {
+            defaultValue: "Couldn't add {{name}}. Try again.",
+            name: failed.name,
+          })
+        : undefined
     );
   };
 
-  const handleRemove = async (item: PlannedMealItem) => {
+  const handleSkip = async (item: PlannedMealItem) => {
     try {
       await skipPlannedMealAsync(targetOf(item));
       showUndo(
-        t('plannedMeals.removed', {
-          defaultValue: 'Removed {{name}} from this day',
+        t('plannedMeals.skipped', {
+          defaultValue: 'Skipped {{name}} for this day',
           name: item.name,
         }),
         () => restorePlannedMealAsync(targetOf(item))
@@ -132,8 +160,8 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
     } catch {
       Toast.show({
         type: 'error',
-        text1: t('plannedMeals.removeError', {
-          defaultValue: 'Could not remove the planned meal.',
+        text1: t('plannedMeals.skipError', {
+          defaultValue: 'Could not skip the planned meal.',
         }),
       });
     }
@@ -148,7 +176,7 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
         {items.length > 1 ? (
           <Button
             variant="secondary"
-            className="py-2 px-4"
+            className="min-h-11 py-2 px-4"
             disabled={isPending}
             onPress={() => void handleAddAll()}
           >
@@ -187,6 +215,12 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
                   {item.name}
                   <Text className="text-sm font-normal text-text-secondary">
                     {`  ${formatQuantity(item.quantity, item.unit)}`}
+                    {item.calories !== null
+                      ? ` · ${Math.round(item.calories)} ${t(
+                          'nutrition.caloriesShort',
+                          { defaultValue: 'kcal' }
+                        )}`
+                      : ''}
                   </Text>
                 </Text>
                 {item.foods.length > 0 && (
@@ -212,15 +246,15 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
               </Button>
               <Button
                 variant="ghost"
-                className="py-3 px-4"
+                className="min-h-11 py-3 px-4"
                 disabled={isPending}
-                onPress={() => void handleRemove(item)}
-                accessibilityLabel={t('plannedMeals.removeNamed', {
-                  defaultValue: 'Remove {{name}} from this day',
+                onPress={() => void handleSkip(item)}
+                accessibilityLabel={t('plannedMeals.skipNamed', {
+                  defaultValue: 'Skip {{name}} for this day',
                   name: item.name,
                 })}
               >
-                {t('plannedMeals.remove', { defaultValue: 'Remove' })}
+                {t('plannedMeals.skip', { defaultValue: 'Skip' })}
               </Button>
             </View>
           </View>

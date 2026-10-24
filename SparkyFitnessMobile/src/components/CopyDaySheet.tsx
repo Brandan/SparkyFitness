@@ -93,18 +93,11 @@ const CopyDaySheet = forwardRef<CopyDaySheetRef, CopyDaySheetProps>(
                     day: dayNames[source.fromDay],
                   })}
                 </Text>
-                <Text className="text-text-secondary text-sm mt-1 text-center">
-                  {t('mealPlans.copyDayHint', {
-                    defaultValue:
-                      'Everything planned for {{day}} is copied to the days you pick.',
-                    day: dayNames[source.fromDay],
-                  })}
-                </Text>
               </View>
 
               <Button
                 variant="ghost"
-                className="self-end py-2 px-3"
+                className="self-end min-h-11 py-2 px-3"
                 onPress={() => setSelected(allSelected ? [] : days)}
               >
                 {allSelected
@@ -137,7 +130,7 @@ const CopyDaySheet = forwardRef<CopyDaySheetRef, CopyDaySheetProps>(
                       {dayNames[day]}
                     </Text>
                     {count > 0 && (
-                      <Text className="text-xs text-text-muted">
+                      <Text className="text-sm font-semibold text-text-primary">
                         {t('mealPlans.copyDayReplaces', {
                           defaultValue: 'Replaces {{count}} items',
                           count,
@@ -157,10 +150,14 @@ const CopyDaySheet = forwardRef<CopyDaySheetRef, CopyDaySheetProps>(
                   sheetRef.current?.dismiss();
                 }}
               >
-                {t('mealPlans.copyDayConfirm', {
-                  defaultValue: 'Copy to {{count}} days',
-                  count: selected.length,
-                })}
+                {selected.length === 0
+                  ? t('mealPlans.copyDayConfirmNone', {
+                      defaultValue: 'Copy',
+                    })
+                  : t('mealPlans.copyDayConfirm', {
+                      defaultValue: 'Copy to {{count}} days',
+                      count: selected.length,
+                    })}
               </Button>
             </View>
           )}
