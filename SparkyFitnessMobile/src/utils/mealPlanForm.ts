@@ -73,6 +73,7 @@ export function createMealPlanDraft(
       startDate: today,
       endDate: '',
       isActive: true,
+      autoLog: false,
       assignments: [],
     };
   }
@@ -83,6 +84,7 @@ export function createMealPlanDraft(
     startDate: calendarDay(template.start_date),
     endDate: calendarDay(template.end_date),
     isActive: template.is_active,
+    autoLog: template.auto_log !== false,
     assignments: template.assignments.map((assignment) => {
       const amount =
         assignment.quantity != null && assignment.unit
@@ -140,6 +142,7 @@ export function buildMealPlanPayload(
     start_date: draft.startDate,
     end_date: draft.endDate || null,
     is_active: draft.isActive,
+    auto_log: draft.autoLog,
     assignments: draft.assignments.map((assignment) => {
       const payload = { ...assignment };
       delete payload.quantityText;

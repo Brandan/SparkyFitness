@@ -130,6 +130,8 @@ export interface MealPlanTemplate {
   start_date: string;
   end_date?: string;
   is_active: boolean;
+  /** true: write diary entries from the plan; false: show its items as planned. */
+  auto_log?: boolean;
   assignments: MealPlanTemplateAssignment[];
 }
 

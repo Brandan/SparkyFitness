@@ -58,6 +58,7 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import { todayInZone, prefillEntryTime } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
+import { usePlannedMeals } from '@/hooks/Foods/usePlannedMeals';
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -116,6 +117,7 @@ const Diary = () => {
     useFoodEntries(selectedDate);
   const { data: foodEntryMeals, isLoading: foodEntryMealsLoading } =
     useFoodEntryMeals(selectedDate);
+  const { data: plannedMeals } = usePlannedMeals(selectedDate);
 
   const effectiveGoals = goals
     ? summaryData?.adjustedGoals
@@ -444,6 +446,9 @@ const Diary = () => {
             energyUnit={energyUnit}
             convertEnergy={convertEnergy}
             customNutrients={customNutrients}
+            plannedItems={(plannedMeals ?? []).filter(
+              (item) => item.meal_type_id === mealTypeObj.id
+            )}
             shouldOpenFoodSearch={
               openFoodSearchForMealType?.toLowerCase() ===
               mealTypeObj.name.toLowerCase()

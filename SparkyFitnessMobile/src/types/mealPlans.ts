@@ -49,6 +49,8 @@ export interface MealPlanTemplate {
   start_date: string;
   end_date: string | null;
   is_active: boolean;
+  /** false: the plan shows its items as planned; absent on older servers (= true). */
+  auto_log?: boolean;
   assignments: MealPlanAssignment[];
   created_at?: string;
   updated_at?: string;
@@ -60,6 +62,7 @@ export interface SaveMealPlanPayload {
   start_date: string;
   end_date: string | null;
   is_active: boolean;
+  auto_log: boolean;
   assignments: Omit<MealPlanDraftAssignment, 'quantityText' | 'nutrition'>[];
 }
 
@@ -69,6 +72,7 @@ export interface MealPlanDraft {
   startDate: string;
   endDate: string;
   isActive: boolean;
+  autoLog: boolean;
   assignments: MealPlanDraftAssignment[];
 }
 

@@ -40,6 +40,13 @@ jest.mock('../../src/hooks/useCheckInPhotos', () => ({
   useCheckInPhotoDates: () => ({ dates: [], isLoading: false }),
   useCheckInPhotosByDate: () => ({ photos: [], isLoading: false }),
 }));
+// Planned meals are settled and empty: these suites are about other arms of the
+// empty-day predicate, and an unmocked query would stay pending and hide the day
+// behind the planned-meals load gate.
+jest.mock('../../src/hooks/usePlannedMeals', () => ({
+  usePlannedMeals: () => ({ plannedMeals: [], isLoading: false }),
+}));
+
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: null }),
 }));

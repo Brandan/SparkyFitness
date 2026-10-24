@@ -248,6 +248,62 @@ describe('MealPlanFormScreen', () => {
     });
   });
 
+  test('copies the selected day to the rest of the week and saves all seven days', async () => {
+    const sunday = {
+      id: 'assignment-oats',
+      item_type: 'food' as const,
+      day_of_week: 0,
+      meal_type_id: 'lunch',
+      meal_type: 'Lunch',
+      food_id: 'food-1',
+      food_name: 'Oats',
+      variant_id: 'variant-1',
+      quantity: 80,
+      unit: 'g',
+    };
+    const template: MealPlanTemplate = {
+      id: 'plan-1',
+      user_id: 'user-1',
+      plan_name: 'Daily oats',
+      description: null,
+      start_date: '2026-09-01',
+      end_date: null,
+      is_active: true,
+      assignments: [sunday],
+    };
+    const screen = renderScreen({ template });
+
+    fireEvent.press(screen.getByText('Copy to other days…'));
+    fireEvent.press(screen.getByText('Copy to 6 days'));
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => expect(updateMealPlanAsync).toHaveBeenCalled());
+    const payload = updateMealPlanAsync.mock.calls[0][0];
+    expect(
+      payload.assignments.map(
+        (assignment: { day_of_week: number }) => assignment.day_of_week
+      )
+    ).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(
+      payload.assignments.every(
+        (assignment: { food_id: string; quantity: number }) =>
+          assignment.food_id === 'food-1' && assignment.quantity === 80
+      )
+    ).toBe(true);
+    // Copies are new rows, not the original's id.
+    expect(
+      payload.assignments.filter(
+        (assignment: { id?: string }) => assignment.id === 'assignment-oats'
+      )
+    ).toHaveLength(1);
+  });
+
+  test('offers no copy button on a day with nothing planned', () => {
+    const screen = renderScreen();
+
+    expect(screen.queryByText('Copy to other days…')).toBeNull();
+  });
+
   test('uses the selected day and meal type as the unified-search target', () => {
     const dinnerType = {
       ...mealType,

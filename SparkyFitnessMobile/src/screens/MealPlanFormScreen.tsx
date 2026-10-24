@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -11,6 +11,8 @@ import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
+import CopyDaySheet, { type CopyDaySheetRef } from '../components/CopyDaySheet';
+import { copyDayAssignments, countAssignmentsByDay } from '@workspace/shared';
 import Switch from '../components/ui/Switch';
 import {
   useCreateMealPlan,
@@ -116,6 +118,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
     return initialDraft;
   });
   const [selectedDay, setSelectedDay] = useState(initialDay);
+  const copyDaySheetRef = useRef<CopyDaySheetRef>(null);
   const [appliedInitialMealId, setAppliedInitialMealId] = useState<
     string | null
   >(() =>
@@ -203,6 +206,32 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
       })),
     [draft.assignments, resolveNutrition]
   );
+  const handleCopyDay = useCallback(
+    (fromDay: number, toDays: number[]) => {
+      const previous = draft.assignments;
+      setDraft((current) => ({
+        ...current,
+        assignments: copyDayAssignments(current.assignments, fromDay, toDays),
+      }));
+      setErrors((current) => ({ ...current, assignments: undefined }));
+      Toast.show({
+        type: 'info',
+        text1: t('mealPlans.dayCopied', {
+          defaultValue: 'Copied {{day}} to {{count}} days',
+          day: dayOptions[fromDay],
+          count: toDays.length,
+        }),
+        text2: t('mealPlans.tapToUndo', { defaultValue: 'Tap to undo' }),
+        visibilityTime: 6000,
+        onPress: () => {
+          Toast.hide();
+          setDraft((current) => ({ ...current, assignments: previous }));
+        },
+      });
+    },
+    [draft.assignments, dayOptions, t]
+  );
+
   const dayTotals = useMemo(
     () => calculateMealPlanDayNutrition(resolvedAssignments, selectedDay),
     [resolvedAssignments, selectedDay]
@@ -579,7 +608,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
             <Text className="text-sm text-text-secondary mt-1">
               {t('mealPlans.activePlanHint', {
                 defaultValue:
-                  'Active plans populate matching future diary days.',
+                  'Active plans apply to their matching diary days.',
               })}
             </Text>
           </View>
@@ -589,6 +618,34 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
             })}
             value={draft.isActive}
             onValueChange={(value) => updateDraft('isActive', value)}
+          />
+        </View>
+
+        <View className="flex-row items-center justify-between mt-3">
+          <View className="flex-1 mr-4">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('mealPlans.autoLog', {
+                defaultValue: 'Add to diary automatically',
+              })}
+            </Text>
+            <Text className="text-sm text-text-secondary mt-1">
+              {draft.autoLog
+                ? t('mealPlans.autoLogOnHint', {
+                    defaultValue:
+                      'Each day is filled in for you ahead of time.',
+                  })
+                : t('mealPlans.autoLogOffHint', {
+                    defaultValue:
+                      'Items show as planned on each day, and you add them.',
+                  })}
+            </Text>
+          </View>
+          <Switch
+            accessibilityLabel={t('mealPlans.autoLog', {
+              defaultValue: 'Add to diary automatically',
+            })}
+            value={draft.autoLog}
+            onValueChange={(value) => updateDraft('autoLog', value)}
           />
         </View>
 
@@ -645,6 +702,27 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
             );
           })}
         </ScrollView>
+
+        {draft.assignments.some(
+          (assignment) => assignment.day_of_week === selectedDay
+        ) ? (
+          <Button
+            variant="secondary"
+            className="mt-3"
+            onPress={() =>
+              copyDaySheetRef.current?.present(
+                selectedDay,
+                countAssignmentsByDay(draft.assignments)
+              )
+            }
+            accessibilityLabel={t('mealPlans.copyDayNamed', {
+              defaultValue: 'Copy {{day}} to other days',
+              day: dayOptions[selectedDay],
+            })}
+          >
+            {t('mealPlans.copyDay', { defaultValue: 'Copy to other days…' })}
+          </Button>
+        ) : null}
 
         <View className="bg-surface rounded-xl px-3 py-4 mt-4 flex-row border border-border-subtle">
           {nutritionStats.map((stat) => {
@@ -784,6 +862,12 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
           </Text>
         </View>
       </KeyboardAwareScrollView>
+
+      <CopyDaySheet
+        ref={copyDaySheetRef}
+        dayNames={dayOptions}
+        onCopy={handleCopyDay}
+      />
 
       {!usesNativeHeader ? (
         <FooterSaveBar
