@@ -2,11 +2,12 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import type { PlannedMealItem } from '@workspace/shared';
+import { sumPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
 import Button from './ui/Button';
 import FoodThumbnail from './FoodThumbnail';
 import { useFoodImageSourceContext } from './FoodImageSourceProvider';
 import { useOpenLightbox } from './LightboxProvider';
+import { formatLocalizedNumber } from '../localization';
 import { usableFoodImages } from '../utils/foodImages';
 import { usePlannedMealMutations } from '../hooks/usePlannedMeals';
 
@@ -17,6 +18,44 @@ interface PlannedMealsSectionProps {
 
 const formatQuantity = (quantity: number, unit: string) =>
   `${Number.isInteger(quantity) ? quantity : Number(quantity.toFixed(2))} ${unit}`;
+
+interface PlannedMealGroup {
+  id: string;
+  name: string;
+  items: PlannedMealItem[];
+}
+
+/** Keeps the server's meal order and gathers a meal's items under one heading. */
+const groupPlannedByMeal = (items: PlannedMealItem[]): PlannedMealGroup[] => {
+  const groups: PlannedMealGroup[] = [];
+  const indexByMeal = new Map<string, number>();
+  for (const item of items) {
+    const at = indexByMeal.get(item.meal_type_id);
+    if (at === undefined) {
+      indexByMeal.set(item.meal_type_id, groups.length);
+      groups.push({
+        id: item.meal_type_id,
+        name: item.meal_type_name ?? '',
+        items: [item],
+      });
+    } else {
+      groups[at].items.push(item);
+    }
+  }
+  return groups;
+};
+
+/** Rounded kcal when any item has a figure on record; null when none do. */
+const plannedKcal = (items: PlannedMealItem[]): number | null => {
+  if (
+    !items.some(
+      (item) => item.nutrition != null || typeof item.calories === 'number'
+    )
+  ) {
+    return null;
+  }
+  return Math.round(sumPlannedNutrition(items).calories);
+};
 
 /**
  * Items a "show as planned" meal plan has for this day. They are not diary
@@ -147,6 +186,9 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
     );
   };
 
+  const groups = groupPlannedByMeal(items);
+  const dayKcal = plannedKcal(items);
+
   const handleSkip = async (item: PlannedMealItem) => {
     try {
       await skipPlannedMealAsync(targetOf(item));
@@ -169,94 +211,123 @@ const PlannedMealsList: React.FC<PlannedMealsSectionProps> = ({
 
   return (
     <View className="gap-2 mb-2">
-      <View className="flex-row items-center justify-between px-1">
-        <Text className="text-base font-bold text-text-secondary">
-          {t('plannedMeals.title', { defaultValue: 'Planned' })}
-        </Text>
-        {items.length > 1 ? (
-          <Button
-            variant="secondary"
-            className="min-h-11 py-2 px-4"
-            disabled={isPending}
-            onPress={() => void handleAddAll()}
-          >
-            {t('plannedMeals.addAll', {
-              defaultValue: 'Add all {{count}} to diary',
-              count: items.length,
+      <View className="gap-1 px-1">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-base font-bold text-text-secondary">
+            {t('plannedMeals.title', { defaultValue: 'Planned' })}
+          </Text>
+          {items.length > 1 ? (
+            <Button
+              variant="secondary"
+              className="min-h-11 py-2 px-4"
+              disabled={isPending}
+              onPress={() => void handleAddAll()}
+            >
+              {t('plannedMeals.addAll', {
+                defaultValue: 'Add all {{count}} to diary',
+                count: items.length,
+              })}
+            </Button>
+          ) : null}
+        </View>
+        {dayKcal !== null && dayKcal > 0 ? (
+          <Text className="text-sm font-semibold text-text-secondary">
+            {t('plannedMeals.rollup', {
+              defaultValue: '+{{calories}} kcal planned',
+              calories: formatLocalizedNumber(dayKcal),
             })}
-          </Button>
+          </Text>
         ) : null}
       </View>
-      {items.map((item) => {
-        const images = usableFoodImages(item.images);
-        const image = images[0] ?? null;
+      {groups.map((group) => {
+        const mealKcal = plannedKcal(group.items);
         return (
-          <View
-            key={`${item.template_id}-${item.item_key}`}
-            className="rounded-xl border-2 border-dashed border-border-strong p-4 gap-3"
-          >
-            <View className="flex-row items-center gap-3">
-              {image ? (
-                <View style={{ opacity: 0.85 }}>
-                  <FoodThumbnail
-                    image={image}
-                    getImageSource={getImageSource}
-                    size={56}
-                    showFallback={false}
-                    onPress={() => openLightbox(images, 0, item.name)}
-                  />
-                </View>
+          <View key={group.id} className="gap-2">
+            <View className="flex-row items-center justify-between px-1">
+              <Text className="text-base font-bold text-text-secondary">
+                {group.name}
+              </Text>
+              {mealKcal !== null ? (
+                <Text className="text-sm font-semibold text-text-secondary">
+                  {t('plannedMeals.mealCalories', {
+                    defaultValue: '+{{calories}} kcal',
+                    calories: formatLocalizedNumber(mealKcal),
+                  })}
+                </Text>
               ) : null}
-              <View className="gap-1 flex-1">
-                <Text className="text-xs font-semibold text-text-muted uppercase">
-                  {item.meal_type_name ?? ''}
-                </Text>
-                <Text className="text-base font-semibold text-text-primary">
-                  {item.name}
-                  <Text className="text-sm font-normal text-text-secondary">
-                    {`  ${formatQuantity(item.quantity, item.unit)}`}
-                    {typeof item.calories === 'number'
-                      ? ` · ${Math.round(item.calories)} ${t(
-                          'nutrition.caloriesShort',
-                          { defaultValue: 'kcal' }
-                        )}`
-                      : ''}
-                  </Text>
-                </Text>
-                {item.foods.length > 0 && (
-                  <Text className="text-sm text-text-secondary">
-                    {item.foods
-                      .map(
-                        (food) =>
-                          `${food.name} ${formatQuantity(food.quantity, food.unit)}`
-                      )
-                      .join(' · ')}
-                  </Text>
-                )}
-              </View>
             </View>
-            <View className="flex-row gap-2">
-              <Button
-                variant="primary"
-                className="flex-1 py-3"
-                disabled={isPending}
-                onPress={() => void handleAdd(item)}
-              >
-                {t('plannedMeals.addToDiary', { defaultValue: 'Add to diary' })}
-              </Button>
-              <Button
-                variant="ghost"
-                className="min-h-11 py-3 px-4"
-                disabled={isPending}
-                onPress={() => void handleSkip(item)}
-                accessibilityLabel={t('plannedMeals.skipNamed', {
-                  defaultValue: 'Skip {{name}} for this day',
-                  name: item.name,
-                })}
-              >
-                {t('plannedMeals.skip', { defaultValue: 'Skip' })}
-              </Button>
-            </View>
+            {group.items.map((item) => {
+              const images = usableFoodImages(item.images);
+              const image = images[0] ?? null;
+              return (
+                <View
+                  key={`${item.template_id}-${item.item_key}`}
+                  className="rounded-xl border-2 border-dashed border-border-strong p-4 gap-3"
+                >
+                  <View className="flex-row items-center gap-3">
+                    {image ? (
+                      <View style={{ opacity: 0.85 }}>
+                        <FoodThumbnail
+                          image={image}
+                          getImageSource={getImageSource}
+                          size={56}
+                          showFallback={false}
+                          onPress={() => openLightbox(images, 0, item.name)}
+                        />
+                      </View>
+                    ) : null}
+                    <View className="gap-1 flex-1">
+                      <Text className="text-base font-semibold text-text-primary">
+                        {item.name}
+                        <Text className="text-sm font-normal text-text-secondary">
+                          {`  ${formatQuantity(item.quantity, item.unit)}`}
+                          {typeof item.calories === 'number'
+                            ? ` · ${Math.round(item.calories)} ${t(
+                                'nutrition.caloriesShort',
+                                { defaultValue: 'kcal' }
+                              )}`
+                            : ''}
+                        </Text>
+                      </Text>
+                      {item.foods.length > 0 && (
+                        <Text className="text-sm text-text-secondary">
+                          {item.foods
+                            .map(
+                              (food) =>
+                                `${food.name} ${formatQuantity(food.quantity, food.unit)}`
+                            )
+                            .join(' · ')}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <View className="flex-row gap-2">
+                    <Button
+                      variant="primary"
+                      className="flex-1 py-3"
+                      disabled={isPending}
+                      onPress={() => void handleAdd(item)}
+                    >
+                      {t('plannedMeals.addToDiary', {
+                        defaultValue: 'Add to diary',
+                      })}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="min-h-11 py-3 px-4"
+                      disabled={isPending}
+                      onPress={() => void handleSkip(item)}
+                      accessibilityLabel={t('plannedMeals.skipNamed', {
+                        defaultValue: 'Skip {{name}} for this day',
+                        name: item.name,
+                      })}
+                    >
+                      {t('plannedMeals.skip', { defaultValue: 'Skip' })}
+                    </Button>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         );
       })}

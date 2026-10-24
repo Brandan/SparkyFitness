@@ -3,7 +3,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import { hasSupplementNutrition } from '@workspace/shared';
+import { hasSupplementNutrition, sumPlannedNutrition } from '@workspace/shared';
 import React, {
   useCallback,
   useEffect,
@@ -66,6 +66,7 @@ import {
   useWidgetSync,
 } from '../hooks';
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
+import { usePlannedMeals } from '../hooks/usePlannedMeals';
 import {
   moodEntriesRootQueryKey,
   trainingLoadRootQueryKey,
@@ -207,6 +208,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   ]);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { plannedMeals } = usePlannedMeals(selectedDate, {
+    enabled: isConnected,
+  });
+  const plannedCalories = useMemo(
+    () => sumPlannedNutrition(plannedMeals).calories,
+    [plannedMeals]
+  );
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date: selectedDate,
     enabled: isConnected,
@@ -576,6 +584,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   calorieGoal={goal}
                   remainingCalories={remaining}
                   progressPercent={progress / 100}
+                  plannedCalories={plannedCalories}
                 />
               ) : null;
             case 'askSparky':

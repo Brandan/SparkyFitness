@@ -15,6 +15,8 @@ import { useIsFocused } from '@react-navigation/native';
 
 interface ProgressRingProps {
   progress: number; // 0-1 value (capped at 1 for display)
+  /** Extra 0-1 drawn after `progress` (planned calories). Capped so the two never pass a full circle. */
+  extra?: number;
   size: number;
   strokeWidth: number;
   color: string;
@@ -23,6 +25,7 @@ interface ProgressRingProps {
 
 const ProgressRing: React.FC<ProgressRingProps> = ({
   progress,
+  extra = 0,
   size,
   strokeWidth,
   color,
@@ -31,8 +34,13 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
   const radius = (size - strokeWidth) / 2;
   const center = size / 2;
   const progressCapped = Math.min(Math.max(progress, 0), 1);
+  const extraCapped = Math.min(
+    Math.max(extra, 0),
+    Math.max(0, 1 - progressCapped)
+  );
 
   const animatedProgress = useSharedValue(0);
+  const animatedExtra = useSharedValue(0);
 
   // Replay the 0 -> current entrance animation each time the screen regains
   // focus, then smoothly follow later progress changes (e.g. a per-second timer
@@ -54,12 +62,17 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
     wasFocused.current = true;
     if (justFocused) {
       animatedProgress.value = 0;
+      animatedExtra.value = 0;
     }
     animatedProgress.value = withTiming(progressCapped, {
       duration: 500,
       easing: Easing.out(Easing.cubic),
     });
-  }, [isFocused, progressCapped, animatedProgress]);
+    animatedExtra.value = withTiming(extraCapped, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isFocused, progressCapped, extraCapped, animatedProgress, animatedExtra]);
 
   const oval = useMemo(
     () => ({
@@ -80,6 +93,16 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
     return builder.build();
   });
 
+  const extraPath = useDerivedValue(() => {
+    const builder = Skia.PathBuilder.Make();
+    const start = animatedProgress.value * 360;
+    const sweep = Math.min(animatedExtra.value * 360, Math.max(0, 360 - start));
+    if (sweep > 0) {
+      builder.addArc(oval, -90 + start, sweep);
+    }
+    return builder.build();
+  });
+
   return (
     <Canvas style={{ width: size, height: size }}>
       <SkiaCircle
@@ -96,6 +119,14 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
         strokeWidth={strokeWidth}
         color={color}
         strokeCap="round"
+      />
+      <Path
+        path={extraPath}
+        style="stroke"
+        strokeWidth={strokeWidth}
+        color={color}
+        opacity={0.35}
+        strokeCap="butt"
       />
     </Canvas>
   );

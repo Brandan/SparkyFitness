@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { usePlannedMeals } from '@/hooks/Foods/usePlannedMeals';
+import { sumPlannedNutrition } from '@workspace/shared';
 import {
   Target,
   Zap,
@@ -107,6 +108,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     isLoading: loadingSummary,
     isError: summaryError,
   } = useDailySummary(selectedDate);
+  const { data: plannedMeals } = usePlannedMeals(selectedDate);
 
   const isLoading =
     loadingExercise ||
@@ -237,6 +239,21 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             100
         )
       : calorieProgress;
+  const displayPlanned = Math.round(
+    convertEnergy(
+      sumPlannedNutrition(plannedMeals ?? []).calories,
+      'kcal',
+      energyUnit
+    )
+  );
+  const eatenBar = Math.min(Math.max(effectiveProgress, 0), 100);
+  const plannedBar =
+    effectiveTargetGoal > 0 && displayPlanned > 0
+      ? Math.min(
+          (displayPlanned / effectiveTargetGoal) * 100,
+          Math.max(0, 100 - eatenBar)
+        )
+      : 0;
 
   const displayWeight = weightData?.weight || 70;
   const displayHeight = heightData?.height || 170;
@@ -360,6 +377,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             remaining={effectiveRemaining}
             progress={effectiveProgress}
             unit={energyUnit}
+            planned={displayPlanned}
+            goal={effectiveTargetGoal}
             targetBand={
               goalTypePreferences?.['calories']?.goalType === 'target' &&
               goalTypePreferences['calories'].targetMin !== undefined &&
@@ -806,7 +825,19 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               </span>
               <span>{Math.round(effectiveProgress)}%</span>
             </div>
-            <Progress value={effectiveProgress} className="h-2" />
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
+              <div
+                className="absolute inset-y-0 left-0 bg-primary"
+                style={{ width: `${eatenBar}%` }}
+              />
+              {plannedBar > 0 && (
+                <div
+                  data-testid="planned-energy-bar"
+                  className="absolute inset-y-0 bg-primary/40"
+                  style={{ left: `${eatenBar}%`, width: `${plannedBar}%` }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Calorie Math Breakdown Dropdown */}
