@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-23_
+_Last updated: 2026-10-16_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -57,8 +57,6 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 ## Source Map
 
 - Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
-
-- Planned meals (meal plans that show items instead of writing entries): `meal_plan_templates.auto_log` (default true = the plan writes diary entries ahead of time, false = "show as planned") and `meal_plan_occurrences` (one row per template, day and `item_key` once an item was added or skipped, so it never returns, even if the added entries are deleted). Routes `GET /meal-plan-templates/planned?date=`, `POST .../planned/add`, `.../skip` and `.../restore` (undo) in `routes/mealPlanTemplateRoutes.ts` (`diary` permission, bodies from `../shared/src/schemas/api/PlannedMeals.api.zod.ts`); logic in `services/plannedMealService.ts` over `models/plannedMealRepository.ts`. Planned items are computed from the active plans for the weekday and are never `food_entries`, so no total can include them. "Add" reuses `createFoodEntriesFromTemplate` in `models/foodTemplate.ts` with `{ onlyDay, itemKey }` (works for past days, skips the bulk duplicate check) and returns the created ids for undo. `item_key` (`utils/plannedItemKey.ts`) is built from meal type plus meal or food and variant, not the assignment row id, because editing a plan recreates its assignment rows. Each planned item carries `calories` (what Add writes: a food's variant scaled by quantity over serving size; a meal's foods scaled by quantity over serving size times total servings; null when a variant is missing) and `images` (the food's or meal's own, else the first food in the meal that has one). Switching a plan from auto-add to planned keeps today's entries and clears only the days after today. Editing or deleting a plan that never auto-logged leaves entries the person added alone; one that did still clears its entries from today onward.
 
 - `index.ts` - real dev entrypoint; loads env, secrets, and preflight checks before booting the app
 - `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, startup, graceful shutdown
