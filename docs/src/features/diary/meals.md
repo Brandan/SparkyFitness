@@ -45,3 +45,16 @@ Meal Management:
 
 Adding a meal:
 ![image](https://github.com/user-attachments/assets/827cc881-5472-461f-94e4-3f86023b58c1)
+
+## Meal Plans
+
+A meal plan lists foods and meals for each day of the week, between a start date and an optional end date. To repeat something every day, put it on all seven days. You can keep several plans active at once, for example one that always applies and another for a few weeks.
+
+Each plan has a choice for **When a day comes up**:
+
+* **Show it as planned, and I add it** (the default for new plans). The plan's items appear in the matching meal of the Diary, marked **Planned**. They are not part of that day's totals until you tap **Add to diary**, which logs the meal and every food in it. A planned item shows its picture when the food or meal has one (a meal without one shows the first picture of the foods inside it), and **Add all** logs every planned item of a meal in one tap. Planned items stay on past days, so you can still add something you forgot to log. Use the **X** to remove an item from just that day; it does not come back, even if you delete the entries you added. **Undo** appears after adding or removing.
+* **Add it to my diary automatically.** The plan writes its entries into your Diary ahead of time, as earlier versions did. Plans you made before this option existed keep working this way.
+
+To fill the week quickly, plan one day, then use **Copy to…** (web) or **Copy to other days…** (mobile) to copy it onto the other days. Days that are still empty are ticked for you, so for a new plan it is one tap; a day that already has items says it will be replaced and stays unticked unless you pick it. **Undo** appears after copying.
+
+Switching a plan from automatic to planned keeps today's entries exactly as they are and turns only the days after today into planned items. Changing a plan changes what is shown as planned straight away. Entries you already added from a plan are your own diary entries and are kept when you edit or delete the plan.

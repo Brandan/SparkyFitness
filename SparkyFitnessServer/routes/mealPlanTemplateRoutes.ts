@@ -1,6 +1,16 @@
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import mealPlanTemplateService from '../services/mealPlanTemplateService.js';
+import plannedMealService, {
+  PlannedMealNotFoundError,
+} from '../services/plannedMealService.js';
+import { ValidationError } from '../utils/errors.js';
+import {
+  plannedMealActionBodySchema,
+  plannedMealRestoreBodySchema,
+  plannedMealsQuerySchema,
+} from '@workspace/shared';
 const router = express.Router();
 // --- Meal Plan Template Routes ---
 /**
@@ -195,5 +205,163 @@ router.post('/:id/duplicate', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
+// --- Planned items ("show as planned" plans) ---
+
+function sendPlannedMealError(
+  error: unknown,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  if (error instanceof PlannedMealNotFoundError) {
+    res.status(404).json({ error: error.message });
+  } else if (error instanceof ValidationError) {
+    res.status(400).json({ error: error.message });
+  } else {
+    next(error);
+  }
+}
+
+/**
+ * @swagger
+ * /meal-plan-templates/planned:
+ *   get:
+ *     summary: Planned items for a day
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Items of active meal plans set to "show as planned" that fall on the
+ *       given day and have not been added to the diary or skipped. They are
+ *       not diary entries and are in no totals.
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: The planned items for the day.
+ *       400:
+ *         description: Invalid date.
+ */
+router.get(
+  '/planned',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = plannedMealsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      res
+        .status(200)
+        .json(
+          await plannedMealService.getPlannedMeals(req.userId, parsed.data.date)
+        );
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /meal-plan-templates/planned/add:
+ *   post:
+ *     summary: Add a planned item to the diary
+ *     tags: [Nutrition & Meals]
+ *     description: Writes the diary entries for one planned item on one day and returns their ids (used to undo).
+ *     responses:
+ *       201:
+ *         description: The entries that were created.
+ *       404:
+ *         description: The item is no longer planned for that day.
+ */
+router.post(
+  '/planned/add',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = plannedMealActionBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      res
+        .status(201)
+        .json(await plannedMealService.addPlannedMeal(req.userId, parsed.data));
+    } catch (error) {
+      sendPlannedMealError(error, res, next);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /meal-plan-templates/planned/skip:
+ *   post:
+ *     summary: Remove a planned item from one day
+ *     tags: [Nutrition & Meals]
+ *     description: The item does not come back for that day unless restored.
+ *     responses:
+ *       204:
+ *         description: Skipped.
+ *       404:
+ *         description: The item is no longer planned for that day.
+ */
+router.post(
+  '/planned/skip',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = plannedMealActionBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      await plannedMealService.skipPlannedMeal(req.userId, parsed.data);
+      res.status(204).send();
+    } catch (error) {
+      sendPlannedMealError(error, res, next);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /meal-plan-templates/planned/restore:
+ *   post:
+ *     summary: Undo adding or skipping a planned item
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Removes the entries an add created (by id) and makes the item planned
+ *       again for that day.
+ *     responses:
+ *       204:
+ *         description: Restored.
+ */
+router.post(
+  '/planned/restore',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = plannedMealRestoreBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      await plannedMealService.restorePlannedMeal(req.userId, parsed.data);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default router;

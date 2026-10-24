@@ -11,6 +11,7 @@ vi.mock('../models/mealPlanTemplateRepository.js', () => ({
     updateMealPlanTemplate: vi.fn(),
     deleteMealPlanTemplate: vi.fn(),
     deactivateAllMealPlanTemplates: vi.fn(),
+    getMealPlanTemplateAutoLog: vi.fn().mockResolvedValue(true),
   },
 }));
 
@@ -37,6 +38,7 @@ describe('mealPlanTemplateService', () => {
       id: 'plan-1',
       plan_name: 'Base Plan',
       is_active: true,
+      auto_log: true,
     };
     vi.mocked(
       mealPlanTemplateRepository.createMealPlanTemplate
@@ -66,6 +68,7 @@ describe('mealPlanTemplateService', () => {
       id: 'plan-2',
       plan_name: 'Cutting Plan',
       is_active: true,
+      auto_log: true,
     };
     vi.mocked(
       mealPlanTemplateRepository.updateMealPlanTemplate
@@ -94,6 +97,92 @@ describe('mealPlanTemplateService', () => {
       userId,
       '2026-07-25'
     );
+  });
+
+  it('createMealPlanTemplate should not write diary entries for a show-as-planned plan', async () => {
+    vi.mocked(
+      mealPlanTemplateRepository.createMealPlanTemplate
+    ).mockResolvedValue({
+      id: 'plan-3',
+      plan_name: 'Daily breakfast',
+      is_active: true,
+      auto_log: false,
+    });
+
+    await mealPlanTemplateService.createMealPlanTemplate(userId, {
+      plan_name: 'Daily breakfast',
+      is_active: true,
+      auto_log: false,
+    });
+
+    expect(foodRepository.createFoodEntriesFromTemplate).not.toHaveBeenCalled();
+  });
+
+  it('updateMealPlanTemplate should keep entries the person added from a show-as-planned plan', async () => {
+    vi.mocked(
+      mealPlanTemplateRepository.getMealPlanTemplateAutoLog
+    ).mockResolvedValueOnce(false);
+    vi.mocked(
+      mealPlanTemplateRepository.updateMealPlanTemplate
+    ).mockResolvedValue({
+      id: 'plan-3',
+      plan_name: 'Daily breakfast',
+      is_active: true,
+      auto_log: false,
+    });
+
+    await mealPlanTemplateService.updateMealPlanTemplate('plan-3', userId, {
+      plan_name: 'Daily breakfast',
+      is_active: true,
+      auto_log: false,
+    });
+
+    expect(foodRepository.deleteFoodEntriesByTemplateId).not.toHaveBeenCalled();
+    expect(foodRepository.createFoodEntriesFromTemplate).not.toHaveBeenCalled();
+  });
+
+  it('deleteMealPlanTemplate should keep entries the person added from a show-as-planned plan', async () => {
+    vi.mocked(
+      mealPlanTemplateRepository.getMealPlanTemplateAutoLog
+    ).mockResolvedValueOnce(false);
+    vi.mocked(
+      mealPlanTemplateRepository.deleteMealPlanTemplate
+    ).mockResolvedValue({ id: 'plan-3' });
+
+    await mealPlanTemplateService.deleteMealPlanTemplate('plan-3', userId);
+
+    expect(foodRepository.deleteFoodEntriesByTemplateId).not.toHaveBeenCalled();
+    expect(
+      mealPlanTemplateRepository.deleteMealPlanTemplate
+    ).toHaveBeenCalledWith('plan-3', userId);
+  });
+
+  it("updateMealPlanTemplate keeps today's entries when an automatic plan becomes show-as-planned", async () => {
+    vi.mocked(
+      mealPlanTemplateRepository.getMealPlanTemplateAutoLog
+    ).mockResolvedValueOnce(true);
+    vi.mocked(
+      mealPlanTemplateRepository.updateMealPlanTemplate
+    ).mockResolvedValue({
+      id: 'plan-4',
+      plan_name: 'Daily breakfast',
+      is_active: true,
+      auto_log: false,
+    });
+
+    await mealPlanTemplateService.updateMealPlanTemplate('plan-4', userId, {
+      plan_name: 'Daily breakfast',
+      is_active: true,
+      auto_log: false,
+    });
+
+    // The mocked "today" is 2026-07-25; only tomorrow onward is cleared.
+    expect(foodRepository.deleteFoodEntriesByTemplateId).toHaveBeenCalledWith(
+      'plan-4',
+      userId,
+      '2026-07-26'
+    );
+    expect(foodRepository.createFoodEntriesFromTemplate).not.toHaveBeenCalled();
   });
 
   it('duplicateMealPlanTemplate should clone original plan with (Copy) name and inactive state', async () => {
