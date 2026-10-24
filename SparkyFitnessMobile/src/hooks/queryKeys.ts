@@ -44,6 +44,11 @@ export const mealsQueryKey = ['meals'] as const;
 
 export const mealPlansQueryKey = ['mealPlans'] as const;
 
+/** Items of "show as planned" meal plans on one day; not diary entries. */
+export const plannedMealsQueryKey = (date: string) =>
+  ['plannedMeals', date] as const;
+export const plannedMealsRootQueryKey = ['plannedMeals'] as const;
+
 export const mealDetailQueryKey = (id: string) => ['mealDetail', id] as const;
 
 export const foodEntryMealDetailQueryKey = (id: string) =>

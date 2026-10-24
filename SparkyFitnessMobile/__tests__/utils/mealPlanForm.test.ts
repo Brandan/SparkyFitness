@@ -290,10 +290,44 @@ describe('mealPlanForm', () => {
       startDate: '2026-09-01',
       endDate: '',
       isActive: true,
+      autoLog: false,
       assignments: [assignment],
     });
 
     expect(payload.assignments[0]).not.toHaveProperty('nutrition');
     expect(payload.assignments[0]).not.toHaveProperty('quantityText');
+  });
+
+  test('starts a new plan as show-as-planned, and keeps older plans automatic', () => {
+    expect(createMealPlanDraft('2026-09-01').autoLog).toBe(false);
+
+    const base: MealPlanTemplate = {
+      id: 'plan-1',
+      user_id: 'user-1',
+      plan_name: 'Old plan',
+      description: null,
+      start_date: '2026-09-01',
+      end_date: null,
+      is_active: true,
+      assignments: [],
+    };
+    // A server that predates the option sends no value: it adds automatically.
+    expect(createMealPlanDraft('2026-09-01', base).autoLog).toBe(true);
+    expect(
+      createMealPlanDraft('2026-09-01', { ...base, auto_log: false }).autoLog
+    ).toBe(false);
+    expect(
+      createMealPlanDraft('2026-09-01', { ...base, auto_log: true }).autoLog
+    ).toBe(true);
+  });
+
+  test('sends the add-automatically choice in the save payload', () => {
+    const draft = createMealPlanDraft('2026-09-01');
+    expect(buildMealPlanPayload({ ...draft, autoLog: false }).auto_log).toBe(
+      false
+    );
+    expect(buildMealPlanPayload({ ...draft, autoLog: true }).auto_log).toBe(
+      true
+    );
   });
 });

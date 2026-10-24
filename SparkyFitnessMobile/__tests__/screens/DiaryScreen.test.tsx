@@ -143,6 +143,10 @@ jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
   }),
 }));
 
+jest.mock('../../src/hooks/usePlannedMeals', () => ({
+  usePlannedMeals: () => ({ plannedMeals: [] }),
+}));
+
 jest.mock('../../src/hooks/useActiveWorkoutPlan', () => ({
   useActiveWorkoutPlan: () => ({ plan: null, plans: [], isLoading: false }),
   useActiveWorkoutPlans: () => ({ plan: null, plans: [], isLoading: false }),

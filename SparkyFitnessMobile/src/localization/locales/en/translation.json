@@ -3533,7 +3533,7 @@
     "clearEndDate": "Clear end date",
     "endBeforeStart": "End date cannot be before the start date.",
     "activePlan": "Active plan",
-    "activePlanHint": "Active plans populate matching future diary days.",
+    "activePlanHint": "Active plans apply to their matching diary days.",
     "assignments": "Weekly assignments",
     "assignmentsHint": "Choose what amount of a reusable meal should appear on each day.",
     "addMeal": "Add meal",
@@ -3575,7 +3575,23 @@
       "thursday": "Thu",
       "friday": "Fri",
       "saturday": "Sat"
-    }
+    },
+    "autoLog": "Add to diary automatically",
+    "autoLogOnHint": "Each day is filled in for you ahead of time.",
+    "autoLogOffHint": "Items show as planned on each day, and you add them.",
+    "copyDay": "Copy to other days…",
+    "copyDayNamed": "Copy {{day}} to other days",
+    "copyDayTitle": "Copy {{day}} to",
+    "copyDayHint": "Everything planned for {{day}} is copied to the days you pick.",
+    "copyDaySelectAll": "Select all",
+    "copyDayClear": "Clear",
+    "copyDayReplaces_one": "Replaces {{count}} item",
+    "copyDayReplaces_other": "Replaces {{count}} items",
+    "copyDayConfirm_one": "Copy to {{count}} day",
+    "copyDayConfirm_other": "Copy to {{count}} days",
+    "dayCopied_one": "Copied {{day}} to {{count}} day",
+    "dayCopied_other": "Copied {{day}} to {{count}} days",
+    "tapToUndo": "Tap to undo"
   },
   "mealDetail": {
     "sharedPublicly": "Meal shared publicly",
@@ -8120,5 +8136,21 @@
       "lupin": "lupin",
       "sulphites": "sulphites"
     }
+  },
+  "plannedMeals": {
+    "title": "Planned",
+    "addToDiary": "Add to diary",
+    "remove": "Remove",
+    "removeNamed": "Remove {{name}} from this day",
+    "added": "Added {{name}} to {{meal}}",
+    "removed": "Removed {{name}} from this day",
+    "tapToUndo": "Tap to undo",
+    "undoError": "Could not undo that.",
+    "addError": "Could not add the planned meal to your diary.",
+    "removeError": "Could not remove the planned meal.",
+    "addAll_one": "Add {{count}} to diary",
+    "addAll_other": "Add all {{count}} to diary",
+    "addedAll_one": "Added {{count}} item to your diary",
+    "addedAll_other": "Added {{count}} items to your diary"
   }
 }
