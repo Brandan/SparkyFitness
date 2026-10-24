@@ -2841,7 +2841,9 @@
     "fallbackProjectionSource": "BMR + active calories fallback",
     "legacyProjectionSource": "Device projection",
     "collapse": "Collapse this section",
-    "expand": "Expand this section"
+    "expand": "Expand this section",
+    "plannedCalories": "+{{planned}} kcal planned ({{total}} total)",
+    "plannedAmount": "+{{value}} planned"
   },
   "dateRange": {
     "removeTitle": "Select a date range to remove",

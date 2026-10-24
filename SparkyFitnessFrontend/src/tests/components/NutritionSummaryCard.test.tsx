@@ -2,8 +2,13 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import NutritionSummaryCard from '@/pages/Diary/NutritionSummaryCard';
 import { DEFAULT_GOALS } from '@/constants/goals';
+import {
+  scalePlannedNutrition,
+  type PlannedNutrition,
+} from '@workspace/shared';
 
 let mockShowNetCarbs = false;
+let mockVisibleNutrients = ['carbs'];
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -18,7 +23,7 @@ jest.mock('@/contexts/PreferencesContext', () => ({
       {
         view_group: 'summary',
         platform: 'desktop',
-        visible_nutrients: ['carbs'],
+        visible_nutrients: mockVisibleNutrients,
       },
     ],
     showNetCarbs: mockShowNetCarbs,
@@ -48,7 +53,7 @@ jest.mock('@/hooks/Settings/useNutrientGoalPreferences', () => ({
   useNutrientGoalPreferences: () => ({ data: {} }),
 }));
 
-const renderSummary = () =>
+const renderSummary = (plannedTotals?: PlannedNutrition) =>
   render(
     <NutritionSummaryCard
       selectedDate="2026-05-15"
@@ -62,6 +67,7 @@ const renderSummary = () =>
       goals={{ ...DEFAULT_GOALS, carbs: 50 }}
       energyUnit="kcal"
       convertEnergy={(value) => value}
+      plannedTotals={plannedTotals}
     />
   );
 
@@ -84,5 +90,44 @@ describe('NutritionSummaryCard net carbs summary', () => {
     expect(screen.getByText('Net Carbs')).toBeInTheDocument();
     expect(screen.getByText('22.0g')).toBeInTheDocument();
     expect(screen.getByText('of 50.0g')).toBeInTheDocument();
+  });
+});
+
+describe('NutritionSummaryCard planned amounts', () => {
+  beforeEach(() => {
+    mockShowNetCarbs = false;
+    mockVisibleNutrients = ['carbs'];
+  });
+
+  it('shows the calorie total the planned meals would make', () => {
+    mockVisibleNutrients = ['calories'];
+    renderSummary(scalePlannedNutrition({ calories: 600 }, 1));
+
+    expect(screen.getByText('600kcal with planned')).toBeInTheDocument();
+  });
+
+  it('shows what the planned meals add, with a planned bar segment', () => {
+    renderSummary(scalePlannedNutrition({ carbs: 15 }, 1));
+
+    expect(screen.getByText('30.0g')).toBeInTheDocument();
+    expect(screen.getByText('+15.0g planned')).toHaveAttribute(
+      'title',
+      '45.0g with planned'
+    );
+    expect(screen.getByTestId('planned-bar')).toHaveStyle({ width: '30%' });
+  });
+
+  it('subtracts planned fiber when net carbs are shown', () => {
+    mockShowNetCarbs = true;
+    renderSummary(scalePlannedNutrition({ carbs: 15, dietary_fiber: 5 }, 1));
+
+    expect(screen.getByText('+10.0g planned')).toBeInTheDocument();
+  });
+
+  it('shows nothing extra when nothing is planned', () => {
+    renderSummary(scalePlannedNutrition({ protein: 20 }, 1));
+
+    expect(screen.queryByText(/planned/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('planned-bar')).not.toBeInTheDocument();
   });
 });

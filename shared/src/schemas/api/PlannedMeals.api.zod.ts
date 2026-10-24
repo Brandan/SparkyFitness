@@ -1,11 +1,22 @@
 import { z } from 'zod';
 import { isDayString } from '../../utils/timezone.ts';
+import {
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+  type FoodVariantNutrientField,
+} from '../../constants/foodVariantNutrients.ts';
 
 const dayString = z
   .string()
   .refine(isDayString, { message: 'Expected YYYY-MM-DD' });
 
 export const plannedMealsQuerySchema = z.object({ date: dayString }).strict();
+
+const plannedNutritionSchema = z.object({
+  ...(Object.fromEntries(
+    FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [field, z.number()])
+  ) as Record<FoodVariantNutrientField, z.ZodNumber>),
+  custom_nutrients: z.record(z.string(), z.number()),
+});
 
 export const plannedMealComponentSchema = z.object({
   name: z.string(),
@@ -32,6 +43,11 @@ export const plannedMealItemSchema = z.object({
   foods: z.array(plannedMealComponentSchema),
   /** Calories Add to diary will write, in kcal; null when the foods have none on record. */
   calories: z.number().nullable(),
+  /**
+   * Every nutrient Add to diary will write (calories in kcal, custom nutrients
+   * by name); null when a variant is missing. Absent from older servers.
+   */
+  nutrition: plannedNutritionSchema.nullable().optional(),
   /** The item's own pictures (a meal falls back to its first food that has one); may be empty. */
   images: z.array(z.string()),
 });

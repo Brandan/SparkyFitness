@@ -75,6 +75,7 @@ jest.mock('../../src/stores/diaryDateStore', () => ({
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useFocusEffect: () => undefined,
+  useIsFocused: () => true,
   useNavigation: () => mockNavigation,
 }));
 
