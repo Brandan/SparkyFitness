@@ -4,6 +4,7 @@ import FoodSummary from '../../src/components/FoodSummary';
 import type { DailyGoals } from '../../src/types/goals';
 import type { FoodEntry } from '../../src/types/foodEntries';
 import type { MealType } from '../../src/types/mealTypes';
+import type { PlannedMealItem } from '@workspace/shared';
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -17,6 +18,30 @@ jest.mock('../../src/components/SwipeableFoodRow', () => {
   const { View } = require('react-native');
   return { __esModule: true, default: () => <View testID="food-row" /> };
 });
+
+jest.mock('../../src/components/PlannedMealRows', () => {
+  const { Text } = require('react-native');
+  return {
+    __esModule: true,
+    plannedKcal: (items: { calories: number | null }[]) =>
+      items.some((i) => typeof i.calories === 'number')
+        ? items.reduce((sum, i) => sum + (i.calories ?? 0), 0)
+        : null,
+    default: ({ items }: { items: { name: string }[] }) => (
+      <Text testID="planned-rows">{items.map((i) => i.name).join(',')}</Text>
+    ),
+  };
+});
+
+const planned = (name: string, meal_type_id: string, calories = 100) =>
+  ({
+    template_id: 't1',
+    item_key: name,
+    meal_type_id,
+    meal_type_name: 'x',
+    name,
+    calories,
+  }) as unknown as PlannedMealItem;
 
 const mealTypes: MealType[] = [
   {
@@ -229,5 +254,71 @@ describe('FoodSummary', () => {
       />
     );
     expect(queryByText(/\/ 500/)).toBeNull();
+  });
+
+  describe('planned items', () => {
+    it("shows a meal's planned items inside that meal's card", () => {
+      const view = render(
+        <FoodSummary
+          foodEntries={[entry('1', 'sys-b', 'breakfast')]}
+          mealTypes={mealTypes}
+          planned={{
+            items: [planned('Cream', 'sys-b'), planned('Salad', 'sys-l')],
+            date: '2026-10-24',
+          }}
+        />
+      );
+
+      const rows = view.getAllByTestId('planned-rows');
+      expect(rows.map((r) => r.props.children)).toEqual(['Cream', 'Salad']);
+      // One per meal: Breakfast has Cream, Lunch has Salad.
+      expect(view.getAllByText('+100 planned')).toHaveLength(2);
+    });
+
+    it('gives a meal with only planned items its own card', () => {
+      const view = render(
+        <FoodSummary
+          foodEntries={[entry('1', 'sys-l', 'lunch')]}
+          mealTypes={mealTypes}
+          planned={{
+            items: [planned('Eggs', 'sys-b')],
+            date: '2026-10-24',
+          }}
+        />
+      );
+
+      const texts = view
+        .getAllByText(/Breakfast|Lunch/)
+        .map((n) => n.props.children);
+      expect(texts).toEqual(['Breakfast', 'Lunch']);
+    });
+
+    it('shows planned items instead of the empty state on a day with no entries', () => {
+      const view = render(
+        <FoodSummary
+          foodEntries={[]}
+          mealTypes={mealTypes}
+          planned={{ items: [planned('Eggs', 'sys-b')], date: '2026-10-24' }}
+        />
+      );
+
+      expect(view.queryByText('Tap to add food')).toBeNull();
+      expect(view.getByTestId('planned-rows')).toBeTruthy();
+    });
+
+    it('does not open a meal detail for a meal with nothing logged', () => {
+      const onPressMealType = jest.fn();
+      const view = render(
+        <FoodSummary
+          foodEntries={[]}
+          mealTypes={mealTypes}
+          planned={{ items: [planned('Eggs', 'sys-b')], date: '2026-10-24' }}
+          onPressMealType={onPressMealType}
+        />
+      );
+
+      fireEvent.press(view.getByText('Breakfast'));
+      expect(onPressMealType).not.toHaveBeenCalled();
+    });
   });
 });

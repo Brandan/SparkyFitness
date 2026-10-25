@@ -2,13 +2,16 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import type { PlannedMealItem } from '@workspace/shared';
 import type { FoodEntry } from '../types/foodEntries';
 import type { DailyGoals } from '../types/goals';
 import type { MealType } from '../types/mealTypes';
 import Icon from './Icon';
 import { MEAL_CONFIG } from '../constants/meals';
 import SwipeableFoodRow from './SwipeableFoodRow';
+import PlannedMealRows, { plannedKcal } from './PlannedMealRows';
 import {
+  addPlannedOnlyGroups,
   calculateEntryNutrition,
   calculateMealNutrition,
   getMealGroupLabel,
@@ -19,6 +22,8 @@ import {
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];
+  /** Planned items for the day; each shows inside its own meal's card. */
+  planned?: { items: PlannedMealItem[]; date: string };
   mealTypes: MealType[];
   goals?: DailyGoals;
   calorieGoal?: number;
@@ -34,6 +39,8 @@ interface FoodSummaryProps {
 
 interface MealSectionProps {
   group: MealGroup;
+  plannedItems: PlannedMealItem[];
+  plannedDate?: string;
   goals?: DailyGoals;
   calorieGoal?: number;
   onAdjustServing?: (entry: FoodEntry) => void;
@@ -65,6 +72,8 @@ const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => {
 
 const MealSection: React.FC<MealSectionProps> = ({
   group,
+  plannedItems,
+  plannedDate,
   goals,
   calorieGoal,
   onAdjustServing,
@@ -89,12 +98,23 @@ const MealSection: React.FC<MealSectionProps> = ({
     [group.isSystem, group.name, goals, calorieGoal]
   );
 
+  const plannedCalories = plannedKcal(plannedItems);
+  const canOpenDetail = !!onPressMealType && group.entries.length > 0;
+
   const headerContent = (
     <>
       <Icon name={icon} size={18} color={accentPrimary} />
       <Text className="text-base font-bold text-text-secondary flex-1">
         {label}
       </Text>
+      {plannedCalories !== null && plannedCalories > 0 && (
+        <Text className="text-xs text-text-muted font-semibold">
+          {t('foodSummary.plannedCalories', {
+            defaultValue: '+{{calories}} planned',
+            calories: plannedCalories,
+          })}
+        </Text>
+      )}
       {(totalCalories > 0 || targetCalories > 0) && (
         <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
           <Text className="text-xs text-accent-primary font-semibold">
@@ -104,7 +124,7 @@ const MealSection: React.FC<MealSectionProps> = ({
           </Text>
         </View>
       )}
-      {onPressMealType && (
+      {canOpenDetail && (
         <Icon name="chevron-forward" size={14} color={accentPrimary} />
       )}
     </>
@@ -112,10 +132,10 @@ const MealSection: React.FC<MealSectionProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
-      {onPressMealType ? (
+      {canOpenDetail ? (
         <Pressable
           onPress={() =>
-            onPressMealType(group.mealTypeId, group.name, group.entries)
+            onPressMealType?.(group.mealTypeId, group.name, group.entries)
           }
           className="flex-row gap-2 mb-3 items-center"
           accessibilityRole="button"
@@ -143,12 +163,16 @@ const MealSection: React.FC<MealSectionProps> = ({
           />
         );
       })}
+      {plannedDate ? (
+        <PlannedMealRows items={plannedItems} date={plannedDate} />
+      ) : null}
     </View>
   );
 };
 
 const FoodSummary: React.FC<FoodSummaryProps> = ({
   foodEntries,
+  planned,
   mealTypes,
   goals,
   calorieGoal,
@@ -157,13 +181,18 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
   onCopyEntry,
   onPressMealType,
 }) => {
-  if (foodEntries.length === 0) {
+  const plannedItems = planned?.items ?? [];
+  if (foodEntries.length === 0 && plannedItems.length === 0) {
     return <EmptyState onAddFood={onAddFood} />;
   }
 
-  // groupFoodEntriesByMealType only creates groups that have entries, so the
-  // previous visibleGroups re-filter was redundant.
-  const groups = groupFoodEntriesByMealType(foodEntries, mealTypes);
+  // groupFoodEntriesByMealType only creates groups that have entries; a meal
+  // with only planned items gets an empty group so its items have a card.
+  const groups = addPlannedOnlyGroups(
+    groupFoodEntriesByMealType(foodEntries, mealTypes),
+    mealTypes,
+    plannedItems
+  );
 
   if (groups.length === 0) {
     return <EmptyState onAddFood={onAddFood} />;
@@ -179,6 +208,10 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
               : `historical:${group.name.toLowerCase()}`
           }
           group={group}
+          plannedItems={plannedItems.filter(
+            (item) => item.meal_type_id === group.mealTypeId
+          )}
+          plannedDate={planned?.date}
           goals={goals}
           calorieGoal={calorieGoal}
           onAdjustServing={onAdjustServing}

@@ -4,6 +4,7 @@ import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
 import type { DailyGoals } from '../types/goals';
 import type { MealType } from '../types/mealTypes';
+import type { PlannedMealItem } from '@workspace/shared';
 import { calculateCustomNutrientTotals } from '../services/api/foodEntriesApi';
 
 export type MealTypeKey = string;
@@ -176,6 +177,33 @@ export function groupFoodEntriesByMealType(
   }
 
   return result.sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/**
+ * Adds an empty group for each meal that has planned items but nothing logged,
+ * so those items still have a meal card to sit in. Groups keep sort order.
+ */
+export function addPlannedOnlyGroups(
+  groups: MealGroup[],
+  mealTypes: MealType[],
+  plannedItems: PlannedMealItem[]
+): MealGroup[] {
+  const known = new Set(groups.map((group) => group.mealTypeId));
+  const added: MealGroup[] = [];
+  for (const item of plannedItems) {
+    if (known.has(item.meal_type_id)) continue;
+    known.add(item.meal_type_id);
+    const mealType = mealTypes.find((mt) => mt.id === item.meal_type_id);
+    added.push({
+      mealTypeId: item.meal_type_id,
+      name: mealType?.name ?? item.meal_type_name ?? '',
+      sortOrder: mealType?.sort_order ?? 999,
+      entries: [],
+      isSystem: mealType ? mealType.user_id === null : false,
+    });
+  }
+  if (added.length === 0) return groups;
+  return [...groups, ...added].sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 /**
