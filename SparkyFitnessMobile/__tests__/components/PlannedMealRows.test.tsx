@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
 import { emptyPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
-import PlannedMealsSection from '../../src/components/PlannedMealsSection';
+import PlannedMealRows from '../../src/components/PlannedMealRows';
 
 jest.mock('react-native-toast-message', () => ({
   __esModule: true,
@@ -58,61 +58,37 @@ const target = {
   item_key: item.item_key,
 };
 
-describe('PlannedMealsSection', () => {
+describe('PlannedMealRows', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders nothing when nothing is planned', () => {
-    const { toJSON } = render(
-      <PlannedMealsSection items={[]} date="2026-10-24" />
-    );
+    const { toJSON } = render(<PlannedMealRows items={[]} date="2026-10-24" />);
     expect(toJSON()).toBeNull();
   });
 
   it('shows the planned meal with the foods inside it', () => {
     const { getByText } = render(
-      <PlannedMealsSection items={[item]} date="2026-10-24" />
+      <PlannedMealRows items={[item]} date="2026-10-24" />
     );
 
     expect(getByText('Planned')).toBeTruthy();
-    expect(getByText('Breakfast')).toBeTruthy();
+    expect(getByText('Eggs and sausage')).toBeTruthy();
     expect(getByText('Eggs 2 large · Sausage 2 link')).toBeTruthy();
     expect(getByText('Add to diary')).toBeTruthy();
   });
 
   it('shows the calories Add to diary will write', () => {
     const { getByText } = render(
-      <PlannedMealsSection items={[item]} date="2026-10-24" />
+      <PlannedMealRows items={[item]} date="2026-10-24" />
     );
 
-    expect(getByText(/1 serving · 420 kcal/)).toBeTruthy();
-    expect(getByText('+420 kcal')).toBeTruthy();
-    expect(getByText('+420 kcal planned')).toBeTruthy();
+    expect(getByText(/1 serving/)).toBeTruthy();
+    expect(getByText('420 Cal')).toBeTruthy();
   });
 
-  it('groups planned foods by meal and totals each meal and the day', () => {
-    const lunch: PlannedMealItem = {
-      ...item,
-      item_key: 'meal:type:lunch:',
-      meal_type_id: '44444444-4444-4444-8444-444444444444',
-      meal_type_name: 'Lunch',
-      name: 'Salad',
-      calories: 180,
-      foods: [],
-    };
-    const { getByText } = render(
-      <PlannedMealsSection items={[item, lunch]} date="2026-10-24" />
-    );
-
-    expect(getByText('Breakfast')).toBeTruthy();
-    expect(getByText('Lunch')).toBeTruthy();
-    expect(getByText('+420 kcal')).toBeTruthy();
-    expect(getByText('+180 kcal')).toBeTruthy();
-    expect(getByText('+600 kcal planned')).toBeTruthy();
-  });
-
-  it('shows protein, carbs, and fat, and subtotals the meal and the day', () => {
+  it('shows protein, carbs, and fat', () => {
     const nutrition = {
       ...emptyPlannedNutrition(),
       calories: 86,
@@ -134,8 +110,8 @@ describe('PlannedMealsSection', () => {
         fat: 9.9,
       },
     };
-    const { getByText, getAllByText } = render(
-      <PlannedMealsSection
+    const { getByText } = render(
+      <PlannedMealRows
         items={[
           { ...item, name: 'MCT oil', calories: 86, foods: [], nutrition },
           second,
@@ -147,22 +123,19 @@ describe('PlannedMealsSection', () => {
     expect(getByText('P: 1.1g')).toBeTruthy();
     expect(getByText('C: 4.3g')).toBeTruthy();
     expect(getByText('F: 7.5g')).toBeTruthy();
-    expect(getByText(/Planned:/)).toBeTruthy();
-    // Once under the day, once under the meal.
-    expect(getAllByText('P: 3.1g')).toHaveLength(2);
-    expect(getAllByText('C: 6.3g')).toHaveLength(2);
-    expect(getAllByText('F: 17.4g')).toHaveLength(2);
+    expect(getByText('P: 2.0g')).toBeTruthy();
+    expect(getByText('F: 9.9g')).toBeTruthy();
   });
 
   it('leaves calories out when they are not known', () => {
     const { queryByText } = render(
-      <PlannedMealsSection
+      <PlannedMealRows
         items={[{ ...item, calories: null }]}
         date="2026-10-24"
       />
     );
 
-    expect(queryByText(/kcal/)).toBeNull();
+    expect(queryByText(/Cal$/)).toBeNull();
   });
 
   it('adds the item and offers undo with the created ids', async () => {
@@ -172,7 +145,7 @@ describe('PlannedMealsSection', () => {
     });
     mockRestore.mockResolvedValue(undefined);
     const { getByText } = render(
-      <PlannedMealsSection items={[item]} date="2026-10-24" />
+      <PlannedMealRows items={[item]} date="2026-10-24" />
     );
 
     fireEvent.press(getByText('Add to diary'));
@@ -195,7 +168,7 @@ describe('PlannedMealsSection', () => {
   it('skips the item for this day without adding anything', async () => {
     mockSkip.mockResolvedValue(undefined);
     const { getByText } = render(
-      <PlannedMealsSection items={[item]} date="2026-10-24" />
+      <PlannedMealRows items={[item]} date="2026-10-24" />
     );
 
     fireEvent.press(getByText('Skip'));
@@ -207,7 +180,7 @@ describe('PlannedMealsSection', () => {
   it('says so when adding fails, and does not offer undo', async () => {
     mockAdd.mockRejectedValue(new Error('offline'));
     const { getByText } = render(
-      <PlannedMealsSection items={[item]} date="2026-10-24" />
+      <PlannedMealRows items={[item]} date="2026-10-24" />
     );
 
     fireEvent.press(getByText('Add to diary'));
@@ -220,7 +193,7 @@ describe('PlannedMealsSection', () => {
 
   it('shows the picture of a planned item that has one', () => {
     const { getByTestId } = render(
-      <PlannedMealsSection
+      <PlannedMealRows
         items={[{ ...item, images: ['/uploads/foods/eggs.jpg'] }]}
         date="2026-10-24"
       />
@@ -231,7 +204,7 @@ describe('PlannedMealsSection', () => {
 
   it('shows no picture slot when the item has none', () => {
     const { queryByTestId } = render(
-      <PlannedMealsSection items={[item]} date="2026-10-24" />
+      <PlannedMealRows items={[item]} date="2026-10-24" />
     );
 
     expect(queryByTestId('food-thumbnail')).toBeNull();
@@ -250,7 +223,7 @@ describe('PlannedMealsSection', () => {
     mockRestore.mockResolvedValue(undefined);
     const second = { ...item, item_key: 'meal:type:other:', name: 'Toast' };
     const { getByText } = render(
-      <PlannedMealsSection items={[item, second]} date="2026-10-24" />
+      <PlannedMealRows items={[item, second]} date="2026-10-24" />
     );
 
     fireEvent.press(getByText('Add all 2 to diary'));
@@ -278,7 +251,7 @@ describe('PlannedMealsSection', () => {
       .mockRejectedValueOnce(new Error('offline'));
     const second = { ...item, item_key: 'meal:type:other:', name: 'Toast' };
     const { getByText } = render(
-      <PlannedMealsSection items={[item, second]} date="2026-10-24" />
+      <PlannedMealRows items={[item, second]} date="2026-10-24" />
     );
 
     fireEvent.press(getByText('Add all 2 to diary'));
@@ -292,7 +265,7 @@ describe('PlannedMealsSection', () => {
 
   it('does not offer Add all for a single item', () => {
     const { queryByText } = render(
-      <PlannedMealsSection items={[item]} date="2026-10-24" />
+      <PlannedMealRows items={[item]} date="2026-10-24" />
     );
 
     expect(queryByText(/Add all/)).toBeNull();
@@ -315,17 +288,17 @@ describe('PlannedMealsSection', () => {
 
     it('is labelled one-off and can be changed', () => {
       const { getByText, getByLabelText } = render(
-        <PlannedMealsSection items={[oneOff]} date="2026-10-24" />
+        <PlannedMealRows items={[oneOff]} date="2026-10-24" />
       );
-      expect(getByText('One-off')).toBeTruthy();
+      expect(getByText('Planned · One-off')).toBeTruthy();
       expect(getByLabelText('Change amount of Birthday cake')).toBeTruthy();
     });
 
     it('offers no label or Change for a plan item', () => {
       const { queryByText } = render(
-        <PlannedMealsSection items={[item]} date="2026-10-24" />
+        <PlannedMealRows items={[item]} date="2026-10-24" />
       );
-      expect(queryByText('One-off')).toBeNull();
+      expect(queryByText(/One-off/)).toBeNull();
       expect(queryByText('Change')).toBeNull();
     });
 
@@ -335,7 +308,7 @@ describe('PlannedMealsSection', () => {
         food_entry_meal_ids: [],
       });
       const { getByText } = render(
-        <PlannedMealsSection items={[oneOff]} date="2026-10-24" />
+        <PlannedMealRows items={[oneOff]} date="2026-10-24" />
       );
       fireEvent.press(getByText('Add to diary'));
       await waitFor(() =>
@@ -350,7 +323,7 @@ describe('PlannedMealsSection', () => {
     it('saves a new amount', async () => {
       mockUpdate.mockResolvedValue({ ...oneOff, quantity: 2 });
       const { getByLabelText, getByText } = render(
-        <PlannedMealsSection items={[oneOff]} date="2026-10-24" />
+        <PlannedMealRows items={[oneOff]} date="2026-10-24" />
       );
       fireEvent.press(getByLabelText('Change amount of Birthday cake'));
       fireEvent.changeText(
@@ -368,7 +341,7 @@ describe('PlannedMealsSection', () => {
 
     it('will not save an amount of zero', () => {
       const { getByLabelText, getByText } = render(
-        <PlannedMealsSection items={[oneOff]} date="2026-10-24" />
+        <PlannedMealRows items={[oneOff]} date="2026-10-24" />
       );
       fireEvent.press(getByLabelText('Change amount of Birthday cake'));
       fireEvent.changeText(

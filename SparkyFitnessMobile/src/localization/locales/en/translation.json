@@ -2330,7 +2330,8 @@
     "tapToAddFood": "Tap to add food",
     "caloriesShort": "kcal",
     "caloriesUnit": "Cal",
-    "nutritionBreakdown": "{{label}} nutrition breakdown"
+    "nutritionBreakdown": "{{label}} nutrition breakdown",
+    "plannedCalories": "+{{calories}} planned"
   },
   "exerciseSummary": {
     "tapToAdd": "Tap to add exercise",

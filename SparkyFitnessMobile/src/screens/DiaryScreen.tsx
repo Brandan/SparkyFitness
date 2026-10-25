@@ -37,7 +37,6 @@ import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import ExerciseSummary from '../components/ExerciseSummary';
 import FoodSummary from '../components/FoodSummary';
-import PlannedMealsSection from '../components/PlannedMealsSection';
 import { usePlannedMeals } from '../hooks/usePlannedMeals';
 import MeasurementsSummary from '../components/MeasurementsSummary';
 import CopyFoodEntrySheet, {
@@ -679,6 +678,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             />
             <FoodSummary
               foodEntries={summary.foodEntries}
+              planned={{ items: plannedMeals, date: selectedDate }}
               mealTypes={mealTypes}
               goals={summary.goals}
               calorieGoal={summary.calorieGoal}
@@ -691,7 +691,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               onCopyEntry={(entry) => copyEntrySheetRef.current?.present(entry)}
               onPressMealType={openMealTypeDetail}
             />
-            <PlannedMealsSection items={plannedMeals} date={selectedDate} />
             <ExerciseSummary
               exerciseEntries={summary.exerciseEntries}
               entryDate={selectedDate}
