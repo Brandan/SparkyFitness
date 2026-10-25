@@ -52,6 +52,10 @@ import {
 import { mealEntryKey, useMealReorder } from '@/hooks/Diary/useMealReorder';
 import SortableRow from '@/components/SortableRow';
 import MealRetimeDialog from './MealRetimeDialog';
+import {
+  MOBILE_ENTRY_NUTRIENT_LIMIT,
+  MOBILE_NUTRIENT_LABEL_OVERRIDES,
+} from './mobileEntryNutrients';
 interface MealTotals {
   calories: number;
   protein: number;
@@ -85,16 +89,6 @@ import AllergenBadges from '@/components/AllergenBadges';
 import { diaryEntryImages, usableFoodImages } from '@/utils/foodImages';
 import { useImageLightbox } from '@/hooks/Foods/useImageLightbox';
 import ImageLightbox from '@/components/ImageLightbox';
-
-const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
-
-const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
-  string,
-  { label: string; defaultLabel: string }
-> = {
-  carbs: { label: 'nutrition.carbs', defaultLabel: 'Carbs' },
-  dietary_fiber: { label: 'nutrition.fiber', defaultLabel: 'Fiber' },
-};
 
 interface MealCardProps {
   meal: {
@@ -313,6 +307,18 @@ const MealCard = ({
     (item) => item.nutrition != null
   );
 
+  const plannedListProps = {
+    items: plannedItems,
+    selectedDate,
+    mealName: meal.name,
+    energyUnit,
+    convertEnergy,
+    onOpenImages: openLightbox,
+    nutrients: visibleNutrientsForGrid,
+    customNutrients,
+    isMobile,
+  };
+
   return (
     <>
       <Card>
@@ -483,9 +489,13 @@ const MealCard = ({
         </CardHeader>
         <CardContent>
           {meal.entries.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {t('foodDiary.noFoodsAddedYet', 'No foods added yet')}
-            </div>
+            plannedItems.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {t('foodDiary.noFoodsAddedYet', 'No foods added yet')}
+              </div>
+            ) : (
+              <PlannedMealList {...plannedListProps} />
+            )
           ) : (
             <>
               <DndContext
@@ -1036,6 +1046,10 @@ const MealCard = ({
                 </SortableContext>
               </DndContext>
 
+              {plannedItems.length > 0 && (
+                <PlannedMealList {...plannedListProps} className="mt-3" />
+              )}
+
               <div className="space-y-3 mt-3">
                 <Separator />
 
@@ -1098,14 +1112,6 @@ const MealCard = ({
               </div>
             </>
           )}
-          <PlannedMealList
-            items={plannedItems}
-            selectedDate={selectedDate}
-            mealName={meal.name}
-            energyUnit={energyUnit}
-            convertEnergy={convertEnergy}
-            onOpenImages={openLightbox}
-          />
         </CardContent>
       </Card>
 

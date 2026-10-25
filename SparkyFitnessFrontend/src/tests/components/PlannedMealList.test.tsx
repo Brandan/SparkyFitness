@@ -103,7 +103,8 @@ describe('PlannedMealList', () => {
   it('shows the calories Add to diary will write', () => {
     renderList();
 
-    expect(screen.getByText(/1 serving · 420 kcal/)).toBeInTheDocument();
+    expect(screen.getByText('1 serving')).toBeInTheDocument();
+    expect(screen.getByText('420 kcal')).toBeInTheDocument();
   });
 
   it('shows protein, carbs, and fat, and subtotals them', () => {
@@ -133,9 +134,11 @@ describe('PlannedMealList', () => {
       second,
     ]);
 
-    expect(screen.getByText('P: 1.1g').className).toContain('text-blue-500');
-    expect(screen.getByText('C: 4.3g').className).toContain('text-green-500');
-    expect(screen.getByText('F: 7.5g').className).toContain('text-yellow-500');
+    // Each row carries the same nutrient cells as a diary entry.
+    expect(screen.getByText('1.1 g')).toBeInTheDocument();
+    expect(screen.getByText('4.3 g')).toBeInTheDocument();
+    expect(screen.getByText('7.5 g')).toBeInTheDocument();
+    expect(screen.getAllByText('Protein')).toHaveLength(2);
     expect(screen.getByText('Planned:')).toBeInTheDocument();
     expect(screen.getByText(/185 kcal/)).toBeInTheDocument();
     expect(screen.getByText('P: 3.1g')).toBeInTheDocument();
