@@ -18,7 +18,9 @@ describe('MealDistributionEditor', () => {
         totalCalories={2000}
       />
     );
-    expect(getByText('Breakfast (1000 kcal)')).toBeTruthy();
+    expect(getByTestId('goal-input-meal-kcal-breakfast').props.value).toBe(
+      '1000'
+    );
     expect(getByTestId('meal-total').props.children).toContain('must be 100');
   });
 
@@ -57,5 +59,25 @@ describe('MealDistributionEditor', () => {
       lunch: 40,
       dinner: 0,
     });
+  });
+
+  it('sets a meal from calories and keeps what was typed', () => {
+    const onChange = jest.fn();
+    const { getByTestId } = render(
+      <MealDistributionEditor
+        meals={meals}
+        values={{ breakfast: 50, lunch: 0, dinner: 0 }}
+        onChange={onChange}
+        totalCalories={2890}
+      />
+    );
+    fireEvent(getByTestId('goal-input-meal-kcal-lunch'), 'focus');
+    fireEvent.changeText(getByTestId('goal-input-meal-kcal-lunch'), '700');
+    expect(onChange).toHaveBeenCalledWith({
+      breakfast: 50,
+      lunch: 24.2,
+      dinner: 0,
+    });
+    expect(getByTestId('goal-input-meal-kcal-lunch').props.value).toBe('700');
   });
 });

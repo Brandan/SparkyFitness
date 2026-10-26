@@ -7,8 +7,11 @@ import Icon from './Icon';
 import PercentSlider from './PercentSlider';
 import Button from './ui/Button';
 import {
+  caloriesFromPercent,
   clampPercent,
   distributeRemaining,
+  formatPercent,
+  percentFromCalories,
   sumPercentages,
   type MealPercentages,
 } from '../utils/mealDistribution';
@@ -38,12 +41,25 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
     '--color-text-muted',
   ]) as [string, string];
   const [locked, setLocked] = useState<Record<string, boolean>>({});
+  // The kcal field being typed in, so "7" → "70" → "700" is not rewritten to
+  // the rounded share on every keystroke.
+  const [kcalEdit, setKcalEdit] = useState<{
+    key: string;
+    text: string;
+  } | null>(null);
+  const canEditCalories = totalCalories > 0;
   const keys = meals.map(({ key }) => key);
   const total = sumPercentages(values, keys);
   const totalValid = Math.round(total) === 100;
 
-  const setMeal = (key: string, value: number) =>
-    onChange({ ...values, [key]: clampPercent(value) });
+  // `whole` rounds to a whole percent; kcal entry keeps its one decimal.
+  const setMeal = (key: string, value: number, whole = true) => {
+    if (whole) setKcalEdit(null);
+    onChange({
+      ...values,
+      [key]: whole ? clampPercent(value) : Math.min(100, Math.max(0, value)),
+    });
+  };
 
   return (
     <View className="gap-4">
@@ -64,11 +80,7 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
         return (
           <View key={key} className="gap-1">
             <Text className="text-sm font-medium text-text-primary">
-              {t('goals.meals.mealCalories', {
-                defaultValue: '{{meal}} ({{calories}} kcal)',
-                meal: label,
-                calories: Math.round((percent / 100) * totalCalories),
-              })}
+              {label}
             </Text>
             <View className="flex-row items-center gap-2">
               <Pressable
@@ -106,9 +118,51 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
                   testID={`meal-slider-${key}`}
                 />
               </View>
+            </View>
+            <View className="flex-row items-center justify-end gap-2">
+              <View className="w-24">
+                <FormInput
+                  value={
+                    kcalEdit?.key === key
+                      ? kcalEdit.text
+                      : String(caloriesFromPercent(percent, totalCalories))
+                  }
+                  onChangeText={(text) => {
+                    const digits = text.replace(/\D/g, '');
+                    setKcalEdit({ key, text: digits });
+                    setMeal(
+                      key,
+                      percentFromCalories(
+                        parseInt(digits, 10) || 0,
+                        totalCalories
+                      ),
+                      false
+                    );
+                  }}
+                  onFocus={() =>
+                    setKcalEdit({
+                      key,
+                      text: String(caloriesFromPercent(percent, totalCalories)),
+                    })
+                  }
+                  onBlur={() => setKcalEdit(null)}
+                  keyboardType="number-pad"
+                  editable={!isLocked && canEditCalories}
+                  selectTextOnFocus
+                  accessibilityLabel={t('goals.meals.mealKcal', {
+                    defaultValue: '{{meal}} (kcal)',
+                    meal: label,
+                  })}
+                  testID={`goal-input-meal-kcal-${key}`}
+                  style={{ textAlign: 'center', paddingHorizontal: 4 }}
+                />
+              </View>
+              <Text className="w-10 text-sm text-text-secondary">
+                {t('goals.meals.kcalUnit', { defaultValue: 'kcal' })}
+              </Text>
               <View className="w-16">
                 <FormInput
-                  value={String(percent)}
+                  value={formatPercent(percent)}
                   onChangeText={(text) =>
                     setMeal(key, parseInt(text.replace(/\D/g, ''), 10) || 0)
                   }
@@ -123,7 +177,7 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
                   style={{ textAlign: 'center', paddingHorizontal: 4 }}
                 />
               </View>
-              <Text className="text-sm text-text-secondary">%</Text>
+              <Text className="w-5 text-sm text-text-secondary">%</Text>
             </View>
           </View>
         );
@@ -137,11 +191,11 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
         {totalValid
           ? t('goals.meals.totalOk', {
               defaultValue: 'Total: {{total}}%',
-              total: Math.round(total),
+              total: formatPercent(total),
             })
           : t('goals.meals.total', {
               defaultValue: 'Total: {{total}}% (must be 100% to save)',
-              total: Math.round(total),
+              total: formatPercent(total),
             })}
       </Text>
     </View>

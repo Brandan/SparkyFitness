@@ -174,6 +174,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ plan, presets, onDone }) => {
 
   return (
     <FormScreenChrome
+      insetTop
       title={
         draft.id
           ? t('goals.weekly.editTitle', { defaultValue: 'Weekly plan' })
