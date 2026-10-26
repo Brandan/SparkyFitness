@@ -1,4 +1,5 @@
 import {
+  normalizeToHundred,
   clampPercent,
   distributeRemaining,
   sumPercentages,
@@ -54,5 +55,18 @@ describe('mealDistribution', () => {
         snacks: true,
       })
     ).toBe(values);
+  });
+});
+
+describe('normalizeToHundred', () => {
+  it('moves a rounding gap onto the largest meal', () => {
+    expect(
+      normalizeToHundred({ a: 24.2, b: 40, c: 35.7 }, ['a', 'b', 'c'])
+    ).toEqual({ a: 24.2, b: 40.1, c: 35.7 });
+  });
+
+  it('leaves an exact split alone', () => {
+    const split = { a: 50, b: 50 };
+    expect(normalizeToHundred(split, ['a', 'b'])).toBe(split);
   });
 });

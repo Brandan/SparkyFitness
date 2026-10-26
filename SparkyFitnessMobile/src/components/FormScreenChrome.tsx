@@ -1,7 +1,10 @@
 import React, { useCallback, useRef } from 'react';
 import { View, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import {
+  KeyboardAwareScrollView,
+  KeyboardStickyView,
+} from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createDuplicatePressGuard } from '../utils/duplicatePress';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -89,6 +92,14 @@ interface FormScreenChromeProps {
    * height, so the focused input lands above the bar, not under it.
    */
   keyboardAccessory?: React.ReactNode;
+  /**
+   * Set for screens pushed onto the stack (not presented as a modal sheet):
+   * on iOS their fallback header would otherwise draw under the status bar,
+   * hiding Close and Save behind the clock and battery.
+   */
+  insetTop?: boolean;
+  /** Always-visible bar pinned under the scrolling form, riding above the keyboard. */
+  footer?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -101,6 +112,8 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   onCancel,
   headerAction,
   keyboardAccessory,
+  insetTop = false,
+  footer,
   children,
 }) => {
   const insets = useSafeAreaInsets();
@@ -125,13 +138,17 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
       className="flex-1 bg-background"
       // iOS keeps no top inset even without the native header: this chrome is
       // used by modal sheets, which already start below the status bar.
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      style={
+        Platform.OS === 'android' || (insetTop && !usesNativeHeader)
+          ? { paddingTop: insets.top }
+          : undefined
+      }
     >
       {header}
 
       <KeyboardAwareScrollView
         className="flex-1"
-        contentContainerClassName="px-4 pt-4 pb-20 gap-4"
+        contentContainerClassName={`px-4 pt-4 gap-4 ${footer != null ? 'pb-8' : 'pb-20'}`}
         keyboardShouldPersistTaps="handled"
         bottomOffset={
           keyboardAccessory != null ? SET_ACCESSORY_BAR_HEIGHT + 16 : 20
@@ -146,6 +163,17 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
       >
         {children}
       </KeyboardAwareScrollView>
+
+      {footer != null && (
+        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+          <View
+            className="bg-background border-t border-border-subtle px-4 pt-2"
+            style={{ paddingBottom: Math.max(insets.bottom, 8) }}
+          >
+            {footer}
+          </View>
+        </KeyboardStickyView>
+      )}
 
       {keyboardAccessory}
     </View>

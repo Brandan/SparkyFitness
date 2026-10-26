@@ -7270,11 +7270,12 @@
       "mustBe100": "Meal percentages must total 100%.",
       "total": "Total: {{total}}% (must be 100% to save)",
       "totalOk": "Total: {{total}}%",
-      "mealCalories": "{{meal}} ({{calories}} kcal)",
       "distributeRemaining": "Distribute remaining evenly",
       "lock": "Lock {{meal}}",
       "unlock": "Unlock {{meal}}",
-      "mealPercent": "{{meal}} (%)"
+      "mealPercent": "{{meal}} (%)",
+      "mealKcal": "{{meal}} (kcal)",
+      "kcalUnit": "kcal"
     },
     "directions": {
       "minimum": "Min",
@@ -7391,6 +7392,14 @@
         "saturday": "Saturday",
         "sunday": "Sunday"
       }
+    },
+    "summary": {
+      "goal": "Goal: {{calories}} kcal · {{macros}}",
+      "macros": "P {{protein}}g · C {{carbs}}g · F {{fat}}g",
+      "fromMacros": "Macros add up to {{calories}} kcal",
+      "meals": "Meals: {{calories}} kcal ({{percent}}%)",
+      "mealsOff": "Meals: {{calories}} kcal ({{percent}}%), must be 100%",
+      "was": "Was: {{calories}} kcal · {{macros}}"
     }
   },
   "reports": {

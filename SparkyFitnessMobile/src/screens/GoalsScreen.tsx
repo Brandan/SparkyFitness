@@ -54,7 +54,11 @@ import {
   buildGuideDirections,
   type NutrientDirectionGuideKey,
 } from '../constants/nutrientDirectionGuides';
-import type { MealPercentages } from '../utils/mealDistribution';
+import {
+  formatPercent,
+  normalizeToHundred,
+  type MealPercentages,
+} from '../utils/mealDistribution';
 import type { RootStackScreenProps } from '../types/navigation';
 import { getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
 import {
@@ -132,12 +136,22 @@ const ALL_FIELDS: GoalField[] = [
   ...OTHER_FIELDS,
 ];
 
+const roundGoal = (value: number, decimals: number): number => {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+};
+
 const toDrafts = (
   goals: DailyGoals,
   waterUnit: string
 ): Record<GoalField, string> => {
+  // Stored goals can carry float noise (23.999999999976); show what a person
+  // would type: whole kcal for calories, at most two decimals otherwise.
   const drafts = Object.fromEntries(
-    ALL_FIELDS.map((field) => [field, String(goals[field] ?? 0)])
+    ALL_FIELDS.map((field) => [
+      field,
+      String(roundGoal(goals[field] ?? 0, field === 'calories' ? 0 : 2)),
+    ])
   ) as Record<GoalField, string>;
   // Water is stored in ml; the field is edited in the user's water unit.
   drafts.water_goal_ml = String(
@@ -194,6 +208,108 @@ const pickPresetValues = (goals: DailyGoals): DailyGoals =>
       goals[key],
     ])
   ) as unknown as DailyGoals;
+
+interface PlanFigures {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+const toPlanFigures = (drafts: Record<GoalField, string>): PlanFigures => {
+  const num = (field: GoalField) => {
+    const value = parseDraft(drafts[field]);
+    return Number.isFinite(value) ? value : 0;
+  };
+  return {
+    calories: num('calories'),
+    protein: num('protein'),
+    carbs: num('carbs'),
+    fat: num('fat'),
+  };
+};
+
+const macroCalories = ({ protein, carbs, fat }: PlanFigures): number =>
+  Math.round(protein * 4 + carbs * 4 + fat * 9);
+
+const fmt = (value: number): string => String(Math.round(value));
+
+interface GoalPlanSummaryProps {
+  now: PlanFigures;
+  was: PlanFigures;
+  mealCalories: number;
+  mealTotal: number;
+  mealTotalValid: boolean;
+}
+
+// Pinned under the form so the totals stay in view while goals are edited,
+// with the values the screen opened with beside any that have changed.
+const GoalPlanSummary: React.FC<GoalPlanSummaryProps> = ({
+  now,
+  was,
+  mealCalories,
+  mealTotal,
+  mealTotalValid,
+}) => {
+  const { t } = useTranslation();
+  const changed =
+    now.calories !== was.calories ||
+    now.protein !== was.protein ||
+    now.carbs !== was.carbs ||
+    now.fat !== was.fat;
+  const macros = (figures: PlanFigures) =>
+    t('goals.summary.macros', {
+      defaultValue: 'P {{protein}}g · C {{carbs}}g · F {{fat}}g',
+      protein: fmt(figures.protein),
+      carbs: fmt(figures.carbs),
+      fat: fmt(figures.fat),
+    });
+  return (
+    <View className="gap-0.5" testID="goal-plan-summary">
+      <Text className="text-sm font-semibold text-text-primary">
+        {t('goals.summary.goal', {
+          defaultValue: 'Goal: {{calories}} kcal · {{macros}}',
+          calories: fmt(now.calories),
+          macros: macros(now),
+        })}
+      </Text>
+      <Text className="text-xs text-text-secondary">
+        {t('goals.summary.fromMacros', {
+          defaultValue: 'Macros add up to {{calories}} kcal',
+          calories: macroCalories(now),
+        })}
+      </Text>
+      <Text
+        className={`text-xs ${
+          mealTotalValid ? 'text-text-secondary' : 'text-red-500 font-semibold'
+        }`}
+        testID="goal-plan-meals"
+      >
+        {mealTotalValid
+          ? t('goals.summary.meals', {
+              defaultValue: 'Meals: {{calories}} kcal ({{percent}}%)',
+              calories: mealCalories,
+              percent: formatPercent(mealTotal),
+            })
+          : t('goals.summary.mealsOff', {
+              defaultValue:
+                'Meals: {{calories}} kcal ({{percent}}%), must be 100%',
+              calories: mealCalories,
+              percent: formatPercent(mealTotal),
+            })}
+      </Text>
+      {changed && (
+        <Text className="text-xs text-text-muted" testID="goal-plan-was">
+          {t('goals.summary.was', {
+            defaultValue: 'Was: {{calories}} kcal · {{macros}}',
+            calories: fmt(was.calories),
+            macros: macros(was),
+          })}
+        </Text>
+      )}
+    </View>
+  );
+};
 
 const ACTIVITY_LEVELS = ['not_much', 'light', 'moderate', 'heavy'] as const;
 
@@ -368,7 +484,10 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
   const [initialMealDrafts, setInitialMealDrafts] = useState<MealPercentages>(
     () =>
       Object.fromEntries(
-        meals.map(({ key }) => [key, getMealPercentage(goals, key)])
+        meals.map(({ key }) => [
+          key,
+          roundGoal(getMealPercentage(goals, key), 1),
+        ])
       )
   );
   const [mealDrafts, setMealDrafts] = useState(initialMealDrafts);
@@ -377,6 +496,18 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
     0
   );
   const mealTotalValid = Math.round(mealTotal) === 100;
+
+  // What the meal split is a share of: today's adaptive figure when on,
+  // otherwise the calorie goal as currently typed.
+  const mealBaseCalories =
+    isAdaptive && adjustedCalories !== undefined
+      ? adjustedCalories
+      : Number.isFinite(calcCalories)
+        ? calcCalories
+        : 0;
+  const mealCalories = Math.round((mealTotal / 100) * mealBaseCalories);
+  const nowFigures = toPlanFigures(drafts);
+  const wasFigures = toPlanFigures(initialDrafts);
 
   const nutrientLabel = (field: NutrientGoalField) => {
     const unit = NUTRIENT_META[field]?.unit;
@@ -476,9 +607,14 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       }
       next.custom_nutrients = rest;
     }
+    // Only a split within rounding of 100 gets here; make it exactly 100.
+    const savedMeals = normalizeToHundred(
+      mealDrafts,
+      meals.map(({ key }) => key)
+    );
     for (const { key } of meals) {
-      if (mealDrafts[key] === initialMealDrafts[key]) continue;
-      const value = mealDrafts[key] ?? 0;
+      if (savedMeals[key] === initialMealDrafts[key]) continue;
+      const value = savedMeals[key] ?? 0;
       if (DEFAULT_MEAL_KEYS.includes(key)) {
         (next as unknown as Record<string, number>)[`${key}_percentage`] =
           value;
@@ -674,7 +810,10 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
     const nextDrafts = toDrafts(nextBase, waterUnit);
     const nextCustomDrafts = toCustomDrafts(nextBase);
     const nextMeals: MealPercentages = Object.fromEntries(
-      meals.map(({ key }) => [key, getMealPercentage(nextBase, key)])
+      meals.map(({ key }) => [
+        key,
+        roundGoal(getMealPercentage(nextBase, key), 1),
+      ])
     );
     setBase(nextBase);
     setInitialDrafts(nextDrafts);
@@ -813,6 +952,16 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
 
   return (
     <FormScreenChrome
+      insetTop
+      footer={
+        <GoalPlanSummary
+          now={nowFigures}
+          was={wasFigures}
+          mealCalories={mealCalories}
+          mealTotal={mealTotal}
+          mealTotalValid={mealTotalValid}
+        />
+      }
       title={
         isPresetMode
           ? preset
@@ -954,13 +1103,7 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
         meals={meals}
         values={mealDrafts}
         onChange={setMealDrafts}
-        totalCalories={
-          isAdaptive && adjustedCalories !== undefined
-            ? adjustedCalories
-            : Number.isFinite(calcCalories)
-              ? calcCalories
-              : 0
-        }
+        totalCalories={mealBaseCalories}
       />
       {!isPresetMode && (
         <>
