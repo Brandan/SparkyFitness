@@ -103,6 +103,107 @@ export const PlannedMacroFigures = ({
   );
 };
 
+interface PlannedAddAllButtonProps {
+  items: PlannedMealItem[];
+  selectedDate: string;
+  mealName: string;
+}
+
+/** Adds every planned item of a meal to the diary, with one Undo. */
+export const PlannedAddAllButton = ({
+  items,
+  selectedDate,
+  mealName,
+}: PlannedAddAllButtonProps) => {
+  const { t } = useTranslation();
+  const { timezone } = usePreferences();
+  const addMutation = useAddPlannedMealMutation();
+  const restoreMutation = useRestorePlannedMealMutation();
+
+  if (items.length < 2) return null;
+
+  const targetOf = (item: PlannedMealItem) => ({
+    template_id: item.template_id,
+    date: selectedDate,
+    item_key: item.item_key,
+  });
+
+  // Adding stamps the time it happens, so the meal sorts by when it was eaten.
+  const addTargetOf = (item: PlannedMealItem) => ({
+    ...targetOf(item),
+    entry_time: clockInZone(timezone),
+  });
+
+  const handleAddAll = async () => {
+    const added: {
+      item: PlannedMealItem;
+      ids: { food_entry_ids: string[]; food_entry_meal_ids: string[] };
+    }[] = [];
+    let failed: PlannedMealItem | null = null;
+    for (const item of items) {
+      try {
+        added.push({
+          item,
+          ids: await addMutation.mutateAsync(addTargetOf(item)),
+        });
+      } catch {
+        failed = item;
+        break;
+      }
+    }
+    // Nothing was added: the mutation's own error toast already says so.
+    if (added.length === 0) return;
+    // One toast only (they replace each other), so a partial failure is
+    // said here instead of being hidden by the success message.
+    toast({
+      title: failed
+        ? t(
+            'plannedMeals.addedSome',
+            'Added {{count}} of {{total}} to {{mealName}}',
+            {
+              count: added.length,
+              total: items.length,
+              mealName,
+            }
+          )
+        : t('plannedMeals.addedAll', 'Added {{count}} items to {{mealName}}', {
+            count: added.length,
+            mealName,
+          }),
+      description: failed
+        ? t('plannedMeals.couldNotAdd', "Couldn't add {{name}}. Try again.", {
+            name: failed.name,
+          })
+        : undefined,
+      action: (
+        <ToastAction
+          altText={t('plannedMeals.undo', 'Undo')}
+          onClick={() => {
+            added.forEach(({ item, ids }) =>
+              restoreMutation.mutate({ ...targetOf(item), ...ids })
+            );
+          }}
+        >
+          {t('plannedMeals.undo', 'Undo')}
+        </ToastAction>
+      ),
+    });
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      disabled={addMutation.isPending}
+      onClick={() => void handleAddAll()}
+    >
+      {t('plannedMeals.addAll', 'Add all {{count}} to diary', {
+        count: items.length,
+      })}
+    </Button>
+  );
+};
+
 /**
  * Items a "show as planned" meal plan has for this meal on this day. They are
  * not diary entries: nothing here counts toward the day's totals until the
@@ -196,79 +297,8 @@ const PlannedMealList = ({
       ? t('common.kcalUnit', 'kcal')
       : t('common.kJUnit', 'kJ');
 
-  const handleAddAll = async () => {
-    const added: {
-      item: PlannedMealItem;
-      ids: { food_entry_ids: string[]; food_entry_meal_ids: string[] };
-    }[] = [];
-    let failed: PlannedMealItem | null = null;
-    for (const item of items) {
-      try {
-        added.push({
-          item,
-          ids: await addMutation.mutateAsync(addTargetOf(item)),
-        });
-      } catch {
-        failed = item;
-        break;
-      }
-    }
-    // Nothing was added: the mutation's own error toast already says so.
-    if (added.length === 0) return;
-    // One toast only (they replace each other), so a partial failure is
-    // said here instead of being hidden by the success message.
-    toast({
-      title: failed
-        ? t(
-            'plannedMeals.addedSome',
-            'Added {{count}} of {{total}} to {{mealName}}',
-            {
-              count: added.length,
-              total: items.length,
-              mealName,
-            }
-          )
-        : t('plannedMeals.addedAll', 'Added {{count}} items to {{mealName}}', {
-            count: added.length,
-            mealName,
-          }),
-      description: failed
-        ? t('plannedMeals.couldNotAdd', "Couldn't add {{name}}. Try again.", {
-            name: failed.name,
-          })
-        : undefined,
-      action: (
-        <ToastAction
-          altText={t('plannedMeals.undo', 'Undo')}
-          onClick={() => {
-            added.forEach(({ item, ids }) =>
-              restoreMutation.mutate({ ...targetOf(item), ...ids })
-            );
-          }}
-        >
-          {t('plannedMeals.undo', 'Undo')}
-        </ToastAction>
-      ),
-    });
-  };
-
   return (
     <div className={cn('space-y-3', className)}>
-      {items.length > 1 && (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11"
-            disabled={busy}
-            onClick={() => void handleAddAll()}
-          >
-            {t('plannedMeals.addAll', 'Add all {{count}} to diary', {
-              count: items.length,
-            })}
-          </Button>
-        </div>
-      )}
       <ul
         className="space-y-3"
         aria-label={t('plannedMeals.listLabel', 'Planned for {{mealName}}', {
