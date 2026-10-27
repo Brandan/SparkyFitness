@@ -60,7 +60,7 @@ const MealRetimeDialog = ({
       if (!open && !saving) onCancel();
     }}
   >
-    <DialogContent className="max-w-lg">
+    <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl">
       {request && (
         <RetimeForm
           // A new request starts from its own times.
@@ -138,11 +138,11 @@ const RetimeForm = ({
             <li
               key={item.key}
               className={cn(
-                'flex items-center gap-3 rounded-md border p-2',
+                'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-2',
                 item.key === request.movedKey && 'border-primary bg-primary/5'
               )}
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-[10rem] flex-1">
                 <div className="flex items-center gap-2">
                   <span id={labelId} className="truncate font-medium">
                     {item.name}
@@ -177,7 +177,7 @@ const RetimeForm = ({
                   )
                 )}
               </div>
-              <div className="w-36 shrink-0">
+              <div className="w-36 max-w-full shrink-0">
                 <TimeInput
                   value={time}
                   onChange={(value) => setTimeAt(index, value)}
