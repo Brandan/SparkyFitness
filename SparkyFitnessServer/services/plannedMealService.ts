@@ -9,6 +9,7 @@ import type {
 } from '@workspace/shared';
 import { createFoodEntriesFromTemplate } from '../models/foodTemplate.js';
 import { createFoodEntry } from '../models/foodEntry.js';
+import { setFoodEntryTimes } from '../models/foodEntryTimeRepository.js';
 import plannedFoodItemRepository from '../models/plannedFoodItemRepository.js';
 import plannedMealRepository from '../models/plannedMealRepository.js';
 import { clearUserTdeeCache } from './AdaptiveTdeeService.js';
@@ -67,6 +68,7 @@ async function addPlannedFood(
       quantity: item.quantity,
       unit: item.unit,
       entry_date: item.plan_date,
+      entry_time: body.entry_time ?? null,
     },
     userId
   );
@@ -106,6 +108,22 @@ async function addPlannedMeal(
   }
 
   try {
+    // Stamp when it was added, so the meal sorts by when it was really eaten.
+    if (body.entry_time) {
+      const entryTime = body.entry_time;
+      await setFoodEntryTimes(userId, userId, [
+        ...created.foodEntryMealIds.map((id) => ({
+          kind: 'foodEntryMeal' as const,
+          id,
+          entry_time: entryTime,
+        })),
+        ...created.foodEntryIds.map((id) => ({
+          kind: 'foodEntry' as const,
+          id,
+          entry_time: entryTime,
+        })),
+      ]);
+    }
     await plannedMealRepository.recordOccurrence(
       userId,
       body.template_id,

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isDayString } from '../../utils/timezone.ts';
+import { isEntryTimeString } from '../../utils/entryTime.ts';
 import {
   FOOD_VARIANT_NUTRIENT_FIELDS,
   type FoodVariantNutrientField,
@@ -65,7 +66,19 @@ const plannedMealTargetShape = {
 
 /** Add to the diary, or skip, one planned item on one day. */
 export const plannedMealActionBodySchema = z
-  .object(plannedMealTargetShape)
+  .object({
+    ...plannedMealTargetShape,
+    /**
+     * Wall-clock 'HH:MM' the item was added (the client's local time). Add
+     * stamps it on the entries it writes, so a meal sorts by when each item
+     * was really eaten; ignored by skip.
+     */
+    entry_time: z
+      .string()
+      .refine(isEntryTimeString, { message: 'Expected HH:MM (24h)' })
+      .transform((value) => value.slice(0, 5))
+      .optional(),
+  })
   .strict();
 
 export const addedPlannedMealSchema = z.object({
