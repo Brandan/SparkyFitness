@@ -39,7 +39,10 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import { toast } from '@/hooks/use-toast';
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
-import PlannedMealList, { PlannedMacroFigures } from './PlannedMealList';
+import PlannedMealList, {
+  PlannedAddAllButton,
+  PlannedMacroFigures,
+} from './PlannedMealList';
 import { sumPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
@@ -354,6 +357,11 @@ const MealCard = ({
               </span>
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
+              <PlannedAddAllButton
+                items={plannedItems}
+                selectedDate={selectedDate}
+                mealName={meal.name}
+              />
               <Dialog
                 open={isFoodSearchOpen}
                 onOpenChange={handleFoodSearchOpenChange}

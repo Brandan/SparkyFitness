@@ -1,7 +1,9 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { emptyPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
-import PlannedMealList from '../../pages/Diary/PlannedMealList';
+import PlannedMealList, {
+  PlannedAddAllButton,
+} from '../../pages/Diary/PlannedMealList';
 import { renderWithClient } from '../test-utils';
 
 jest.mock('react-i18next', () => ({
@@ -86,6 +88,16 @@ const renderList = (
       energyUnit="kcal"
       convertEnergy={(value) => value}
       onOpenImages={onOpenImages}
+    />
+  );
+
+// Add all sits in the meal header, next to Add Food, not in the list.
+const renderAddAll = (items: PlannedMealItem[] = [item]) =>
+  renderWithClient(
+    <PlannedAddAllButton
+      items={items}
+      selectedDate="2026-10-24"
+      mealName="Breakfast"
     />
   );
 
@@ -231,7 +243,7 @@ describe('PlannedMealList', () => {
       food_entry_meal_ids: [],
     });
     const second = { ...item, item_key: 'meal:type:other:', name: 'Toast' };
-    renderList([item, second]);
+    renderAddAll([item, second]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Add all 2 to diary' }));
 
@@ -257,7 +269,7 @@ describe('PlannedMealList', () => {
       })
       .mockRejectedValueOnce(new Error('boom'));
     const second = { ...item, item_key: 'meal:type:other:', name: 'Toast' };
-    renderList([item, second]);
+    renderAddAll([item, second]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Add all 2 to diary' }));
 
@@ -269,7 +281,7 @@ describe('PlannedMealList', () => {
   });
 
   it('does not offer Add all for a single item', () => {
-    renderList();
+    renderAddAll();
 
     expect(screen.queryByRole('button', { name: /Add all/ })).toBeNull();
   });
