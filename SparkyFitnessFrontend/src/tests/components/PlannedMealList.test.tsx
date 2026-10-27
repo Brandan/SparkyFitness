@@ -22,6 +22,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({ timezone: 'America/Denver' }),
+}));
+
 const mockToast = jest.fn();
 jest.mock('@/hooks/use-toast', () => ({
   toast: (...args: unknown[]) => mockToast(...args),
@@ -60,6 +64,9 @@ const item: PlannedMealItem = {
   calories: 420,
   images: [],
 };
+
+// Adding stamps the time of day it happens.
+const TIME_OF_DAY = expect.stringMatching(/^\d{2}:\d{2}$/);
 
 const target = {
   template_id: item.template_id,
@@ -166,7 +173,12 @@ describe('PlannedMealList', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to diary' }));
 
-    await waitFor(() => expect(mockAdd).toHaveBeenCalledWith(target));
+    await waitFor(() =>
+      expect(mockAdd).toHaveBeenCalledWith({
+        ...target,
+        entry_time: TIME_OF_DAY,
+      })
+    );
     await waitFor(() => expect(mockToast).toHaveBeenCalled());
     expect(mockToast.mock.calls[0][0].title).toBe(
       'Added Eggs and sausage to Breakfast'
@@ -224,10 +236,14 @@ describe('PlannedMealList', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add all 2 to diary' }));
 
     await waitFor(() => expect(mockAdd).toHaveBeenCalledTimes(2));
-    expect(mockAdd).toHaveBeenNthCalledWith(1, target);
+    expect(mockAdd).toHaveBeenNthCalledWith(1, {
+      ...target,
+      entry_time: TIME_OF_DAY,
+    });
     expect(mockAdd).toHaveBeenNthCalledWith(2, {
       ...target,
       item_key: 'meal:type:other:',
+      entry_time: TIME_OF_DAY,
     });
     await waitFor(() => expect(mockToast).toHaveBeenCalled());
     expect(mockToast.mock.calls[0][0].title).toBe('Added 2 items to Breakfast');
@@ -299,6 +315,7 @@ describe('PlannedMealList', () => {
           template_id: null,
           date: '2026-10-24',
           item_key: oneOff.item_key,
+          entry_time: TIME_OF_DAY,
         })
       );
     });

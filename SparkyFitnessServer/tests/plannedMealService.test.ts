@@ -6,6 +6,7 @@ import plannedMealRepository from '../models/plannedMealRepository.js';
 import plannedFoodItemRepository from '../models/plannedFoodItemRepository.js';
 import { createFoodEntriesFromTemplate } from '../models/foodTemplate.js';
 import { createFoodEntry } from '../models/foodEntry.js';
+import { setFoodEntryTimes } from '../models/foodEntryTimeRepository.js';
 import { ValidationError } from '../utils/errors.js';
 
 vi.mock('../models/plannedMealRepository.js', () => ({
@@ -33,6 +34,10 @@ vi.mock('../models/plannedFoodItemRepository.js', () => ({
 
 vi.mock('../models/foodEntry.js', () => ({
   createFoodEntry: vi.fn(),
+}));
+
+vi.mock('../models/foodEntryTimeRepository.js', () => ({
+  setFoodEntryTimes: vi.fn().mockResolvedValue(0),
 }));
 
 vi.mock('../models/foodTemplate.js', () => ({
@@ -118,6 +123,35 @@ describe('plannedMealService', () => {
       food_entry_ids: ['e1', 'e2'],
       food_entry_meal_ids: ['m1'],
     });
+  });
+
+  it('addPlannedMeal stamps the time it was added on the meal and its foods', async () => {
+    vi.mocked(createFoodEntriesFromTemplate).mockResolvedValue({
+      foodEntryIds: ['e1', 'e2'],
+      foodEntryMealIds: ['m1'],
+    });
+
+    await plannedMealService.addPlannedMeal(userId, {
+      ...body,
+      entry_time: '07:05',
+    });
+
+    expect(setFoodEntryTimes).toHaveBeenCalledWith(userId, userId, [
+      { kind: 'foodEntryMeal', id: 'm1', entry_time: '07:05' },
+      { kind: 'foodEntry', id: 'e1', entry_time: '07:05' },
+      { kind: 'foodEntry', id: 'e2', entry_time: '07:05' },
+    ]);
+  });
+
+  it('addPlannedMeal leaves entries untimed when the client sent no time', async () => {
+    vi.mocked(createFoodEntriesFromTemplate).mockResolvedValue({
+      foodEntryIds: ['e1'],
+      foodEntryMealIds: [],
+    });
+
+    await plannedMealService.addPlannedMeal(userId, body);
+
+    expect(setFoodEntryTimes).not.toHaveBeenCalled();
   });
 
   it('addPlannedMeal refuses an item that is no longer planned', async () => {
@@ -283,6 +317,20 @@ describe('plannedMealService', () => {
         food_entry_ids: ['entry-1'],
         food_entry_meal_ids: [],
       });
+    });
+
+    it('add logs the entry at the time it was added', async () => {
+      vi.mocked(createFoodEntry).mockResolvedValue({ id: 'entry-1' });
+
+      await plannedMealService.addPlannedMeal(userId, {
+        ...oneOffBody,
+        entry_time: '07:05',
+      });
+
+      expect(createFoodEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ entry_time: '07:05' }),
+        userId
+      );
     });
 
     it('add removes the entry again when it cannot be recorded', async () => {

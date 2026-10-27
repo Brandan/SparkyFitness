@@ -1,13 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { CalendarClock } from 'lucide-react';
-import { sumPlannedNutrition, type PlannedMealItem } from '@workspace/shared';
+import {
+  clockInZone,
+  sumPlannedNutrition,
+  type PlannedMealItem,
+} from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ToastAction } from '@/components/ui/toast';
 import { toast } from '@/hooks/use-toast';
 import { usableFoodImages } from '@/utils/foodImages';
 import { cn } from '@/lib/utils';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   formatNutrientValue,
   getNutrientMetadata,
@@ -116,6 +121,7 @@ const PlannedMealList = ({
   className,
 }: PlannedMealListProps) => {
   const { t } = useTranslation();
+  const { timezone } = usePreferences();
   const addMutation = useAddPlannedMealMutation();
   const skipMutation = useSkipPlannedMealMutation();
   const restoreMutation = useRestorePlannedMealMutation();
@@ -129,8 +135,14 @@ const PlannedMealList = ({
     item_key: item.item_key,
   });
 
+  // Adding stamps the time it happens, so the meal sorts by when it was eaten.
+  const addTargetOf = (item: PlannedMealItem) => ({
+    ...targetOf(item),
+    entry_time: clockInZone(timezone),
+  });
+
   const handleAdd = (item: PlannedMealItem) => {
-    addMutation.mutate(targetOf(item), {
+    addMutation.mutate(addTargetOf(item), {
       onSuccess: (added) => {
         toast({
           title: t('plannedMeals.added', 'Added {{name}} to {{mealName}}', {
@@ -194,7 +206,7 @@ const PlannedMealList = ({
       try {
         added.push({
           item,
-          ids: await addMutation.mutateAsync(targetOf(item)),
+          ids: await addMutation.mutateAsync(addTargetOf(item)),
         });
       } catch {
         failed = item;

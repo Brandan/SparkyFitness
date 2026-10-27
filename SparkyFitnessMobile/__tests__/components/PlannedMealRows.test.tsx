@@ -52,6 +52,9 @@ const item: PlannedMealItem = {
   images: [],
 };
 
+// Adding stamps the time of day it happens.
+const TIME_OF_DAY = expect.stringMatching(/^\d{2}:\d{2}$/);
+
 const target = {
   template_id: item.template_id,
   date: '2026-10-24',
@@ -150,7 +153,12 @@ describe('PlannedMealRows', () => {
 
     fireEvent.press(getByText('Add to diary'));
 
-    await waitFor(() => expect(mockAdd).toHaveBeenCalledWith(target));
+    await waitFor(() =>
+      expect(mockAdd).toHaveBeenCalledWith({
+        ...target,
+        entry_time: TIME_OF_DAY,
+      })
+    );
     await waitFor(() => expect(Toast.show).toHaveBeenCalled());
     const toast = (Toast.show as jest.Mock).mock.calls[0][0];
     expect(toast.text1).toBe('Added Eggs and sausage to Breakfast');
@@ -316,6 +324,7 @@ describe('PlannedMealRows', () => {
           template_id: null,
           date: '2026-10-24',
           item_key: oneOff.item_key,
+          entry_time: TIME_OF_DAY,
         })
       );
     });

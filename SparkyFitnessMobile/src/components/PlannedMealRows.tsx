@@ -172,6 +172,16 @@ const PlannedMealRowsList: React.FC<PlannedMealRowsProps> = ({
     item_key: item.item_key,
   });
 
+  // Adding stamps the time it happens, so the meal sorts by when it was eaten.
+  const addTargetOf = (item: PlannedMealItem) => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return {
+      ...targetOf(item),
+      entry_time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+    };
+  };
+
   const showUndo = (
     title: string,
     undo: () => Promise<void>,
@@ -203,7 +213,7 @@ const PlannedMealRowsList: React.FC<PlannedMealRowsProps> = ({
 
   const handleAdd = async (item: PlannedMealItem) => {
     try {
-      const added = await addPlannedMealAsync(targetOf(item));
+      const added = await addPlannedMealAsync(addTargetOf(item));
       showUndo(
         t('plannedMeals.added', {
           defaultValue: 'Added {{name}} to {{meal}}',
@@ -235,7 +245,7 @@ const PlannedMealRowsList: React.FC<PlannedMealRowsProps> = ({
     let failed: PlannedMealItem | null = null;
     for (const item of items) {
       try {
-        added.push({ item, ids: await addPlannedMealAsync(targetOf(item)) });
+        added.push({ item, ids: await addPlannedMealAsync(addTargetOf(item)) });
       } catch {
         failed = item;
         break;
