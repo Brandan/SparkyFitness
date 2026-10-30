@@ -38,6 +38,7 @@ import { DailyProgressSkeleton } from './DailyProgressSkeleton';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { formatWeight } from '@/utils/numberFormatting';
 import { EnergyCircle } from './EnergyProgressCircle';
+import { computeEnergyHeadline } from './energyHeadline';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
@@ -171,7 +172,6 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const projectedTarget = tdeeProjection?.targetCalories ?? goalCalories;
 
   const caloriesRemaining = calorieBalance.remaining;
-  const calorieProgress = calorieBalance.progress;
   const exerciseCredited = computeExerciseCredited(
     caloriesRemaining,
     goalCalories,
@@ -204,48 +204,20 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     ),
   };
 
-  const calorieGoalPref = goalTypePreferences?.['calories'];
-  const isTargetBand =
-    calorieGoalPref?.goalType === 'target' &&
-    calorieGoalPref.targetMin !== undefined &&
-    calorieGoalPref.targetMin !== null &&
-    calorieGoalPref.targetMax !== undefined &&
-    calorieGoalPref.targetMax !== null;
-
-  const targetMinConverted =
-    isTargetBand && calorieGoalPref?.targetMin != null
-      ? Math.round(convertEnergy(calorieGoalPref.targetMin, 'kcal', energyUnit))
-      : undefined;
-
-  const targetMaxConverted =
-    isTargetBand && calorieGoalPref?.targetMax != null
-      ? Math.round(convertEnergy(calorieGoalPref.targetMax, 'kcal', energyUnit))
-      : undefined;
-
-  // When a calorie target range is set, the upper bound (targetMax) serves as the budget ceiling.
-  const effectiveTargetGoal = isTargetBand ? targetMaxConverted! : display.goal;
-  const exerciseBonus = Math.max(
-    0,
-    display.remaining - (display.goal - display.eaten)
-  );
-  const effectiveRemaining = isTargetBand
-    ? Math.round(effectiveTargetGoal - display.eaten + exerciseBonus)
-    : display.remaining;
-  const effectiveProgress =
-    isTargetBand && effectiveTargetGoal > 0
-      ? Math.max(
-          0,
-          ((effectiveTargetGoal - effectiveRemaining) / effectiveTargetGoal) *
-            100
-        )
-      : calorieProgress;
-  const displayPlanned = Math.round(
-    convertEnergy(
-      sumPlannedNutrition(plannedMeals ?? []).calories,
-      'kcal',
-      energyUnit
-    )
-  );
+  const headline = computeEnergyHeadline({
+    calorieBalance,
+    calorieGoalPref: goalTypePreferences?.['calories'],
+    plannedKcal: sumPlannedNutrition(plannedMeals ?? []).calories,
+    energyUnit,
+    convertEnergy,
+  });
+  const isTargetBand = headline.targetBand !== undefined;
+  const targetMinConverted = headline.targetBand?.min;
+  const targetMaxConverted = headline.targetBand?.max;
+  const effectiveTargetGoal = headline.goal;
+  const effectiveRemaining = headline.remaining;
+  const effectiveProgress = headline.progress;
+  const displayPlanned = headline.planned;
   const eatenBar = Math.min(Math.max(effectiveProgress, 0), 100);
   const plannedBar =
     effectiveTargetGoal > 0 && displayPlanned > 0
@@ -379,29 +351,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             unit={energyUnit}
             planned={displayPlanned}
             goal={effectiveTargetGoal}
-            targetBand={
-              goalTypePreferences?.['calories']?.goalType === 'target' &&
-              goalTypePreferences['calories'].targetMin !== undefined &&
-              goalTypePreferences['calories'].targetMax !== undefined
-                ? {
-                    min: Math.round(
-                      convertEnergy(
-                        goalTypePreferences['calories'].targetMin,
-                        'kcal',
-                        energyUnit
-                      )
-                    ),
-                    max: Math.round(
-                      convertEnergy(
-                        goalTypePreferences['calories'].targetMax,
-                        'kcal',
-                        energyUnit
-                      )
-                    ),
-                    eaten: display.eaten,
-                  }
-                : undefined
-            }
+            targetBand={headline.targetBand}
           />
           {/* Energy Breakdown */}
           <div className="grid grid-cols-3 gap-2 text-center text-sm">

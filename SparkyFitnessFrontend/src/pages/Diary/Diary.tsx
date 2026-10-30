@@ -6,6 +6,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import DayNavigator from '@/components/DayNavigator';
 import NutritionSummaryCard, { DayTotals } from './NutritionSummaryCard';
 import DailyProgress from './DailyProgress';
+import DiaryStickyBar from './DiaryStickyBar';
 import WaterIntake from './WaterIntake';
 import CaffeineCard from './CaffeineCard';
 import MealCard from './MealCard';
@@ -574,23 +575,30 @@ const Diary = () => {
   if (loading) return <div>{t('common.loading', 'Loading...')}</div>;
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b">
-        <div />
-        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:ml-auto">
-          <div
-            ref={setToolbarContainer}
-            className="flex min-w-0 flex-wrap items-center gap-2"
-          />
-          <DayNavigator
+      <div className="sticky top-0 z-30 -mx-2 flex items-center justify-between gap-3 border-b bg-background px-2 py-2 sm:-mx-4 sm:px-4">
+        {effectiveGoals ? (
+          <DiaryStickyBar
             selectedDate={selectedDate}
-            onDateChange={(dateString) => {
-              setSelectedDate(dateString);
-              setSearchParams({ date: dateString });
-            }}
-            className="grid-cols-none flex mb-0 items-center gap-2"
+            dayTotals={dayTotals}
+            goals={effectiveGoals}
+            plannedKcal={plannedTotals.calories}
           />
-        </div>
+        ) : (
+          <div />
+        )}
+        <DayNavigator
+          selectedDate={selectedDate}
+          onDateChange={(dateString) => {
+            setSelectedDate(dateString);
+            setSearchParams({ date: dateString });
+          }}
+          className="mb-0 flex shrink-0 items-center gap-2"
+        />
       </div>
+      <div
+        ref={setToolbarContainer}
+        className="flex flex-wrap items-center justify-end gap-2 empty:hidden"
+      />
 
       {effectiveGoals && (
         <DiaryWidgetGrid

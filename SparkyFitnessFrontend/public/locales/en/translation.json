@@ -3853,6 +3853,16 @@
       "saveCount_one": "Save {{count}} time",
       "saveCount_other": "Save {{count}} times",
       "saveNone": "No changes"
+    },
+    "stickyBar": {
+      "macroLabel": "{{name}} {{eaten}} of {{goal}} g",
+      "ofGoal": "/ {{goal}} {{unit}}",
+      "left": "{{amount}} left",
+      "over": "{{amount}} over",
+      "planned": "+{{amount}} planned",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat"
     }
   },
   "nutrientGoalDirection": {

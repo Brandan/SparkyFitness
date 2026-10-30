@@ -99,31 +99,42 @@ const MealSection: React.FC<MealSectionProps> = ({
   );
 
   const plannedCalories = plannedKcal(plannedItems);
+  const showPlanned = plannedCalories !== null && plannedCalories > 0;
+  const showCalories = totalCalories > 0 || targetCalories > 0;
   const canOpenDetail = !!onPressMealType && group.entries.length > 0;
 
   const headerContent = (
     <>
       <Icon name={icon} size={18} color={accentPrimary} />
-      <Text className="text-base font-bold text-text-secondary flex-1">
-        {label}
-      </Text>
-      {plannedCalories !== null && plannedCalories > 0 && (
-        <Text className="text-xs text-text-muted font-semibold">
-          {t('foodSummary.plannedCalories', {
-            defaultValue: '+{{calories}} planned',
-            calories: plannedCalories,
-          })}
+      <View className="flex-1">
+        <Text
+          className="text-base font-bold text-text-secondary"
+          numberOfLines={1}
+        >
+          {label}
         </Text>
-      )}
-      {(totalCalories > 0 || targetCalories > 0) && (
-        <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
-          <Text className="text-xs text-accent-primary font-semibold">
-            {totalCalories}
-            {targetCalories > 0 ? ` / ${targetCalories}` : ''}{' '}
-            {t('foodSummary.caloriesUnit', { defaultValue: 'Cal' })}
-          </Text>
-        </View>
-      )}
+        {showPlanned || showCalories ? (
+          <View className="flex-row flex-wrap items-center gap-2 mt-1">
+            {showPlanned && (
+              <Text className="text-xs text-text-muted font-semibold">
+                {t('foodSummary.plannedCalories', {
+                  defaultValue: '+{{calories}} planned',
+                  calories: plannedCalories,
+                })}
+              </Text>
+            )}
+            {showCalories && (
+              <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
+                <Text className="text-xs text-accent-primary font-semibold">
+                  {totalCalories}
+                  {targetCalories > 0 ? ` / ${targetCalories}` : ''}{' '}
+                  {t('foodSummary.caloriesUnit', { defaultValue: 'Cal' })}
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : null}
+      </View>
       {canOpenDetail && (
         <Icon name="chevron-forward" size={14} color={accentPrimary} />
       )}
