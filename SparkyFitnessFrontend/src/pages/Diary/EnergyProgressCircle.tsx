@@ -1,6 +1,7 @@
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2 } from 'lucide-react';
+import { getEnergyRingState } from './energyHeadline';
 
 interface EnergyCircleProps {
   remaining: number;
@@ -31,20 +32,8 @@ export const EnergyCircle = ({
     goal > 0 && planned > 0
       ? Math.min((planned / goal) * 100, Math.max(0, 100 - eatenPct))
       : 0;
-  const inRange =
-    targetBand !== undefined &&
-    targetBand.eaten >= targetBand.min &&
-    targetBand.eaten <= targetBand.max;
-  const isOverLimit =
-    targetBand !== undefined && targetBand.eaten > targetBand.max;
-  const ringColorClass =
-    targetBand === undefined
-      ? 'text-green-500'
-      : inRange
-        ? 'text-green-500'
-        : isOverLimit
-          ? 'text-red-500'
-          : 'text-amber-500';
+  const { inRange, colorClass: ringColorClass } =
+    getEnergyRingState(targetBand);
 
   const ringPath =
     'M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831';
