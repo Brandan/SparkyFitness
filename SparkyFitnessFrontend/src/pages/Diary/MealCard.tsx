@@ -345,11 +345,13 @@ const MealCard = ({
                     {plannedMacrosKnown && (
                       <>
                         {' · '}
-                        <PlannedMacroFigures
-                          protein={plannedNutrition.protein}
-                          carbs={plannedNutrition.carbs}
-                          fat={plannedNutrition.fat}
-                        />
+                        <span className="inline-flex gap-x-3">
+                          <PlannedMacroFigures
+                            protein={plannedNutrition.protein}
+                            carbs={plannedNutrition.carbs}
+                            fat={plannedNutrition.fat}
+                          />
+                        </span>
                       </>
                     )}
                   </span>
