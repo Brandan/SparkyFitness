@@ -24,7 +24,10 @@ vi.mock('../models/plannedFoodItemRepository.js', () => ({
     getById: vi.fn(),
     variantBelongsToFood: vi.fn().mockResolvedValue(true),
     mealTypeExists: vi.fn().mockResolvedValue(true),
+    mealExists: vi.fn().mockResolvedValue(true),
     create: vi.fn(),
+    createMeal: vi.fn(),
+    addMealToDiary: vi.fn(),
     update: vi.fn(),
     setStatus: vi.fn().mockResolvedValue(undefined),
     restore: vi.fn().mockResolvedValue(undefined),
@@ -264,10 +267,12 @@ describe('plannedMealService', () => {
       meal_type_id: oneOff.meal_type_id,
       food_id: oneOff.food_id,
       variant_id: oneOff.variant_id,
+      meal_id: null,
       quantity: 1,
       unit: 'slice',
       status: 'planned' as const,
       food_entry_id: null,
+      food_entry_meal_id: null,
     };
     const oneOffBody = { template_id: null, date: day, item_key: itemId };
 
@@ -449,6 +454,132 @@ describe('plannedMealService', () => {
         { quantity: 2 }
       );
       expect(updated.item_key).toBe(itemId);
+    });
+  });
+  describe('one-off planned meals', () => {
+    const itemId = '77777777-7777-4777-8777-777777777777';
+    const mealRecord = {
+      id: itemId,
+      plan_date: day,
+      meal_type_id: plannedItem.meal_type_id,
+      food_id: null,
+      variant_id: null,
+      meal_id: plannedItem.meal_id,
+      quantity: 1,
+      unit: 'serving',
+      status: 'planned' as const,
+      food_entry_id: null,
+      food_entry_meal_id: null,
+    };
+    const listed = {
+      ...plannedItem,
+      template_id: null,
+      template_name: '',
+      item_key: itemId,
+    };
+    const target = { template_id: null, date: day, item_key: itemId };
+
+    beforeEach(() => {
+      vi.mocked(plannedFoodItemRepository.getOpenItemsForDay).mockResolvedValue(
+        [listed]
+      );
+      vi.mocked(plannedFoodItemRepository.getById).mockResolvedValue(
+        mealRecord
+      );
+    });
+
+    it('create returns the planned meal as listed for the day', async () => {
+      vi.mocked(plannedFoodItemRepository.createMeal).mockResolvedValue(
+        mealRecord
+      );
+      const created = await plannedMealService.createPlannedMeal(userId, {
+        date: day,
+        meal_type_id: mealRecord.meal_type_id,
+        meal_id: plannedItem.meal_id,
+        quantity: 1,
+        unit: 'serving',
+      });
+      expect(created).toEqual(listed);
+    });
+
+    it('create refuses a saved meal that is not there', async () => {
+      vi.mocked(plannedFoodItemRepository.mealExists).mockResolvedValueOnce(
+        false
+      );
+      await expect(
+        plannedMealService.createPlannedMeal(userId, {
+          date: day,
+          meal_type_id: mealRecord.meal_type_id,
+          meal_id: plannedItem.meal_id,
+          quantity: 1,
+          unit: 'serving',
+        })
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(plannedFoodItemRepository.createMeal).not.toHaveBeenCalled();
+    });
+
+    it('add logs the meal and returns its ids for undo', async () => {
+      vi.mocked(plannedFoodItemRepository.addMealToDiary).mockResolvedValue({
+        foodEntryMealId: 'fem-1',
+        foodEntryIds: ['fe-1', 'fe-2'],
+      });
+      const result = await plannedMealService.addPlannedMeal(userId, {
+        ...target,
+        entry_time: '12:30',
+      });
+      expect(plannedFoodItemRepository.addMealToDiary).toHaveBeenCalledWith(
+        userId,
+        mealRecord,
+        '12:30'
+      );
+      expect(createFoodEntry).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        food_entry_ids: ['fe-1', 'fe-2'],
+        food_entry_meal_ids: ['fem-1'],
+      });
+    });
+
+    it('add refuses a meal with no foods left', async () => {
+      vi.mocked(plannedFoodItemRepository.addMealToDiary).mockResolvedValue(
+        null
+      );
+      await expect(
+        plannedMealService.addPlannedMeal(userId, target)
+      ).rejects.toBeInstanceOf(ValidationError);
+    });
+
+    it('restore removes only what the item itself recorded', async () => {
+      await plannedMealService.restorePlannedMeal(userId, {
+        ...target,
+        food_entry_ids: ['someone-elses-entry'],
+        food_entry_meal_ids: [],
+      });
+      expect(plannedFoodItemRepository.restore).toHaveBeenCalledWith(
+        userId,
+        itemId
+      );
+      expect(plannedMealRepository.deleteCreatedEntries).not.toHaveBeenCalled();
+    });
+
+    it('update changes the amount but never a serving', async () => {
+      await expect(
+        plannedMealService.updatePlannedFood(userId, itemId, {
+          variant_id: '66666666-6666-4666-8666-666666666666',
+        })
+      ).rejects.toBeInstanceOf(ValidationError);
+      vi.mocked(plannedFoodItemRepository.update).mockResolvedValue({
+        ...mealRecord,
+        quantity: 2,
+      });
+      const updated = await plannedMealService.updatePlannedFood(
+        userId,
+        itemId,
+        { quantity: 2 }
+      );
+      expect(updated.item_key).toBe(itemId);
+      expect(
+        plannedFoodItemRepository.variantBelongsToFood
+      ).not.toHaveBeenCalled();
     });
   });
 });

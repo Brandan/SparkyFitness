@@ -346,11 +346,13 @@ const MealCard = ({
                     {plannedMacrosKnown && (
                       <>
                         {' · '}
-                        <PlannedMacroFigures
-                          protein={plannedNutrition.protein}
-                          carbs={plannedNutrition.carbs}
-                          fat={plannedNutrition.fat}
-                        />
+                        <span className="inline-flex gap-x-3">
+                          <PlannedMacroFigures
+                            protein={plannedNutrition.protein}
+                            carbs={plannedNutrition.carbs}
+                            fat={plannedNutrition.fat}
+                          />
+                        </span>
                       </>
                     )}
                   </span>
@@ -437,7 +439,6 @@ const MealCard = ({
                   </Tabs>
                   <EnhancedFoodSearch
                     mealType={meal.type}
-                    hideMealTab={planning}
                     onFoodSelect={(item, type) => {
                       if (type === 'food') {
                         debug(
@@ -452,7 +453,7 @@ const MealCard = ({
                           'MealCard: Meal selected in search:',
                           item
                         );
-                        onFoodSelect(item as Meal, meal.type);
+                        onFoodSelect(item as Meal, meal.type, planning);
                       }
                     }}
                   />

@@ -44,6 +44,7 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
 jest.mock('@/hooks/Foods/usePlannedMeals', () => ({
   usePlannedMeals: () => ({ data: [] }),
   useCreatePlannedFoodMutation: () => ({ mutate: jest.fn() }),
+  useCreatePlannedMealMutation: () => ({ mutate: jest.fn() }),
   useSkipPlannedMealMutation: () => ({ mutate: jest.fn() }),
 }));
 jest.mock('@/hooks/Foods/useCustomNutrients', () => ({

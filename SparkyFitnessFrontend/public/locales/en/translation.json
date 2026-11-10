@@ -4135,6 +4135,16 @@
       "saveCount_one": "Save {{count}} time",
       "saveCount_other": "Save {{count}} times",
       "saveNone": "No changes"
+    },
+    "stickyBar": {
+      "macroLabel": "{{name}} {{eaten}} of {{goal}} g",
+      "ofGoal": "/ {{goal}} {{unit}}",
+      "left": "{{amount}} left",
+      "over": "{{amount}} over",
+      "planned": "+{{amount}} planned",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat"
     }
   },
   "nutrientGoalDirection": {
@@ -10589,6 +10599,10 @@
     "changeNamed": "Change amount of {{name}}",
     "change": "Change",
     "planFoodError": "Could not plan that food.",
+    "planMealError": "Could not plan that meal.",
+    "planMealTitle": "Plan {{name}}",
+    "planMealDescription": "Planned for {{mealName}}. It is not in your totals until you add it to the diary.",
+    "addToPlan": "Add to Plan",
     "updateError": "Could not change the planned food."
   }
 }

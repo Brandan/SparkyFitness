@@ -101,7 +101,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `meal_plan_templates` | Reusable meal plan templates (supports multiple active plans per user) |
 | `meal_plan_template_assignments` | Scheduled meal templates to calendar |
 | `meal_plan_occurrences` | Planned meal items already added to, or removed from, a specific day |
-| `planned_food_items` | One-off foods planned for a day and meal, outside any meal plan |
+| `planned_food_items` | One-off foods or saved meals planned for a day and meal, outside any meal plan |
 | `meal_plan_assignment_sets` | Sets within assigned meal plans |
 
 ### Exercise & Workouts (Tier 1/2/3: Owner-Only, Owner-Write, or Delegate-Read/Write)

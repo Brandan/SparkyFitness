@@ -7,6 +7,7 @@ import type {
 import {
   addPlannedMeal,
   createPlannedFood,
+  createPlannedMeal,
   updatePlannedFood,
   getPlannedMeals,
   restorePlannedMeal,
@@ -82,6 +83,21 @@ export const useCreatePlannedFoodMutation = () => {
       errorMessage: t(
         'plannedMeals.planFoodError',
         'Could not plan that food.'
+      ),
+    },
+  });
+};
+
+export const useCreatePlannedMealMutation = () => {
+  const { t } = useTranslation();
+  const invalidateDiary = useDiaryInvalidation();
+  return useMutation({
+    mutationFn: createPlannedMeal,
+    onSuccess: invalidateDiary,
+    meta: {
+      errorMessage: t(
+        'plannedMeals.planMealError',
+        'Could not plan that meal.'
       ),
     },
   });
