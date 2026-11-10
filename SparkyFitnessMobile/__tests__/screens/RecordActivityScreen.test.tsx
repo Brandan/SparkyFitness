@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet, Text } from 'react-native';
+import type { ReactTestInstance } from 'react-test-renderer';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -23,6 +24,7 @@ import {
   type RecordingSnapshot,
 } from '../../src/services/gpsRecordingService';
 import { useWatchConnectivity } from '../../src/hooks/useWatchConnectivity';
+import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 import { startRunOnWatch } from '../../src/services/watchRunControl';
 import { useRunProgram } from '../../src/services/runProgramService';
 import { programStatus } from '@workspace/shared';
@@ -84,6 +86,12 @@ jest.mock('../../src/hooks/useWatchConnectivity', () => ({
 jest.mock('../../src/services/watchRunControl', () => ({
   startRunOnWatch: jest.fn(() => Promise.resolve('q1')),
 }));
+const mockRoutes = jest.fn(() => ({ routes: [] as unknown[] }));
+const mockRoute = jest.fn((_id: string) => ({ route: undefined as unknown }));
+jest.mock('../../src/services/routeService', () => ({
+  useRoutes: () => mockRoutes(),
+  useRoute: (id: string) => mockRoute(id),
+}));
 jest.mock('../../src/services/runProgramService', () => ({
   useRunProgram: jest.fn(),
   completeProgramWorkout: jest.fn(() => Promise.resolve()),
@@ -105,6 +113,9 @@ jest.mock('../../src/hooks/useIndoorDistanceEstimate', () => ({
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: { default_distance_unit: 'km' } }),
 }));
+jest.mock('../../src/hooks/useHeartRateZones', () => ({
+  useHeartRateZones: () => ({ zones: undefined }),
+}));
 const mockSuggestedRanges = jest.fn(() => ({ pace: null, heartRate: null }));
 jest.mock('../../src/hooks/useSuggestedRanges', () => ({
   useSuggestedRanges: () => mockSuggestedRanges(),
@@ -115,8 +126,14 @@ jest.mock('../../src/hooks/useScreenHeader', () => ({
 jest.mock('../../src/utils/routeMapSupport', () => ({
   canShowRouteMap: () => false,
 }));
+const mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
 jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  useSafeAreaInsets: () => mockInsets,
+}));
+const mockUsesNativeHeader = jest.fn(() => false);
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  ...jest.requireActual('../../src/services/nativeTabBarPreference'),
+  useNativeIOSHeadersActive: () => mockUsesNativeHeader(),
 }));
 jest.mock('uniwind', () => ({
   useCSSVariable: (keys: string | string[]) =>
@@ -188,8 +205,51 @@ describe('RecordActivityScreen', () => {
   beforeAll(async () => {
     await initializeI18n('en');
   });
+
+  /** The top padding of the nearest element above `node` that sets one. */
+  const paddingTopAbove = (node: ReactTestInstance): unknown => {
+    for (let current = node.parent; current; current = current.parent) {
+      const style = StyleSheet.flatten(current.props.style) as
+        { paddingTop?: unknown } | undefined;
+      if (style?.paddingTop !== undefined) return style.paddingTop;
+    }
+    return undefined;
+  };
+
+  it('renders its header below the status bar on the custom-header path', async () => {
+    // On Android (and iOS 26+ with Liquid Glass off) the hook returns a bar
+    // the screen has to render inside a root padded with the top inset.
+    state(null);
+    jest
+      .mocked(useScreenHeader)
+      .mockReturnValue(<Text testID="screen-header-bar">Record Activity</Text>);
+    try {
+      // Two insets, so a fixed padding that happens to match one cannot pass.
+      for (const top of [24, 48]) {
+        mockInsets.top = top;
+        const custom = await renderScreen();
+        expect(paddingTopAbove(custom.getByTestId('screen-header-bar'))).toBe(
+          top
+        );
+        custom.unmount();
+      }
+
+      // With the native header the stack owns the top area: no extra inset.
+      mockUsesNativeHeader.mockReturnValue(true);
+      const native = await renderScreen();
+      expect(
+        paddingTopAbove(native.getByTestId('screen-header-bar'))
+      ).toBeUndefined();
+    } finally {
+      mockInsets.top = 0;
+      mockUsesNativeHeader.mockReturnValue(false);
+      jest.mocked(useScreenHeader).mockReturnValue(null);
+    }
+  });
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRoutes.mockReturnValue({ routes: [] });
+    mockRoute.mockReturnValue({ route: undefined });
     mockSuggestedRanges.mockReturnValue({ pace: null, heartRate: null });
     jest.mocked(useIndoorDistanceEstimate).mockReturnValue(null);
     useLiveHeartRateStore.setState({ reading: null });
@@ -275,6 +335,8 @@ describe('RecordActivityScreen', () => {
           easy: { minBpm: 110, maxBpm: 130 },
           warm: { minBpm: 95, maxBpm: 120 },
           maxHeartRate: 185,
+          maxHrSource: 'age',
+          zoneMethod: 'percent_max',
         },
       };
 
@@ -398,6 +460,120 @@ describe('RecordActivityScreen', () => {
         expect(
           intervals?.steps.some((step) => step.pace || step.heartRate)
         ).toBe(false);
+      });
+    });
+  });
+
+  describe('route picker', () => {
+    const summary = {
+      id: 'hill',
+      name: 'Hill loop',
+      distanceM: 5000,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+    const fullRoute = {
+      ...summary,
+      points: [
+        { lat: 51.5, lon: -0.12 },
+        { lat: 51.51, lon: -0.12 },
+      ],
+      cues: [],
+    };
+    const withRoutes = () => {
+      mockRoutes.mockReturnValue({ routes: [summary] });
+      mockRoute.mockImplementation((id: string) => ({
+        route: id === 'hill' ? fullRoute : undefined,
+      }));
+    };
+
+    it('is hidden when there are no saved routes', async () => {
+      state(null);
+      const screen = await renderScreen();
+      expect(screen.queryAllByText('Route')).toHaveLength(0);
+    });
+
+    const pairedWatch = () =>
+      jest.mocked(useWatchConnectivity).mockReturnValue({
+        isSupported: true,
+        isPaired: true,
+        isReachable: true,
+      });
+
+    it('is not offered for a phone recording, which has no route to follow', async () => {
+      state(null);
+      withRoutes();
+      const screen = await renderScreen();
+      expect(screen.queryAllByText('Route')).toHaveLength(0);
+    });
+
+    it('is offered for an outdoor watch run, not indoors', async () => {
+      state(null);
+      withRoutes();
+      pairedWatch();
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Watch GPS'));
+      expect(screen.getAllByText('Route').length).toBeGreaterThan(0);
+      fireEvent.press(screen.getByText('Indoor'));
+      expect(screen.queryAllByText('Route')).toHaveLength(0);
+    });
+
+    it('lists the saved routes with their distance', async () => {
+      state(null);
+      withRoutes();
+      pairedWatch();
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Watch GPS'));
+      expect(screen.getAllByText('No route').length).toBeGreaterThan(0);
+      expect(screen.getByText('Hill loop · 5.00 km')).toBeTruthy();
+    });
+
+    it('sends the chosen route to the watch with a watch run', async () => {
+      state(null);
+      withRoutes();
+      jest.mocked(useWatchConnectivity).mockReturnValue({
+        isSupported: true,
+        isPaired: true,
+        isReachable: true,
+      });
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Watch GPS'));
+      fireEvent.press(screen.getByText('Hill loop · 5.00 km'));
+      fireEvent.press(screen.getByText('Start'));
+      await waitFor(() =>
+        expect(startRunOnWatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            kind: 'run',
+            place: 'outdoor',
+            route: fullRoute,
+          })
+        )
+      );
+      jest.mocked(useWatchConnectivity).mockReturnValue({
+        isSupported: false,
+        isPaired: false,
+        isReachable: false,
+      });
+    });
+
+    it('sends no route when none is chosen', async () => {
+      state(null);
+      withRoutes();
+      jest.mocked(useWatchConnectivity).mockReturnValue({
+        isSupported: true,
+        isPaired: true,
+        isReachable: true,
+      });
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Watch GPS'));
+      fireEvent.press(screen.getByText('Start'));
+      await waitFor(() => expect(startRunOnWatch).toHaveBeenCalled());
+      expect(jest.mocked(startRunOnWatch).mock.calls[0][0]).not.toHaveProperty(
+        'route'
+      );
+      jest.mocked(useWatchConnectivity).mockReturnValue({
+        isSupported: false,
+        isPaired: false,
+        isReachable: false,
       });
     });
   });
@@ -820,8 +996,8 @@ describe('RecordActivityScreen', () => {
     const screen = await renderScreen();
 
     expect(screen.getByText('Splits')).toBeTruthy();
-    expect(screen.getByText('1 km')).toBeTruthy();
-    expect(screen.getByText('2 km')).toBeTruthy();
+    expect(screen.getByTestId('split-row-1')).toBeTruthy();
+    expect(screen.getByTestId('split-row-2')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Save activity'));
 

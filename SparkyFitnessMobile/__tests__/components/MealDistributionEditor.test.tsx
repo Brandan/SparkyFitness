@@ -10,7 +10,7 @@ const meals = [
 
 describe('MealDistributionEditor', () => {
   it('shows each meal in kcal and flags totals that are not 100', () => {
-    const { getByText, getByTestId } = render(
+    const { getByTestId } = render(
       <MealDistributionEditor
         meals={meals}
         values={{ breakfast: 50, lunch: 25, dinner: 0 }}

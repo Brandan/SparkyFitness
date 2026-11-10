@@ -116,14 +116,30 @@ export function isToolErrorText(text: string): boolean {
 
 /**
  * Renders a zod parse failure as a chat-visible VALIDATION error,
- * formatted as "path: message; path2: message2".
+ * formatted as "path: message; path2: message2". `fieldNames` renames path
+ * keys, for a tool that validates with a shared schema whose fields it
+ * publishes under other names.
  */
-export function formatZodError(error: ZodError): string {
+export function formatZodError(
+  error: ZodError,
+  fieldNames: Readonly<Record<string, string>> = {}
+): string {
+  // Unrecognized-keys issues first: they name the real offender (a key the
+  // action doesn't accept), while field-type issues elsewhere (e.g.
+  // "exercises: Invalid input") otherwise mask them and send the model
+  // off to "fix" the wrong parameter.
+  const sorted = [
+    ...error.issues.filter((i) => i.code === 'unrecognized_keys'),
+    ...error.issues.filter((i) => i.code !== 'unrecognized_keys'),
+  ];
   return ERRORS.VALIDATION(
-    error.issues
-      .map((i) =>
-        i.path.length > 0 ? `${i.path.join('.')}: ${i.message}` : i.message
-      )
+    sorted
+      .map((i) => {
+        const path = i.path.map((key) =>
+          typeof key === 'string' ? (fieldNames[key] ?? key) : key
+        );
+        return path.length > 0 ? `${path.join('.')}: ${i.message}` : i.message;
+      })
       .join('; ')
   );
 }

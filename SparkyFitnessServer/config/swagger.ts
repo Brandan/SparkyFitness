@@ -3,9 +3,12 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
+  CALORIE_CYCLING_MAX_OFFSET,
+  CALORIE_CYCLING_MODES,
   CHART_SCALE_MODES,
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
+  MAX_GOAL_MODE_WEEKLY_CHANGE_KG,
 } from '@workspace/shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -53,6 +56,249 @@ const options = {
         },
       },
       schemas: {
+        LabMarker: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            user_id: { type: 'string', format: 'uuid' },
+            name: { type: 'string' },
+            unit: { type: 'string' },
+            ref_range_low: { type: 'number', nullable: true },
+            ref_range_high: { type: 'number', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        LabMarkerInput: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['name'],
+          properties: {
+            name: { type: 'string' },
+            unit: { type: 'string' },
+            ref_range_low: { type: 'number', nullable: true },
+            ref_range_high: { type: 'number', nullable: true },
+          },
+        },
+        LabMarkerUpdate: {
+          type: 'object',
+          additionalProperties: false,
+          description: 'Send only the fields to change; null clears a bound.',
+          properties: {
+            name: { type: 'string' },
+            unit: { type: 'string' },
+            ref_range_low: { type: 'number', nullable: true },
+            ref_range_high: { type: 'number', nullable: true },
+          },
+        },
+        LabResult: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            user_id: { type: 'string', format: 'uuid' },
+            marker_key: {
+              type: 'string',
+              nullable: true,
+              description: 'Built-in marker key, such as hba1c',
+            },
+            custom_marker_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            entry_date: { type: 'string', format: 'date' },
+            value_numeric: { type: 'number', nullable: true },
+            value_text: { type: 'string', nullable: true },
+            unit: { type: 'string' },
+            ref_range_low: { type: 'number', nullable: true },
+            ref_range_high: { type: 'number', nullable: true },
+            lab_name: { type: 'string', nullable: true },
+            notes: { type: 'string', nullable: true },
+            source: { type: 'string', enum: ['manual', 'report', 'fhir'] },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        LabResultInput: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['entry_date'],
+          description:
+            'Exactly one of marker_key, custom_marker_id or custom_marker_name is non-null, and at least one of value_numeric or value_text is non-null. A null counts as not sent, as on the server.',
+          oneOf: [
+            {
+              required: ['marker_key'],
+              properties: { marker_key: { type: 'string' } },
+            },
+            {
+              required: ['custom_marker_id'],
+              properties: {
+                custom_marker_id: { type: 'string', format: 'uuid' },
+              },
+            },
+            {
+              required: ['custom_marker_name'],
+              properties: {
+                custom_marker_name: { type: 'string', minLength: 1 },
+              },
+            },
+          ],
+          anyOf: [
+            {
+              required: ['value_numeric'],
+              properties: { value_numeric: { type: 'number' } },
+            },
+            {
+              required: ['value_text'],
+              properties: { value_text: { type: 'string' } },
+            },
+          ],
+          properties: {
+            marker_key: {
+              type: 'string',
+              nullable: true,
+              description: 'Built-in marker key, such as hba1c',
+            },
+            custom_marker_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            custom_marker_name: {
+              type: 'string',
+              nullable: true,
+              maxLength: 120,
+              description:
+                "One of the user's own markers by name: reused when one has that name (any case), otherwise created with this result's unit and range, in the same transaction as the result.",
+            },
+            entry_date: { type: 'string', format: 'date' },
+            value_numeric: { type: 'number', nullable: true },
+            value_text: {
+              type: 'string',
+              nullable: true,
+              minLength: 1,
+              pattern: '\\S',
+              description:
+                'Qualitative result; must contain a non-space character. The server trims it first and then allows at most 200 characters.',
+            },
+            unit: { type: 'string' },
+            ref_range_low: { type: 'number', nullable: true },
+            ref_range_high: { type: 'number', nullable: true },
+            lab_name: { type: 'string', nullable: true },
+            notes: { type: 'string', nullable: true },
+            source: { type: 'string', enum: ['manual', 'report', 'fhir'] },
+          },
+        },
+        ImportLabReportInput: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['entry_date', 'results'],
+          properties: {
+            client_request_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description:
+                'A key made once per reviewed report and sent again on a retry. A key this user already used returns the report it saved, instead of saving the results again.',
+            },
+            lab_name: { type: 'string', nullable: true },
+            entry_date: { type: 'string', format: 'date' },
+            results: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 200,
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['value_numeric'],
+                description:
+                  'Exactly one of marker_key or marker_name is non-null.',
+                oneOf: [
+                  {
+                    required: ['marker_key'],
+                    properties: { marker_key: { type: 'string' } },
+                  },
+                  {
+                    required: ['marker_name'],
+                    properties: {
+                      marker_name: { type: 'string', minLength: 1 },
+                    },
+                  },
+                ],
+                properties: {
+                  marker_key: { type: 'string', nullable: true },
+                  marker_name: { type: 'string', nullable: true },
+                  value_numeric: { type: 'number' },
+                  unit: { type: 'string' },
+                  ref_range_low: { type: 'number', nullable: true },
+                  ref_range_high: { type: 'number', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        ImportLabReportResponse: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            report: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                user_id: { type: 'string', format: 'uuid' },
+                lab_name: { type: 'string', nullable: true },
+                collected_on: {
+                  type: 'string',
+                  format: 'date',
+                  nullable: true,
+                },
+                created_at: { type: 'string', format: 'date-time' },
+              },
+            },
+            results: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/LabResult' },
+            },
+          },
+        },
+        DeleteLabImportsResponse: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            reports: { type: 'integer' },
+            results: { type: 'integer' },
+            markers: { type: 'integer' },
+          },
+        },
+        DeleteMarkerResultsResponse: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { results: { type: 'integer' } },
+        },
+        LabResultUpdate: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            entry_date: { type: 'string', format: 'date' },
+            value_numeric: { type: 'number', nullable: true },
+            value_text: {
+              type: 'string',
+              nullable: true,
+              minLength: 1,
+              pattern: '\\S',
+              description:
+                'Qualitative result; must contain a non-space character. The server trims it first and then allows at most 200 characters.',
+            },
+            unit: { type: 'string' },
+            ref_range_low: { type: 'number', nullable: true },
+            ref_range_high: { type: 'number', nullable: true },
+            lab_name: { type: 'string', nullable: true },
+            notes: { type: 'string', nullable: true },
+          },
+        },
         Exercise: {
           type: 'object',
           properties: {
@@ -972,17 +1218,42 @@ const options = {
             user_id: { type: 'string', format: 'uuid' },
             mood_value: {
               type: 'integer',
+              nullable: true,
               description:
+                'Null for a check-in that only records energy, focus, notes or tags. ' +
                 'Mood intensity on a 10-100 scale, banded 10-15 Sad, 16-25 Angry, ' +
                 '26-35 Worried, 36-45 Neutral, 46-55 Thoughtful, 56-65 Calm, ' +
                 '66-75 Confident, 76-85 Happy, 86-100 Excited',
             },
+            energy_value: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 5,
+              nullable: true,
+            },
+            focus_value: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 5,
+              nullable: true,
+            },
             notes: { type: 'string', nullable: true },
             entry_date: { type: 'string', format: 'date' },
+            entry_timestamp: {
+              type: 'string',
+              format: 'date-time',
+              description: 'When the check-in happened.',
+            },
+            source: {
+              type: 'string',
+              enum: ['manual', 'garmin', 'import'],
+              description:
+                "'manual' for check-ins a person or the AI logged; 'garmin' and 'import' for moods derived from synced data.",
+            },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['mood_value', 'entry_date'],
+          required: ['entry_date'],
         },
         SleepEntry: {
           type: 'object',
@@ -1212,6 +1483,30 @@ const options = {
             timezone: { type: 'string' },
             unit_system: { type: 'string', enum: ['metric', 'imperial'] },
             meal_calorie_distribution: { type: 'object' },
+            goal_mode: {
+              type: 'string',
+              enum: [
+                'maintain',
+                'recomp',
+                'cut',
+                'high_cut',
+                'lean_bulk',
+                'bulk',
+                'manual',
+                'weekly',
+              ],
+              description:
+                'Weekly uses goal_mode_weekly_change_kg; all other modes retain their percentage-based behavior.',
+            },
+            goal_mode_weekly_change_kg: {
+              type: 'number',
+              minimum: -MAX_GOAL_MODE_WEEKLY_CHANGE_KG,
+              maximum: MAX_GOAL_MODE_WEEKLY_CHANGE_KG,
+              multipleOf: 0.001,
+              default: 0,
+              description:
+                'Signed kg/week: negative loses, positive gains, zero maintains. Used only in weekly goal mode. Omitted values are unchanged on update.',
+            },
             calorie_safety_floor_mode: {
               type: 'string',
               enum: ['standard', 'custom', 'disabled'],
@@ -1224,6 +1519,25 @@ const options = {
               maximum: MAX_CALORIE_SAFETY_FLOOR,
               description:
                 'Custom calorie safety floor in kcal/day. Used when calorie_safety_floor_mode is custom.',
+            },
+            calorie_cycling_mode: {
+              type: 'string',
+              enum: [...CALORIE_CYCLING_MODES],
+              default: 'off',
+              description:
+                'Calorie cycling (#2327): off keeps the same calorie goal every day; training_rest and custom spread the weekly budget over the weekdays with calorie_cycling_offsets. Applies only while exercise calories are not added back (fixed, adaptive, or adaptive full-day targets) and pauses on days a weekly goal plan sets.',
+            },
+            calorie_cycling_offsets: {
+              type: 'array',
+              items: {
+                type: 'integer',
+                minimum: -CALORIE_CYCLING_MAX_OFFSET,
+                maximum: CALORIE_CYCLING_MAX_OFFSET,
+              },
+              minItems: 7,
+              maxItems: 7,
+              description:
+                'One raw percentage per weekday, index 0 = Sunday. The server scales the pattern so the week totals the daily goal x 7 while that goal is steady, keeps cycled days at or above the safety floor, and moves carbs (fat only once a low day uses up all of its carbs). When the daily goal is already at or below the safety floor (or the floor is disabled and the pattern is even), every day stays at the daily goal.',
             },
             chart_scale_mode: {
               type: 'string',
@@ -1269,12 +1583,31 @@ const options = {
         GarminStatus: {
           type: 'object',
           properties: {
-            is_connected: { type: 'boolean' },
-            last_sync_at: {
+            isLinked: { type: 'boolean' },
+            lastUpdated: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description:
+                'When the provider row last changed. Kept for older clients; use lastSyncAt.',
+            },
+            lastSyncAt: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description: 'Last completed sync; null if it never synced.',
+            },
+            tokenExpiresAt: {
               type: 'string',
               format: 'date-time',
               nullable: true,
             },
+            serviceReachable: {
+              type: 'boolean',
+              description:
+                'Whether the Garmin microservice answered; only sent while Garmin is linked.',
+            },
+            message: { type: 'string' },
           },
         },
         WithingsStatus: {
@@ -1293,6 +1626,7 @@ const options = {
           properties: {
             enable_email_password_login: { type: 'boolean' },
             enable_passkey_login: { type: 'boolean' },
+            enable_magic_link_login: { type: 'boolean' },
             is_oidc_active: { type: 'boolean' },
             is_mfa_mandatory: { type: 'boolean' },
             default_vision_ai_service_id: {
@@ -1469,7 +1803,17 @@ const options = {
               type: 'string',
               description: 'Display label, e.g. "Half Marathon (21.1 km)".',
             },
-            bestTimeSeconds: { type: 'number' },
+            timeBasis: {
+              type: 'string',
+              enum: ['best_split', 'activity_pace'],
+              description:
+                'How bestTimeSeconds was found. best_split: the fastest stretch of exactly the standard distance, measured inside the activity from its GPS track or distance series. activity_pace: an activity with no measured split that nearly matches the distance, scaled to it by its average pace. Absent on older servers.',
+            },
+            bestTimeSeconds: {
+              type: 'number',
+              description:
+                'Time for the standard distance itself, never a longer activity total. A time faster than the sport allows (12 m/s running, 7 walking, 30 cycling, 5 swimming) never holds a record: it comes from a wrong duration or distance.',
+            },
             formattedTime: {
               type: 'string',
               description: 'e.g. "1:42:15".',

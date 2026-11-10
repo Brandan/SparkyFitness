@@ -8,7 +8,12 @@ jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
 );
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ loggingLevel: 'SILENT' }),
+  usePreferences: () => ({
+    loggingLevel: 'SILENT',
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    getEnergyUnitString: (unit: string) => unit,
+  }),
 }));
 jest.mock('@/hooks/Diary/useMealTypes', () => ({
   useMealTypes: () => ({

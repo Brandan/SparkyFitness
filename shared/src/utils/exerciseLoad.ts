@@ -41,6 +41,14 @@ export function setVolumeKg(
   );
 }
 
+export const KG_PER_LB = 0.45359237;
+
+/** A kilogram figure in the lifter's unit, rounded to one decimal. */
+export function kgInUnit(kg: number, unit: 'kg' | 'lbs'): number {
+  const value = unit === 'lbs' ? kg / KG_PER_LB : kg;
+  return Math.round(value * 10) / 10;
+}
+
 /**
  * Epley estimated one-rep max from a load and a rep count. 0 when either is
  * missing or not positive.
@@ -53,6 +61,24 @@ export function epleyOneRepMaxKg(
   const count = Number(reps) || 0;
   if (load <= 0 || count <= 0) return 0;
   return load * (1 + count / 30);
+}
+
+/**
+ * Epley estimate that counts the reps left in the tank. An RPE of 8 means
+ * about two more reps were possible, so 100 kg for 5 reps at RPE 8 is judged
+ * as 100 kg for 7. With no RPE, or one outside 6 to 10 (more than four reps
+ * left is too loose a guess to count), it is plain Epley.
+ */
+export function effortAdjustedOneRepMaxKg(
+  loadKg: number | null | undefined,
+  reps: number | null | undefined,
+  rpe: number | null | undefined
+): number {
+  const count = Number(reps) || 0;
+  const effort = Number(rpe);
+  const repsLeft =
+    Number.isFinite(effort) && effort >= 6 && effort <= 10 ? 10 - effort : 0;
+  return epleyOneRepMaxKg(loadKg, count > 0 ? count + repsLeft : count);
 }
 
 /**

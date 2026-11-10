@@ -12,7 +12,6 @@ import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
 import CopyDaySheet, { type CopyDaySheetRef } from '../components/CopyDaySheet';
-import { copyDayAssignments, countAssignmentsByDay } from '@workspace/shared';
 import Switch from '../components/ui/Switch';
 import {
   useCreateMealPlan,
@@ -41,6 +40,13 @@ import {
   validateMealPlanDraft,
   type MealPlanNutritionTotals,
 } from '../utils/mealPlanForm';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel } from '../utils/energyUnit';
+import {
+  copyDayAssignments,
+  countAssignmentsByDay,
+  energyFromKcal,
+} from '@workspace/shared';
 
 type MealPlanFormScreenProps = RootStackScreenProps<'MealPlanForm'>;
 
@@ -75,6 +81,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
   route,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [dangerColor, caloriesColor, proteinColor, carbsColor, fatColor] =
@@ -429,7 +436,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
     {
       key: 'calories',
       label: t('mealPlans.caloriesLabel', { defaultValue: 'Calories' }),
-      unit: 'kcal',
+      unit: energyUnitLabel(energyUnit, t),
       color: caloriesColor,
     },
     {
@@ -483,10 +490,13 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
             </View>
             {assignment.nutrition ? (
               <Text className="text-xs text-text-secondary mt-1">
-                {t('mealPlans.nutritionLine', {
+                {t('mealPlans.nutritionLineWithUnit', {
                   defaultValue:
-                    '{{calories}} kcal · {{protein}} g P · {{carbs}} g C · {{fat}} g F',
-                  calories: formatNutritionValue(totals.calories),
+                    '{{calories}} {{unit}} · {{protein}} g P · {{carbs}} g C · {{fat}} g F',
+                  calories: formatNutritionValue(
+                    energyFromKcal(totals.calories, energyUnit)
+                  ),
+                  unit: energyUnitLabel(energyUnit, t),
                   protein: formatNutritionValue(totals.protein),
                   carbs: formatNutritionValue(totals.carbs),
                   fat: formatNutritionValue(totals.fat),
@@ -728,7 +738,11 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
 
         <View className="bg-surface rounded-xl px-3 py-4 mt-4 flex-row border border-border-subtle">
           {nutritionStats.map((stat) => {
-            const value = formatNutritionValue(dayTotals[stat.key]);
+            const value = formatNutritionValue(
+              stat.key === 'calories'
+                ? energyFromKcal(dayTotals.calories, energyUnit)
+                : dayTotals[stat.key]
+            );
             return (
               <NutritionStat
                 key={stat.key}
@@ -800,21 +814,27 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
                   </Text>
                 </View>
                 <Text className="text-sm font-semibold text-text-secondary">
-                  {t('mealPlans.caloriesValue', {
-                    defaultValue: '{{value}} kcal',
-                    value: formatNutritionValue(sectionTotals.calories),
+                  {t('mealPlans.caloriesValueWithUnit', {
+                    defaultValue: '{{value}} {{unit}}',
+                    value: formatNutritionValue(
+                      energyFromKcal(sectionTotals.calories, energyUnit)
+                    ),
+                    unit: energyUnitLabel(energyUnit, t),
                   })}
                 </Text>
               </View>
               <Text
                 className="text-xs text-text-secondary mt-1"
                 accessibilityLabel={t(
-                  'mealPlans.mealTypeNutritionAccessibility',
+                  'mealPlans.mealTypeNutritionAccessibilityWithUnit',
                   {
                     defaultValue:
-                      '{{mealType}} total {{calories}} kcal, {{protein}} g protein, {{carbs}} g carbs, {{fat}} g fat',
+                      '{{mealType}} total {{calories}} {{unit}}, {{protein}} g protein, {{carbs}} g carbs, {{fat}} g fat',
                     mealType: mealTypeLabel,
-                    calories: formatNutritionValue(sectionTotals.calories),
+                    calories: formatNutritionValue(
+                      energyFromKcal(sectionTotals.calories, energyUnit)
+                    ),
+                    unit: energyUnitLabel(energyUnit, t),
                     protein: formatNutritionValue(sectionTotals.protein),
                     carbs: formatNutritionValue(sectionTotals.carbs),
                     fat: formatNutritionValue(sectionTotals.fat),

@@ -14,6 +14,8 @@ import { useFoodImageSourceContext } from './FoodImageSourceProvider';
 import { useOpenLightbox } from './LightboxProvider';
 import { usableFoodImages } from '../utils/foodImages';
 import { usePlannedMealMutations } from '../hooks/usePlannedMeals';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 interface PlannedMealRowsProps {
@@ -145,6 +147,7 @@ const PlannedMealRowsList: React.FC<PlannedMealRowsProps> = ({
   date,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const {
     addPlannedMealAsync,
     skipPlannedMealAsync,
@@ -379,8 +382,8 @@ const PlannedMealRowsList: React.FC<PlannedMealRowsProps> = ({
               </View>
               {typeof item.calories === 'number' ? (
                 <Text className="text-sm text-text-secondary font-medium mr-2">
-                  {Math.round(item.calories)}{' '}
-                  {t('foodRow.caloriesUnit', { defaultValue: 'Cal' })}
+                  {formatEnergyNumber(item.calories, energyUnit)}{' '}
+                  {energyUnitLabel(energyUnit, t)}
                 </Text>
               ) : null}
             </View>

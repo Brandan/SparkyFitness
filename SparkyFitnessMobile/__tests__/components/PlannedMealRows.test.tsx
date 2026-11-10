@@ -88,7 +88,7 @@ describe('PlannedMealRows', () => {
     );
 
     expect(getByText(/1 serving/)).toBeTruthy();
-    expect(getByText('420 Cal')).toBeTruthy();
+    expect(getByText('420 kcal')).toBeTruthy();
   });
 
   it('shows protein, carbs, and fat', () => {

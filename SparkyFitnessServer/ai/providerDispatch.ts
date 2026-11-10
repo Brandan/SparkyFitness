@@ -1,4 +1,5 @@
 import undici from 'undici';
+import { randomUUID } from 'node:crypto';
 import { isGpt6Model } from '@workspace/shared';
 import convert from 'heic-convert';
 import sharp from 'sharp';
@@ -8,10 +9,12 @@ import {
   getDefaultVisionModel,
   getOpenAiCompatibleBaseUrl,
   getPerplexityPreset,
+  OPENCODE_GO_USER_AGENT,
 } from './config.js';
 import {
   createGuardedDispatcher,
   createGuardedFetch,
+  forNativeFetch,
   assertOutboundUrlShapeAndLiteralAllowed,
   getOutboundUrlBlockedError,
   OutboundUrlShapeError,
@@ -78,6 +81,8 @@ export interface DispatchRequest {
   temperature?: number;
   /** Default 90_000; 300_000 for custom-URL services (ollama, openai_compatible, custom). */
   timeoutMs?: number;
+  /** Stable conversation identifier for providers that require session affinity. */
+  sessionId?: string;
 }
 
 export type DispatchErrorCategory =
@@ -167,6 +172,7 @@ const STRICT_SCHEMA_PROVIDERS = new Set([
   'openrouter',
   'xai',
   'perplexity',
+  'opencode_go',
 ]);
 
 function providerFamily(serviceType: string): ProviderFamily | null {
@@ -174,6 +180,7 @@ function providerFamily(serviceType: string): ProviderFamily | null {
     case 'google':
       return 'google';
     case 'openai':
+    case 'opencode_go':
     case 'openai_compatible':
     case 'mistral':
     case 'groq':
@@ -298,9 +305,27 @@ function sniffImageMime(head: Buffer): string | null {
 // bounds). Oversized camera shots (12-108 MP) are automatically downscaled while
 // preserving aspect ratio and EXIF orientation.
 const MAX_VISION_IMAGE_DIMENSION = 2048;
+// Local/self-hosted vision models (Ollama, local custom endpoints) running on
+// consumer GPUs (e.g. 8 GB VRAM) require significant CUDA buffers for high-res
+// vision patch grids (~1.9 GB buffer at 2048px on 12 MP phone shots), which
+// triggers `cudaMalloc failed` out-of-memory errors. Capping the long edge at
+// 1280px preserves food and label legibility while fitting comfortably within
+// consumer GPU VRAM.
+const LOCAL_MAX_VISION_IMAGE_DIMENSION = 1280;
+
+function resolveMaxImageDimension(family: ProviderFamily): number {
+  if (process.env.TEST_MAX_VISION_IMAGE_DIMENSION) {
+    return Number(process.env.TEST_MAX_VISION_IMAGE_DIMENSION);
+  }
+  if (family === 'ollama') {
+    return LOCAL_MAX_VISION_IMAGE_DIMENSION;
+  }
+  return MAX_VISION_IMAGE_DIMENSION;
+}
 
 async function downscaleImageForDispatch(
-  img: DispatchImage
+  img: DispatchImage,
+  maxDimension: number
 ): Promise<DispatchImage> {
   if (
     !img.base64 ||
@@ -309,10 +334,6 @@ async function downscaleImageForDispatch(
   ) {
     return img;
   }
-
-  const maxDimension =
-    Number(process.env.TEST_MAX_VISION_IMAGE_DIMENSION) ||
-    MAX_VISION_IMAGE_DIMENSION;
 
   try {
     const inputBuf = Buffer.from(img.base64, 'base64');
@@ -365,7 +386,8 @@ async function downscaleImageForDispatch(
  * Oversized images are subsequently downscaled to fit within vision provider limits.
  */
 async function normalizeImagesForDispatch(
-  images: DispatchImage[]
+  images: DispatchImage[],
+  maxDimension: number
 ): Promise<DispatchImage[]> {
   const normalized = await Promise.all(
     images.map(async (img) => {
@@ -424,7 +446,9 @@ async function normalizeImagesForDispatch(
     })
   );
 
-  return Promise.all(normalized.map(downscaleImageForDispatch));
+  return Promise.all(
+    normalized.map((img) => downscaleImageForDispatch(img, maxDimension))
+  );
 }
 
 function isBlank(value: string | undefined | null): boolean {
@@ -535,6 +559,7 @@ interface BuildContext {
   jsonSchema?: JsonSchemaNode;
   toolName: string;
   temperature?: number;
+  sessionId: string;
 }
 
 interface BuiltRequest {
@@ -740,6 +765,10 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
       // Local/self-hosted types may have no key; send the chat path's `no-key`
       // sentinel so a keyless server sees the same header from both paths.
       Authorization: `Bearer ${ctx.provider.api_key || 'no-key'}`,
+      ...(ctx.provider.service_type === 'opencode_go' && {
+        'x-opencode-session': ctx.sessionId,
+        'User-Agent': OPENCODE_GO_USER_AGENT,
+      }),
     },
     body,
   };
@@ -791,7 +820,11 @@ function buildAnthropicRequest(ctx: BuildContext): BuiltRequest {
   };
 }
 
-function buildOllamaRequest(ctx: BuildContext): BuiltRequest {
+function buildOllamaRequest(
+  ctx: BuildContext,
+  parseJson: boolean
+): BuiltRequest {
+  const wantsJson = Boolean(ctx.jsonSchema) || parseJson;
   const prompt = ctx.jsonSchema
     ? `${ctx.prompt}\n\nRespond with a single JSON object that conforms to this JSON Schema:\n${JSON.stringify(toStrictJsonSchema(ctx.jsonSchema))}`
     : ctx.prompt;
@@ -812,8 +845,13 @@ function buildOllamaRequest(ctx: BuildContext): BuiltRequest {
       ...(ctx.temperature !== undefined && { temperature: ctx.temperature }),
     },
   };
-  if (ctx.jsonSchema) {
+  if (wantsJson) {
     body.format = 'json';
+    // Models that reason by default (e.g. gemma4, qwen3, qwen3.6, deepseek-r1)
+    // spend their context tokens generating reasoning traces before writing JSON.
+    // Disabling thinking via `think: false` allows the model to produce valid
+    // structured JSON within the token budget. Non-reasoning models safely ignore it.
+    body.think = false;
   }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -841,7 +879,7 @@ function buildRequest(
     case 'anthropic':
       return buildAnthropicRequest(ctx);
     case 'ollama':
-      return buildOllamaRequest(ctx);
+      return buildOllamaRequest(ctx, parseJson);
   }
 }
 
@@ -1253,7 +1291,7 @@ async function performOllama(
         body: JSON.stringify(built.body),
         redirect: 'manual',
         // @ts-expect-error undici dispatcher option is not in fetch DOM types
-        dispatcher: agent,
+        dispatcher: forNativeFetch(agent),
       });
     } catch (error) {
       const name = (error as { name?: string } | null)?.name;
@@ -1450,7 +1488,8 @@ export async function dispatchAiRequest(
   // to convert the image stays HEIC and we fail loud below rather than shipping
   // bytes the provider might reject.
   if (hasImages) {
-    images = await normalizeImagesForDispatch(images);
+    const maxDimension = resolveMaxImageDimension(family);
+    images = await normalizeImagesForDispatch(images, maxDimension);
     if (images.some((img) => HEIC_MIME_TYPES.has(img.mimeType))) {
       return {
         ok: false,
@@ -1466,6 +1505,7 @@ export async function dispatchAiRequest(
     (hasImages
       ? getDefaultVisionModel(serviceType)
       : getDefaultModel(serviceType));
+  const sessionId = req.sessionId?.trim() || randomUUID();
 
   const toolName = schemaName ?? DEFAULT_SCHEMA_NAME;
 
@@ -1480,6 +1520,7 @@ export async function dispatchAiRequest(
     jsonSchema,
     toolName,
     temperature,
+    sessionId,
   });
   const temperature = supportsTemperature(serviceType, model)
     ? req.temperature

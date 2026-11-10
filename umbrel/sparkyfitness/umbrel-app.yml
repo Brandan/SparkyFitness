@@ -2,7 +2,7 @@ manifestVersion: 1
 id: sparkyfitness
 category: files
 name: SparkyFitness
-version: "v1.8.0"
+version: "v1.12.0"
 tagline: Self-hosted nutrition, exercise, and body metrics tracker
 description: >-
   🥗 SparkyFitness is a self-hosted alternative to MyFitnessPal for tracking
@@ -40,31 +40,31 @@ description: >-
   Online food databases and AI features are off until you add your own
   credentials in the app's settings; nothing is sent anywhere by default.
 releaseNotes: >-
-  - Refresh food information from data provider API
+  - Lab test result management
 
-  - Add Umbrel App Store package and release automation
+  - NFC tags for Food & Water logging.
 
-  - Draw cardio routes over a map
+  - Add tag.sparkyfitness.com site for NFC tag links
 
-  - Let one instance run the scheduled jobs when scaled out
+  - List the dev app in the tag site's iPhone link file
 
-  - Run scheduled jobs on one replica when server.replicas > 1
+  - Add a setting to read iPhone active calories from the Move ring
 
-  - Add Calories graph to Health Trends and make Sleep graph consistent with other graphs
+  - Build the Wear OS app in the EAS production workflow
 
-  - Rest chime through silent mode, wrist buzz at rest end
+  - Log water by tapping an NFC tag
 
-  - Derive versions from Conventional Commits with release-please
+  - Add keyless MapLibre OpenStreetMap map rendering on Android
 
-  - Share sign-in rate limits across server instances
+  - Safe defaults above one server replica
 
-  - Open the watch app on the workout page when a workout starts
+  - Add a readiness endpoint and use it for the Docker health check
 
-  - Tap feedback on every watch button
+  - Attach tracker heart rate to workouts logged in SparkyFitness
 
-  - Let admins turn off passkey login
+  - Optionally adjust percentage macros with exercise calories
 
-  Full release notes: https://github.com/CodeWithCJ/SparkyFitness/releases/tag/v1.8.0
+  Full release notes: https://github.com/CodeWithCJ/SparkyFitness/releases/tag/v1.12.0
 
 developer: CodeWithCJ
 website: https://codewithcj.github.io/SparkyFitness/

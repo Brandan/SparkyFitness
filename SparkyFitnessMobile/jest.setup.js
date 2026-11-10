@@ -45,6 +45,7 @@ jest.mock('@expo/vector-icons', () => {
   return {
     Ionicons: View,
     MaterialIcons: View,
+    MaterialCommunityIcons: View,
     FontAwesome: View,
     AntDesign: View,
   };
@@ -66,6 +67,8 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
   queryStatisticsCollectionForQuantity: jest.fn().mockResolvedValue([]),
   queryWorkoutSamples: jest.fn(),
   queryCorrelationSamples: jest.fn(),
+  queryActivitySummary: jest.fn().mockResolvedValue([]),
+  ActivitySummaryTypeIdentifier: 'HKActivitySummaryTypeIdentifier',
   // Writeback saves return the persisted sample (orchestrator reads .uuid off it);
   // a bare `true` would make UUID-tracking assertions silently test nothing.
   saveQuantitySample: jest.fn().mockResolvedValue({ uuid: 'hk-quantity-uuid' }),
@@ -167,6 +170,9 @@ jest.mock('expo-notifications', () => {
     })),
     registerTaskAsync: jest.fn().mockResolvedValue(null),
     BackgroundNotificationTaskResult: { NewData: 0, NoData: 1, Failed: 2 },
+    DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
+    getLastNotificationResponse: jest.fn(() => null),
+    clearLastNotificationResponse: jest.fn(),
     AndroidImportance: { HIGH: 4, DEFAULT: 3, LOW: 2, MIN: 1, NONE: 0 },
     SchedulableTriggerInputTypes: {
       CALENDAR: 'calendar',
@@ -737,7 +743,18 @@ jest.mock('react-native-maps', () => {
   };
   return {
     __esModule: true,
-    default: piece('map-view'),
+    default: React.forwardRef(({ children, ...props }, ref) => {
+      // The camera methods screens call through a ref.
+      React.useImperativeHandle(ref, () => ({
+        animateToRegion: jest.fn(),
+        fitToCoordinates: jest.fn(),
+      }));
+      return React.createElement(
+        View,
+        { testID: 'map-view', ...props },
+        children
+      );
+    }),
     Polyline: piece('map-polyline'),
     Marker: piece('map-marker'),
   };
@@ -841,6 +858,7 @@ jest.mock('expo-crypto', () => {
   return {
     __esModule: true,
     randomUUID: () => webcrypto.randomUUID(),
+    getRandomBytes: (count) => webcrypto.getRandomValues(new Uint8Array(count)),
     AESEncryptionKey: WatchTelemetryTestKey,
     AESSealedData: WatchTelemetryTestSealed,
     aesEncryptAsync: async (plaintext, key) => {
@@ -893,4 +911,47 @@ jest.mock('expo-image-manipulator', () => ({
     PNG: 'png',
     WEBP: 'webp',
   },
+}));
+
+// Mock react-native-nfc-manager (native module; tests drive its results).
+jest.mock('react-native-nfc-manager', () => ({
+  __esModule: true,
+  default: {
+    isSupported: jest.fn(() => Promise.resolve(true)),
+    isEnabled: jest.fn(() => Promise.resolve(true)),
+    start: jest.fn(() => Promise.resolve()),
+    requestTechnology: jest.fn(() => Promise.resolve()),
+    cancelTechnologyRequest: jest.fn(() => Promise.resolve()),
+    getTag: jest.fn(() => Promise.resolve({ ndefMessage: [] })),
+    setAlertMessageIOS: jest.fn(() => Promise.resolve()),
+    ndefHandler: { writeNdefMessage: jest.fn(() => Promise.resolve()) },
+  },
+  NfcTech: { Ndef: 'Ndef' },
+  Ndef: {
+    TNF_EMPTY: 0,
+    TNF_WELL_KNOWN: 1,
+    RTD_URI: 'U',
+    uriRecord: jest.fn((uri) => ({
+      tnf: 1,
+      type: 'U',
+      payload: [...Buffer.from(uri)],
+    })),
+    encodeMessage: jest.fn((records) => records.flatMap((r) => r.payload)),
+    isType: jest.fn(
+      (record, tnf, type) => record.tnf === tnf && record.type === type
+    ),
+    // The test payloads are plain UTF-8 URLs, so decoding is the identity.
+    uri: {
+      decodePayload: jest.fn((bytes) => Buffer.from(bytes).toString('utf8')),
+    },
+  },
+}));
+
+// Energy unit: components read the account's kcal/kJ setting through
+// `useEnergyUnit`, which needs a QueryClient. Most component tests render
+// without one, so the unit defaults to kcal here. A test that needs kJ sets
+// `jest.mocked(useEnergyUnit).mockReturnValue('kJ')`; the hook's own test uses
+// `jest.requireActual`.
+jest.mock('./src/hooks/useEnergyUnit', () => ({
+  useEnergyUnit: jest.fn(() => 'kcal'),
 }));

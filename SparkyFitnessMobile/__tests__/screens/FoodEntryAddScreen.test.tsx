@@ -17,7 +17,24 @@ import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
+import { consumePendingActionTagSelection } from '../../src/services/actionTagSelection';
 import { buildMealIngredientDraft } from '../../src/utils/mealBuilderDraft';
+import type { BarcodeLookupContext } from '../../src/utils/barcodeFoods';
+import type { FoodInfoItem } from '../../src/types/foodInfo';
+import type { RootStackParamList } from '../../src/types/navigation';
+import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
+
+const mockBarcodeSources = jest.fn();
+jest.mock('../../src/components/BarcodeSources', () => ({
+  __esModule: true,
+  default: (props: {
+    context: BarcodeLookupContext;
+    onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+  }) => {
+    mockBarcodeSources(props);
+    return null;
+  },
+}));
 
 const mockPop = jest.fn((count: number) => ({
   type: 'POP',
@@ -28,9 +45,11 @@ const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
 const mockNavigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  replace: jest.fn(),
   setParams: jest.fn(),
   dispatch: jest.fn(),
   setOptions: jest.fn(),
+  isFocused: jest.fn(() => true),
 } as any;
 
 jest.mock('@react-navigation/native', () => {
@@ -451,6 +470,188 @@ describe('FoodEntryAddScreen', () => {
     }));
   });
 
+  it.each(['meal-builder', 'meal-plan', undefined] as const)(
+    'switches barcode source with a fresh item and preserves %s return context',
+    (pickerMode) => {
+      const barcodeLookup: BarcodeLookupContext = {
+        barcode: '1234567890123',
+        providerId: 'local',
+      };
+      const mealPlanTarget = {
+        dayOfWeek: 2,
+        mealTypeId: 'meal-1',
+        mealTypeName: 'Breakfast',
+      };
+      renderScreen({
+        item: baseLocalItem,
+        barcodeLookup,
+        date: '2026-04-23',
+        mealTypeId: 'meal-1',
+        pickerMode,
+        returnDepth: 2,
+        mealPlanTarget,
+        entryNotes: 'Keep my note',
+        entryTime: '08:15',
+      });
+      const nextItem: FoodInfoItem = {
+        ...baseExternalItem,
+        provider_type: 'example',
+        provider_external_id: 'external-1',
+        originalItem: {
+          name: baseExternalItem.name,
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 1,
+            serving_unit: 'bar',
+            calories: 200,
+            protein: 20,
+            carbs: 22,
+            fat: 7,
+            is_default: true,
+          },
+        },
+      };
+      const nextContext = { ...barcodeLookup, providerId: 'provider-two' };
+      const props = mockBarcodeSources.mock.calls.at(-1)?.[0] as {
+        onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+      };
+      props.onSelect(nextItem, nextContext);
+      expect(mockNavigation.replace).toHaveBeenCalledWith('FoodEntryAdd', {
+        item: nextItem,
+        barcodeLookup: nextContext,
+        date: '2026-04-23',
+        mealTypeId: 'meal-1',
+        pickerMode,
+        returnDepth: 2,
+        mealPlanTarget,
+        entryNotes: 'Keep my note',
+        entryTime: '08:15',
+      });
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    }
+  );
+
+  describe('entry time after switching barcode source', () => {
+    let previousDiaryDate: string;
+
+    beforeEach(() => {
+      previousDiaryDate = useDiaryDateStore.getState().selectedDate;
+      mockUseMealTypes.mockReturnValue({
+        ...mockUseMealTypes(),
+        mealTypes: [
+          {
+            id: 'meal-1',
+            name: 'Breakfast target',
+            user_id: 'test-user',
+            created_at: '2020-01-01T00:00:00Z',
+            is_visible: true,
+            show_in_quick_log: true,
+            sort_order: 1,
+            default_time: '08:00',
+          },
+          {
+            id: 'meal-2',
+            name: 'Lunch target',
+            user_id: 'test-user',
+            created_at: '2020-01-01T00:00:00Z',
+            is_visible: true,
+            show_in_quick_log: true,
+            sort_order: 2,
+            default_time: '12:30',
+          },
+        ],
+      });
+    });
+
+    afterEach(() => {
+      useDiaryDateStore.getState().setSelectedDate(previousDiaryDate);
+    });
+
+    const switchToLocalSource = (screen: ReturnType<typeof render>) => {
+      const props = mockBarcodeSources.mock.lastCall?.[0] as {
+        onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+      };
+      props.onSelect(baseLocalItem, {
+        barcode: '1234567890123',
+        providerId: 'local',
+      });
+      const params = mockNavigation.replace.mock.lastCall?.[1] as
+        RootStackParamList['FoodEntryAdd'] | undefined;
+      if (!params)
+        throw new Error('Source switch did not replace the add screen');
+      screen.unmount();
+      return renderScreen(params);
+    };
+
+    const renderBarcodeEntry = (entryTime?: string) =>
+      renderScreen({
+        item: baseExternalItem,
+        barcodeLookup: { barcode: '1234567890123', providerId: 'provider-one' },
+        date: '2020-04-23',
+        mealTypeId: 'meal-1',
+        entryTime,
+      });
+
+    it('recalculates an untouched automatic time when the meal changes after a source switch', () => {
+      const screen = switchToLocalSource(renderBarcodeEntry());
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: '12:30' }),
+        })
+      );
+    });
+
+    it('fills an untouched time when a past entry changes to today after a source switch', () => {
+      mockUseMealTypes.mockReturnValue({
+        ...mockUseMealTypes(),
+        mealTypes: mockUseMealTypes().mealTypes.map((mealType) => ({
+          ...mealType,
+          default_time: null,
+        })),
+      });
+      const screen = switchToLocalSource(renderBarcodeEntry());
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: expect.stringMatching(/^([01]\d|2[0-3]):[0-5]\d$/),
+          }),
+        })
+      );
+    });
+
+    it('keeps an explicitly selected time through a source switch and meal/date changes', () => {
+      const screen = switchToLocalSource(renderBarcodeEntry('09:45'));
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: '09:45' }),
+        })
+      );
+    });
+
+    it('keeps an intentional clear as a null entry time after a source switch and meal/date changes', () => {
+      const initialScreen = renderBarcodeEntry();
+      fireEvent.press(initialScreen.getByText('Clear'));
+      const screen = switchToLocalSource(initialScreen);
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: null }),
+        })
+      );
+    });
+  });
+
   it('stores a pending ingredient and pops back for local foods in meal-builder mode', async () => {
     const screen = renderScreen({
       item: baseLocalItem,
@@ -783,6 +984,57 @@ describe('FoodEntryAddScreen', () => {
         },
       }),
     });
+    expect(mockToast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Meals not supported here' })
+    );
+  });
+
+  it('hands a food and its amount back to the NFC tag form', async () => {
+    consumePendingActionTagSelection();
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'action-tag',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() =>
+      expect(navigation.dispatch).toHaveBeenCalledWith({
+        type: 'POP',
+        payload: { count: 2 },
+      })
+    );
+    expect(consumePendingActionTagSelection()).toEqual({
+      kind: 'food',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      name: 'Greek Yogurt',
+      quantity: 1,
+      unit: 'cup',
+    });
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('hands a gram-based meal back to the NFC tag form in its own unit', () => {
+    consumePendingActionTagSelection();
+    const screen = renderScreen({
+      item: { ...baseMealItem, servingSize: 200, servingUnit: 'g' },
+      pickerMode: 'action-tag',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(consumePendingActionTagSelection()).toEqual(
+      expect.objectContaining({
+        kind: 'meal',
+        mealId: 'meal-1',
+        name: 'Breakfast Meal',
+        unit: 'g',
+      })
+    );
+    expect(mockAddMeal).not.toHaveBeenCalled();
     expect(mockToast.show).not.toHaveBeenCalledWith(
       expect.objectContaining({ text1: 'Meals not supported here' })
     );
@@ -1583,6 +1835,210 @@ describe('FoodEntryAddScreen', () => {
       vitaminA: '',
       vitaminC: '',
     };
+
+    // A local food switched to oz, an unsaved unit, picked for an NFC tag.
+    const pickConvertedUnitForTag = async (
+      extraParams: Record<string, unknown> = {}
+    ) => {
+      consumePendingActionTagSelection();
+      mockCreateVariant.mockResolvedValue({
+        id: 'variant-oz-new',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      });
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode: 'action-tag',
+        returnDepth: 2,
+        adjustedValues: {
+          name: 'Greek Yogurt',
+          brand: 'Sparky',
+          servingSize: '1',
+          servingUnit: 'oz',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+          fiber: '',
+          saturatedFat: '',
+          sodium: '',
+          sugars: '',
+          transFat: '',
+          potassium: '',
+          calcium: '',
+          iron: '',
+          cholesterol: '',
+          vitaminA: '',
+          vitaminC: '',
+        },
+        adjustedUnitSelection: {
+          kind: 'draft',
+          variant: {
+            serving_size: 1,
+            serving_unit: 'oz',
+            calories: 120,
+            protein: 10,
+            carbs: 8,
+            fat: 4,
+          },
+        },
+        ...extraParams,
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith(
+          expect.objectContaining({
+            adjustedValues: undefined,
+            adjustedUnitSelection: undefined,
+          })
+        );
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+      await waitFor(() => expect(mockCreateVariant).toHaveBeenCalledTimes(1));
+    };
+
+    it('saves a converted unit as a serving before handing a local food to the NFC tag form', async () => {
+      await pickConvertedUnitForTag();
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith({
+          type: 'POP',
+          payload: { count: 2 },
+        })
+      );
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        })
+      );
+      expect(consumePendingActionTagSelection()).toEqual(
+        expect.objectContaining({
+          kind: 'food',
+          foodId: 'food-1',
+          variantId: 'variant-oz-new',
+          unit: 'oz',
+        })
+      );
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    });
+
+    it('drops the NFC tag pick when the screen was left while the serving saved', async () => {
+      navigation.isFocused.mockReturnValueOnce(false);
+
+      await pickConvertedUnitForTag();
+
+      await waitFor(() => expect(navigation.isFocused).toHaveBeenCalled());
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    // The saved cup serving with its nutrition adjusted to `calories`.
+    const pickAdjustedServingForTag = async (
+      calories: string,
+      extraParams: Record<string, unknown> = {}
+    ) => {
+      consumePendingActionTagSelection();
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode: 'action-tag',
+        returnDepth: 2,
+        adjustedValues: {
+          ...draftAdjustedValues,
+          servingSize: '1',
+          servingUnit: 'cup',
+          calories,
+          protein: '15',
+          carbs: '6',
+          fat: '0',
+          caffeineMg: '',
+          waterMl: '',
+          alcoholG: '',
+        },
+        ...extraParams,
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith(
+          expect.objectContaining({ adjustedValues: undefined })
+        );
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+    };
+
+    it('refuses an NFC tag pick whose saved serving had its nutrition changed here', async () => {
+      await pickAdjustedServingForTag('150');
+
+      await waitFor(() =>
+        expect(mockToast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: "Choose one of this food's servings",
+          })
+        )
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(mockCreateVariant).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('refuses an NFC tag pick whose saved serving had only a custom nutrient changed here', async () => {
+      await pickAdjustedServingForTag('100', {
+        adjustedCustomNutrients: { omega3: 2 },
+      });
+
+      await waitFor(() =>
+        expect(mockToast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: "Choose one of this food's servings",
+          })
+        )
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('saves adjusted custom nutrients on the serving made for an NFC tag', async () => {
+      await pickConvertedUnitForTag({ adjustedCustomNutrients: { omega3: 2 } });
+
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serving_unit: 'oz',
+          custom_nutrients: { omega3: 2 },
+        })
+      );
+    });
+
+    it('hands the saved serving to the NFC tag form when adjusted nutrition was saved to it', async () => {
+      await pickAdjustedServingForTag('100');
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith({
+          type: 'POP',
+          payload: { count: 2 },
+        })
+      );
+      expect(consumePendingActionTagSelection()).toEqual(
+        expect.objectContaining({
+          kind: 'food',
+          variantId: 'variant-1',
+          unit: 'cup',
+        })
+      );
+    });
 
     it('preserves real selectedVariantId for local foods when draft is returned', async () => {
       // Regression: draft branch was calling setSelectedVariantId(draftId) for

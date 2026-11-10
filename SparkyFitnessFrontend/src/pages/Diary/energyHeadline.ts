@@ -1,12 +1,10 @@
-import type { CalorieBalance } from '@workspace/shared';
+import {
+  computeCalorieProgress,
+  type CalorieBalance,
+  type NutrientGoalPreferenceEntry,
+} from '@workspace/shared';
+import { getCalorieBudget } from '@/utils/calorieBudget';
 import type { EnergyUnit } from '@/contexts/PreferencesContext';
-
-/** The slice of a nutrient goal preference the calorie headline reads. */
-interface CalorieGoalPreference {
-  goalType: string;
-  targetMin?: number | null;
-  targetMax?: number | null;
-}
 
 type ConvertEnergy = (
   value: number,
@@ -39,7 +37,7 @@ export const computeEnergyHeadline = ({
   convertEnergy,
 }: {
   calorieBalance: CalorieBalance;
-  calorieGoalPref: CalorieGoalPreference | undefined;
+  calorieGoalPref: NutrientGoalPreferenceEntry | undefined;
   plannedKcal: number;
   energyUnit: EnergyUnit;
   convertEnergy: ConvertEnergy;
@@ -61,19 +59,19 @@ export const computeEnergyHeadline = ({
         }
       : undefined;
 
-  // When a calorie target range is set, the upper bound serves as the budget ceiling.
-  const effectiveGoal = band ? band.max : goal;
-  const exerciseBonus = Math.max(0, remaining - (goal - eaten));
+  // With a calorie target range the budget (its upper bound plus any earned
+  // activity, from the shared `getCalorieBudget`) is the ring's goal.
+  const budgetKcal = getCalorieBudget(calorieBalance, calorieGoalPref);
+  const effectiveGoal = band ? toDisplay(budgetKcal) : goal;
   const effectiveRemaining = band
-    ? Math.round(effectiveGoal - eaten + exerciseBonus)
+    ? toDisplay(budgetKcal - calorieBalance.eaten)
     : remaining;
-  const effectiveProgress =
-    band && effectiveGoal > 0
-      ? Math.max(
-          0,
-          ((effectiveGoal - effectiveRemaining) / effectiveGoal) * 100
-        )
-      : calorieBalance.progress;
+  const effectiveProgress = band
+    ? computeCalorieProgress(
+        calorieBalance.eaten,
+        budgetKcal - calorieBalance.eaten
+      )
+    : calorieBalance.progress;
 
   return {
     goal: effectiveGoal,

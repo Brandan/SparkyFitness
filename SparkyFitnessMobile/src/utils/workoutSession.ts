@@ -12,6 +12,7 @@ import type {
   PresetSessionResponse,
   ProgressionEvaluationResult,
   WorkoutFormat,
+  EnergyUnit,
 } from '@workspace/shared';
 import {
   NO_ADAPTIVE_ADJUSTMENT,
@@ -24,6 +25,7 @@ import {
   decideAdaptiveAdjustment,
   distributeProgressionReps,
   effectiveLoadKg,
+  entryCaloriesCounted,
   evaluateProgression,
   isBodyweightModality,
   isCardioModality,
@@ -60,6 +62,7 @@ import { parseDecimalInput, parseSignedDecimalInput } from './numericInput';
 import { getDefaultRestSec } from './workoutSupersets';
 import { formatLocalizedNumber } from '../localization';
 import { wodScoreFormat } from './wodScore';
+import { energyUnitLabel, roundedEnergy } from './energyUnit';
 
 // The superset/reorder algebra lives in its own module; re-exported here so
 // the many existing import sites keep working.
@@ -85,6 +88,8 @@ export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   Strength: 'exercise-weights',
   Cardio: 'exercise-running',
   Running: 'exercise-running',
+  'Jump Rope': 'exercise-jumprope',
+  'Skipping Rope': 'exercise-jumprope',
   Cycling: 'exercise-cycling',
   Swimming: 'exercise-swimming',
   Walking: 'exercise-walking',
@@ -121,6 +126,10 @@ const NAME_KEYWORDS: [string, IconName][] = [
   ['stair', 'exercise-stair'],
   ['strength', 'exercise-weights'],
   ['weight', 'exercise-weights'],
+  // Whole names, not bare words: "Jump Squat", "Jumping Jacks" and
+  // "Battle Ropes" are not rope skipping.
+  ['jump rope', 'exercise-jumprope'],
+  ['skipping rope', 'exercise-jumprope'],
   ['run', 'exercise-running'],
 ];
 
@@ -202,9 +211,12 @@ export function getFirstImage(session: ExerciseSessionResponse): string | null {
 
 export function getSessionCalories(session: ExerciseSessionResponse): number {
   if (session.type === 'preset') {
-    return session.exercises.reduce((sum, e) => sum + e.calories_burned, 0);
+    return session.exercises.reduce(
+      (sum, e) => sum + entryCaloriesCounted(e),
+      0
+    );
   }
-  return session.calories_burned || 0;
+  return entryCaloriesCounted(session);
 }
 
 // --- Exercise stats (single-pass over sessions array) ---
@@ -235,7 +247,7 @@ export function calculateExerciseStats(
       const isActiveCals =
         session.exercise_snapshot?.name === 'Active Calories';
       if (isActiveCals) {
-        activeCalories += session.calories_burned || 0;
+        activeCalories += entryCaloriesCounted(session);
       } else {
         otherExerciseCalories += sessionCals;
         durationMinutes += session.duration_minutes ?? 0;
@@ -302,7 +314,8 @@ export function buildSessionSubtitle(
   calories: number,
   t: TFunction,
   weightUnit: 'kg' | 'lbs' = 'kg',
-  distanceUnit: 'km' | 'miles' = 'km'
+  distanceUnit: 'km' | 'miles' = 'km',
+  energyUnit: EnergyUnit = 'kcal'
 ): string {
   if (session.type === 'preset') {
     const exerciseCount = session.exercises.length;
@@ -419,7 +432,7 @@ export function buildSessionSubtitle(
     }
     if (calories > 0)
       parts.push(
-        `${Math.round(calories)} ${t('workout.caloriesUnit', { defaultValue: 'Cal' })}`
+        `${roundedEnergy(calories, energyUnit)} ${energyUnitLabel(energyUnit, t)}`
       );
     return parts.join(' · ');
   }
@@ -453,7 +466,7 @@ export function buildSessionSubtitle(
     if (duration > 0) parts.push(formatDuration(duration));
     if (calories > 0)
       parts.push(
-        `${Math.round(calories)} ${t('workout.caloriesUnit', { defaultValue: 'Cal' })}`
+        `${roundedEnergy(calories, energyUnit)} ${energyUnitLabel(energyUnit, t)}`
       );
     return parts.join(' · ');
   }
@@ -470,7 +483,7 @@ export function buildSessionSubtitle(
   }
   if (calories > 0)
     parts.push(
-      `${Math.round(calories)} ${t('workout.caloriesUnit', { defaultValue: 'Cal' })}`
+      `${roundedEnergy(calories, energyUnit)} ${energyUnitLabel(energyUnit, t)}`
     );
   return parts.join(' · ');
 }
@@ -1047,6 +1060,33 @@ export function describeActiveSet(
     };
   }
   return null;
+}
+
+/**
+ * The exercises after the one holding `activeSetId` that still have a set to
+ * do, outside its superset, in workout order: what "Do now" offers and what the Now card names as
+ * up next. Empty when there is no active set.
+ */
+export function upcomingExercises(
+  session: PresetSessionResponse | null,
+  activeSetId: string | null,
+  completedSetIds: Record<string, number>
+): PresetSessionResponse['exercises'] {
+  if (session == null || activeSetId == null) return [];
+  const current = session.exercises.findIndex((e) =>
+    e.sets.some((s) => String(s.id) === activeSetId)
+  );
+  if (current < 0) return [];
+  // The current exercise's superset partners are not offered: they move with
+  // it as one block, so "do now" on one of them would do nothing.
+  const group = session.exercises[current].superset_group;
+  return session.exercises
+    .slice(current + 1)
+    .filter(
+      (e) =>
+        (group == null || e.superset_group !== group) &&
+        e.sets.some((s) => completedSetIds[String(s.id)] == null)
+    );
 }
 
 /**
@@ -1841,6 +1881,17 @@ export function setTypeLetter(
     default:
       return null;
   }
+}
+
+/** Working-set numbers per set index; warmup/drop/failure rows repeat the previous number (they render a letter instead). */
+export function buildWorkingSetNumbers(
+  sets: Pick<WorkoutCardSet, 'set_type'>[]
+): number[] {
+  let workingNumber = 0;
+  return sets.map((set) => {
+    if (setTypeLetter(set.set_type) == null) workingNumber += 1;
+    return workingNumber;
+  });
 }
 
 export function isWarmupSetType(setType: string | null | undefined): boolean {
@@ -2865,4 +2916,53 @@ export function summarizeWorkoutHeartRate(
     avgBpm,
     maxBpm: maxValues.length > 0 ? Math.max(...maxValues) : null,
   };
+}
+
+/**
+ * How hard the person rated a workout, 1 to 10, or null when they did not.
+ * A strength session stores the same rating on every exercise, so any one that
+ * carries it speaks for the session; the highest wins if they ever differ.
+ */
+export function summarizeWorkoutEffort(
+  exercises: readonly { workout_effort?: number | null }[]
+): number | null {
+  const ratings = exercises
+    .map((exercise) => exercise.workout_effort)
+    .filter(
+      (value): value is number =>
+        typeof value === 'number' && value >= 1 && value <= 10
+    );
+  return ratings.length > 0 ? Math.max(...ratings) : null;
+}
+
+/**
+ * Whether the weight-derived metric columns (Vol / 1RM / 10RM) mean nothing
+ * for this modality, so the effort column is clamped to RPE (or RIR).
+ */
+export function isMetricClampedToRpe(modality: ExerciseModality): boolean {
+  return (
+    isDurationModality(modality) ||
+    modality === 'reps_only' ||
+    isWeightDurationModality(modality) ||
+    isWeightDistanceModality(modality)
+  );
+}
+
+/**
+ * The weight (kg) the plate graphic shows: the active set's, else the first
+ * working set's, using what it would log (typed or assumed). Null if none.
+ */
+export function plateTargetKg(
+  sets: readonly Pick<WorkoutCardSet, 'id' | 'weight' | 'set_type'>[],
+  activeSetId: string | null,
+  assumed: readonly ({ weight?: number | null } | null)[] | null | undefined
+): number | null {
+  const activeIndex = sets.findIndex((set) => String(set.id) === activeSetId);
+  const index =
+    activeIndex >= 0
+      ? activeIndex
+      : sets.findIndex((set) => !isWarmupSetType(set.set_type));
+  if (index < 0) return null;
+  const kg = sets[index]?.weight ?? assumed?.[index]?.weight;
+  return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
 }

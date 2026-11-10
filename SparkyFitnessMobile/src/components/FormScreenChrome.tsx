@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { View, Platform } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   KeyboardAwareScrollView,
@@ -92,12 +92,6 @@ interface FormScreenChromeProps {
    * height, so the focused input lands above the bar, not under it.
    */
   keyboardAccessory?: React.ReactNode;
-  /**
-   * Set for screens pushed onto the stack (not presented as a modal sheet):
-   * on iOS their fallback header would otherwise draw under the status bar,
-   * hiding Close and Save behind the clock and battery.
-   */
-  insetTop?: boolean;
   /** Always-visible bar pinned under the scrolling form, riding above the keyboard. */
   footer?: React.ReactNode;
   children: React.ReactNode;
@@ -112,7 +106,6 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   onCancel,
   headerAction,
   keyboardAccessory,
-  insetTop = false,
   footer,
   children,
 }) => {
@@ -136,13 +129,9 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   return (
     <View
       className="flex-1 bg-background"
-      // iOS keeps no top inset even without the native header: this chrome is
-      // used by modal sheets, which already start below the status bar.
-      style={
-        Platform.OS === 'android' || (insetTop && !usesNativeHeader)
-          ? { paddingTop: insets.top }
-          : undefined
-      }
+      // An iOS sheet reports no top inset, so there only pushed screens get
+      // room for the status bar.
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
 
