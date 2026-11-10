@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import {
   assignPlannedItemKeys,
@@ -62,6 +63,18 @@ interface PlannedAssignmentRow {
   food_images: string[] | null;
 }
 
+/** The fields the calorie and nutrient maths read, shared by plan items and one-offs. */
+export type PlannedFigureRow = Pick<
+  PlannedAssignmentRow,
+  | 'item_type'
+  | 'quantity'
+  | 'variant'
+  | 'variant_calories'
+  | 'variant_serving_size'
+  | 'meal_serving_size'
+  | 'meal_total_servings'
+>;
+
 interface MealFoodRow {
   meal_id: string;
   name: string;
@@ -116,15 +129,15 @@ function addNutrition(
 }
 
 /** Scale factor from one pass over a meal's foods to the planned quantity. */
-function mealScale(row: PlannedAssignmentRow): number {
+function mealScale(row: PlannedFigureRow): number {
   const denominator =
     Number(row.meal_serving_size || 1) * Number(row.meal_total_servings || 1);
   return denominator > 0 ? Number(row.quantity ?? 1) / denominator : 1;
 }
 
 /** Like `plannedCalories`, for every nutrient. */
-function plannedNutrition(
-  row: PlannedAssignmentRow,
+export function plannedNutrition(
+  row: PlannedFigureRow,
   mealFoodsNutrition: PlannedNutrition | null | undefined
 ): PlannedNutrition | null {
   if (row.item_type === 'food') {
@@ -143,8 +156,8 @@ function plannedNutrition(
  * scales its variant by quantity over serving size; a meal scales its foods by
  * quantity over (serving size x total servings).
  */
-function plannedCalories(
-  row: PlannedAssignmentRow,
+export function plannedCalories(
+  row: PlannedFigureRow,
   mealFoodsCalories: number | null | undefined
 ): number | null {
   const quantity = Number(row.quantity ?? 1);
@@ -163,6 +176,94 @@ function plannedCalories(
   return denominator > 0
     ? (mealFoodsCalories * quantity) / denominator
     : mealFoodsCalories;
+}
+
+export interface MealDetails {
+  componentsByMeal: Map<string, PlannedItemRow['foods']>;
+  /** Calories of one full pass over a meal's foods, before scaling to the plan. */
+  componentCaloriesByMeal: Map<string, number | null>;
+  componentNutritionByMeal: Map<string, PlannedNutrition | null>;
+  /** A meal with no picture of its own shows its first food that has one. */
+  componentImagesByMeal: Map<string, string[]>;
+}
+
+/** The foods inside each meal, with the totals Add to diary will write before scaling. */
+export async function loadMealDetails(
+  client: Pick<PoolClient, 'query'>,
+  mealIds: string[]
+): Promise<MealDetails> {
+  const componentsByMeal = new Map<string, PlannedItemRow['foods']>();
+  const componentCaloriesByMeal = new Map<string, number | null>();
+  const componentNutritionByMeal = new Map<string, PlannedNutrition | null>();
+  const componentImagesByMeal = new Map<string, string[]>();
+  if (mealIds.length === 0) {
+    return {
+      componentsByMeal,
+      componentCaloriesByMeal,
+      componentNutritionByMeal,
+      componentImagesByMeal,
+    };
+  }
+  const components = await client.query(
+    `SELECT mf.meal_id, f.name, mf.quantity, mf.unit, f.images,
+            fv.calories AS variant_calories,
+            fv.serving_size AS variant_serving_size,
+            to_jsonb(fv) AS variant
+     FROM meal_foods mf
+     JOIN foods f ON f.id = mf.food_id
+     LEFT JOIN food_variants fv ON fv.id = mf.variant_id
+     WHERE mf.meal_id = ANY($1::uuid[])
+     ORDER BY mf.created_at ASC, f.name ASC, mf.id ASC`,
+    [mealIds]
+  );
+  for (const component of components.rows as MealFoodRow[]) {
+    const list = componentsByMeal.get(component.meal_id) ?? [];
+    list.push({
+      name: component.name,
+      quantity: Number(component.quantity),
+      unit: component.unit,
+    });
+    componentsByMeal.set(component.meal_id, list);
+    componentCaloriesByMeal.set(
+      component.meal_id,
+      addCalories(
+        componentCaloriesByMeal.has(component.meal_id)
+          ? (componentCaloriesByMeal.get(component.meal_id) ?? null)
+          : 0,
+        scaledCalories(
+          component.variant_calories,
+          component.variant_serving_size,
+          Number(component.quantity)
+        )
+      )
+    );
+    componentNutritionByMeal.set(
+      component.meal_id,
+      addNutrition(
+        componentNutritionByMeal.has(component.meal_id)
+          ? (componentNutritionByMeal.get(component.meal_id) ?? null)
+          : emptyPlannedNutrition(),
+        scaledNutrition(
+          component.variant,
+          component.variant_serving_size,
+          Number(component.quantity)
+        )
+      )
+    );
+    const componentImages = usableImages(component.images);
+    if (
+      componentImages.length > 0 &&
+      !componentImagesByMeal.has(component.meal_id)
+    ) {
+      componentImagesByMeal.set(component.meal_id, componentImages);
+    }
+  }
+  return {
+    componentsByMeal,
+    componentCaloriesByMeal,
+    componentNutritionByMeal,
+    componentImagesByMeal,
+  };
 }
 
 interface LoggedCopyRow {
@@ -326,68 +427,12 @@ async function getPlannedItemsForDay(
         )
       ),
     ];
-    const componentsByMeal = new Map<string, PlannedItemRow['foods']>();
-    // Calories of one full pass over a meal's foods, before scaling to the plan.
-    const componentCaloriesByMeal = new Map<string, number | null>();
-    const componentNutritionByMeal = new Map<string, PlannedNutrition | null>();
-    const componentImagesByMeal = new Map<string, string[]>();
-    if (mealIds.length > 0) {
-      const components = await client.query(
-        `SELECT mf.meal_id, f.name, mf.quantity, mf.unit, f.images,
-                fv.calories AS variant_calories,
-                fv.serving_size AS variant_serving_size,
-                to_jsonb(fv) AS variant
-         FROM meal_foods mf
-         JOIN foods f ON f.id = mf.food_id
-         LEFT JOIN food_variants fv ON fv.id = mf.variant_id
-         WHERE mf.meal_id = ANY($1::uuid[])
-         ORDER BY mf.created_at ASC, f.name ASC, mf.id ASC`,
-        [mealIds]
-      );
-      for (const component of components.rows as MealFoodRow[]) {
-        const list = componentsByMeal.get(component.meal_id) ?? [];
-        list.push({
-          name: component.name,
-          quantity: Number(component.quantity),
-          unit: component.unit,
-        });
-        componentsByMeal.set(component.meal_id, list);
-        componentCaloriesByMeal.set(
-          component.meal_id,
-          addCalories(
-            componentCaloriesByMeal.has(component.meal_id)
-              ? (componentCaloriesByMeal.get(component.meal_id) ?? null)
-              : 0,
-            scaledCalories(
-              component.variant_calories,
-              component.variant_serving_size,
-              Number(component.quantity)
-            )
-          )
-        );
-        componentNutritionByMeal.set(
-          component.meal_id,
-          addNutrition(
-            componentNutritionByMeal.has(component.meal_id)
-              ? (componentNutritionByMeal.get(component.meal_id) ?? null)
-              : emptyPlannedNutrition(),
-            scaledNutrition(
-              component.variant,
-              component.variant_serving_size,
-              Number(component.quantity)
-            )
-          )
-        );
-        // A meal with no picture of its own shows its first food that has one.
-        const componentImages = usableImages(component.images);
-        if (
-          componentImages.length > 0 &&
-          !componentImagesByMeal.has(component.meal_id)
-        ) {
-          componentImagesByMeal.set(component.meal_id, componentImages);
-        }
-      }
-    }
+    const {
+      componentsByMeal,
+      componentCaloriesByMeal,
+      componentNutritionByMeal,
+      componentImagesByMeal,
+    } = await loadMealDetails(client, mealIds);
 
     return open.map(({ row, itemKey }) => ({
       template_id: row.template_id,

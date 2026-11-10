@@ -60,14 +60,17 @@ import {
   todayInZone,
   prefillEntryTime,
   sumPlannedNutrition,
+  type PlannedMealItem,
 } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 import {
   useCreatePlannedFoodMutation,
+  useCreatePlannedMealMutation,
   usePlannedMeals,
   useSkipPlannedMealMutation,
 } from '@/hooks/Foods/usePlannedMeals';
 import { ToastAction } from '@/components/ui/toast';
+import PlanMealDialog from './PlanMealDialog';
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -108,6 +111,8 @@ const Diary = () => {
   const [selectedMealTypeId, setSelectedMealTypeId] = useState<string>('');
   // True while the picked food is being planned for later, not logged as eaten.
   const [planningFood, setPlanningFood] = useState(false);
+  // The saved meal being planned for later (asks for an amount first).
+  const [planningMeal, setPlanningMeal] = useState<MealType | null>(null);
   const [openFoodSearchForMealType, setOpenFoodSearchForMealType] = useState<
     string | null
   >(null);
@@ -152,6 +157,7 @@ const Diary = () => {
 
   const { mutateAsync: createFoodEntry } = useCreateFoodEntryMutation();
   const { mutateAsync: createPlannedFood } = useCreatePlannedFoodMutation();
+  const { mutateAsync: createPlannedMeal } = useCreatePlannedMealMutation();
   const skipPlannedMeal = useSkipPlannedMealMutation();
   const { mutateAsync: removeFoodEntry } = useDeleteFoodEntryMutation();
   const { mutateAsync: copyFoodEntries } = useCopyFoodEntriesMutation();
@@ -269,8 +275,13 @@ const Diary = () => {
         mealType,
       });
       const mealTemplate = item as MealType; // cast as Meal (MealType in grep was likely alias or similar, strictly Meal interface is better)
-      setSelectedMealTemplate(mealTemplate);
       setSelectedMealType(mealType);
+      if (planned) {
+        setSelectedMealTypeId(typeId);
+        setPlanningMeal(mealTemplate);
+        return;
+      }
+      setSelectedMealTemplate(mealTemplate);
       setIsLogMealDialogOpen(true);
     }
   };
@@ -317,6 +328,50 @@ const Diary = () => {
     }
   };
 
+  const showPlannedToast = (name: string, planned: PlannedMealItem) => {
+    toast({
+      title: t('plannedMeals.planned', 'Planned {{name}} for {{mealName}}', {
+        name,
+        mealName: t(`common.${selectedMealType}`, selectedMealType),
+      }),
+      action: (
+        <ToastAction
+          altText={t('plannedMeals.undo', 'Undo')}
+          onClick={() =>
+            skipPlannedMeal.mutate({
+              template_id: planned.template_id,
+              date: selectedDate,
+              item_key: planned.item_key,
+            })
+          }
+        >
+          {t('plannedMeals.undo', 'Undo')}
+        </ToastAction>
+      ),
+    });
+  };
+
+  const handlePlanMeal = async (
+    meal: MealType,
+    quantity: number,
+    unit: string
+  ) => {
+    if (!meal.id || !selectedMealTypeId) return;
+    try {
+      const planned = await createPlannedMeal({
+        date: selectedDate,
+        meal_type_id: selectedMealTypeId,
+        meal_id: meal.id,
+        quantity,
+        unit,
+      });
+      setPlanningMeal(null);
+      showPlannedToast(meal.name, planned);
+    } catch (err) {
+      error(loggingLevel, 'Error planning meal:', err);
+    }
+  };
+
   const handlePlanFood = async (
     food: Food,
     quantity: number,
@@ -333,26 +388,7 @@ const Diary = () => {
         quantity,
         unit,
       });
-      toast({
-        title: t('plannedMeals.planned', 'Planned {{name}} for {{mealName}}', {
-          name: food.name,
-          mealName: t(`common.${selectedMealType}`, selectedMealType),
-        }),
-        action: (
-          <ToastAction
-            altText={t('plannedMeals.undo', 'Undo')}
-            onClick={() =>
-              skipPlannedMeal.mutate({
-                template_id: planned.template_id,
-                date: selectedDate,
-                item_key: planned.item_key,
-              })
-            }
-          >
-            {t('plannedMeals.undo', 'Undo')}
-          </ToastAction>
-        ),
-      });
+      showPlannedToast(food.name, planned);
     } catch (err) {
       error(loggingLevel, 'Error planning food:', err);
     }
@@ -653,6 +689,13 @@ const Diary = () => {
           onOpenChange={(open) => !open && setEditingFoodEntryMeal(null)}
         />
       )}
+
+      <PlanMealDialog
+        meal={planningMeal}
+        mealName={t(`common.${selectedMealType}`, selectedMealType)}
+        onClose={() => setPlanningMeal(null)}
+        onPlan={handlePlanMeal}
+      />
 
       <LogMealDialog
         mealTemplate={selectedMealTemplate}

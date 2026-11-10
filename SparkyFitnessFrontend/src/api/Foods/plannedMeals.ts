@@ -1,6 +1,7 @@
 import type {
   AddedPlannedMeal,
   CreatePlannedFoodBody,
+  CreatePlannedMealBody,
   UpdatePlannedFoodBody,
   PlannedMealActionBody,
   PlannedMealItem,
@@ -44,6 +45,12 @@ export const createPlannedFood = async (
   body: CreatePlannedFoodBody
 ): Promise<PlannedMealItem> => {
   return await api.post('/meal-plan-templates/planned/items', { body });
+};
+
+export const createPlannedMeal = async (
+  body: CreatePlannedMealBody
+): Promise<PlannedMealItem> => {
+  return await api.post('/meal-plan-templates/planned/meals', { body });
 };
 
 export const updatePlannedFood = async (

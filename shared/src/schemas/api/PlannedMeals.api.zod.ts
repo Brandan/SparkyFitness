@@ -27,11 +27,11 @@ export const plannedMealComponentSchema = z.object({
 
 /** One item of a "show as planned" meal plan on one day, not yet in the diary. */
 export const plannedMealItemSchema = z.object({
-  /** The meal plan the item comes from; null for a one-off food planned on its own. */
+  /** The meal plan the item comes from; null for a one-off food or meal planned on its own. */
   template_id: z.string().uuid().nullable(),
-  /** Empty for a one-off food. */
+  /** Empty for a one-off food or meal. */
   template_name: z.string(),
-  /** For a one-off food, the id of the planned food item. */
+  /** For a one-off food or meal, the id of the planned item. */
   item_key: z.string().min(1).max(200),
   item_type: z.enum(['meal', 'food']),
   meal_type_id: z.string().uuid(),
@@ -107,7 +107,19 @@ export const createPlannedFoodBodySchema = z
   })
   .strict();
 
-/** Change a one-off planned food; send only what changed. */
+/** Plan one saved meal on one day and meal, outside any meal plan. */
+export const createPlannedMealBodySchema = z
+  .object({
+    date: dayString,
+    meal_type_id: z.string().uuid(),
+    meal_id: z.string().uuid(),
+    /** Amount in the saved meal's own serving unit, as the meal plan form uses. */
+    quantity: z.number().positive().max(1_000_000),
+    unit: z.string().min(1).max(50),
+  })
+  .strict();
+
+/** Change a one-off planned food or meal; send only what changed. */
 export const updatePlannedFoodBodySchema = z
   .object({
     meal_type_id: z.string().uuid().optional(),
@@ -121,6 +133,7 @@ export const updatePlannedFoodBodySchema = z
   });
 
 export type CreatePlannedFoodBody = z.infer<typeof createPlannedFoodBodySchema>;
+export type CreatePlannedMealBody = z.infer<typeof createPlannedMealBodySchema>;
 export type UpdatePlannedFoodBody = z.infer<typeof updatePlannedFoodBodySchema>;
 export type PlannedMealComponent = z.infer<typeof plannedMealComponentSchema>;
 export type PlannedMealItem = z.infer<typeof plannedMealItemSchema>;
