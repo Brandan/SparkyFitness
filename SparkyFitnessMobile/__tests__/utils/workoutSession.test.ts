@@ -1,4 +1,6 @@
 import {
+  plateTargetKg,
+  summarizeWorkoutEffort,
   summarizeWorkoutHeartRate,
   CATEGORY_ICON_MAP,
   getWorkoutIcon,
@@ -68,6 +70,7 @@ import {
   hasBodyweightExercise,
   isPrSet,
   setLoadKg,
+  upcomingExercises,
 } from '../../src/utils/workoutSession';
 import { wodScoreFormat } from '../../src/utils/wodScore';
 import type {
@@ -94,6 +97,25 @@ type IndividualSession = Extract<
   { type: 'individual' }
 >;
 type PresetSession = Extract<ExerciseSessionResponse, { type: 'preset' }>;
+type PresetExercise = PresetSession['exercises'][number];
+
+const presetExercise = (
+  overrides: Partial<PresetExercise> &
+    Pick<PresetExercise, 'exercise_id' | 'calories_burned'>
+): PresetExercise => ({
+  id: overrides.id ?? overrides.exercise_id ?? 'entry',
+  duration_minutes: 0,
+  entry_date: '2026-03-20',
+  notes: null,
+  distance: null,
+  avg_heart_rate: null,
+  source: null,
+  sets: [],
+  exercise_snapshot: null,
+  activity_details: [],
+  superset_group: null,
+  ...overrides,
+});
 
 /** Format a number the same way the source does (runtime-locale toLocaleString). */
 const fmt = (n: number) => n.toLocaleString();
@@ -178,6 +200,29 @@ describe('workoutSession', () => {
         },
       });
       expect(getWorkoutIcon(session)).toBe('exercise-swimming');
+    });
+
+    it('gives the jump rope icon only to rope skipping, not to jump squats or battle ropes', () => {
+      const named = (name: string) =>
+        makeIndividual({
+          name,
+          exercise_snapshot: {
+            id: 'ex-1',
+            name,
+            category: 'Cardio',
+            calories_per_hour: 500,
+            source: 'system',
+          },
+        });
+      expect(getWorkoutIcon(named('Jump Rope'))).toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Skipping rope'))).toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Jump Squat'))).not.toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Jumping Jacks'))).not.toBe(
+        'exercise-jumprope'
+      );
+      expect(getWorkoutIcon(named('Battle Ropes'))).not.toBe(
+        'exercise-jumprope'
+      );
     });
 
     it('uses category match for non-Cardio categories', () => {
@@ -352,6 +397,37 @@ describe('workoutSession', () => {
     });
   });
 
+  describe('plateTargetKg', () => {
+    const sets = (types: (string | null)[]) =>
+      types.map((set_type, i) => ({
+        id: i + 1,
+        set_type,
+        weight: 20 * (i + 1),
+      }));
+
+    it('prefers the active set', () => {
+      expect(plateTargetKg(sets(['warmup', 'normal']), '2', null)).toBe(40);
+    });
+
+    it.each(['warmup', 'Warm-up', 'Warmup', 'WARM UP'])(
+      'skips a %s set when falling back to the first working set',
+      (type) => {
+        expect(plateTargetKg(sets([type, 'normal']), null, null)).toBe(40);
+      }
+    );
+
+    it('uses the assumed weight and ignores empty or non-positive weights', () => {
+      expect(
+        plateTargetKg([{ id: 1, set_type: 'normal', weight: null }], null, [
+          { weight: 55 },
+        ])
+      ).toBe(55);
+      expect(
+        plateTargetKg([{ id: 1, set_type: 'normal', weight: 0 }], null, null)
+      ).toBeNull();
+    });
+  });
+
   describe('canEditGroupedWorkout', () => {
     it.each([
       ['manual', true],
@@ -474,6 +550,30 @@ describe('workoutSession', () => {
   });
 
   describe('getSessionCalories', () => {
+    it('counts calories_applied instead of calories_burned, including 0', () => {
+      expect(
+        getSessionCalories(
+          makeIndividual({ calories_burned: 425, calories_applied: 0 })
+        )
+      ).toBe(0);
+      const preset = makePreset({
+        exercises: [
+          presetExercise({
+            exercise_id: 'ex-1',
+            calories_burned: 475,
+            calories_applied: 100,
+          }),
+          presetExercise({
+            id: 'entry-2',
+            exercise_id: 'ex-2',
+            calories_burned: 50,
+            calories_applied: null,
+          }),
+        ],
+      });
+      expect(getSessionCalories(preset)).toBe(150);
+    });
+
     it('sums exercise calories for preset sessions', () => {
       const session = makePreset({
         exercises: [
@@ -590,7 +690,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 60, 300)).toBe(
-          '2 exercises · 3 sets · 300 Cal'
+          '2 exercises · 3 sets · 300 kcal'
         );
       });
 
@@ -641,7 +741,7 @@ describe('workoutSession', () => {
         });
         // 500 + 640 = 1140 kg
         expect(buildSessionSubtitle(session, 60, 300)).toBe(
-          `1 exercise · 2 sets · ${fmt(1140)} kg · 300 Cal`
+          `1 exercise · 2 sets · ${fmt(1140)} kg · 300 kcal`
         );
       });
 
@@ -679,7 +779,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 60, 300)).toBe(
-          '1 exercise · 2 sets · 300 Cal'
+          '1 exercise · 2 sets · 300 kcal'
         );
       });
 
@@ -704,7 +804,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 40, 300)).toBe(
-          '2 exercises · 1 set · 500 kg · 5.2 km · 300 Cal'
+          '2 exercises · 1 set · 500 kg · 5.2 km · 300 kcal'
         );
       });
 
@@ -722,7 +822,7 @@ describe('workoutSession', () => {
           exercises: [cardio('ex-1', 5, 1500), cardio('ex-2', 10, 1800)],
         });
         expect(buildSessionSubtitle(session, 55, 500)).toBe(
-          '2 exercises · 15.0 km · 500 Cal'
+          '2 exercises · 15.0 km · 500 kcal'
         );
       });
 
@@ -739,7 +839,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 60, 300)).toBe(
-          '1 exercise · 300 Cal'
+          '1 exercise · 300 kcal'
         );
       });
     });
@@ -768,7 +868,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 45, 200)).toBe(
-          '3 sets · 45 min · 200 Cal'
+          '3 sets · 45 min · 200 kcal'
         );
       });
 
@@ -823,7 +923,7 @@ describe('workoutSession', () => {
         });
         // 1080 kg total
         expect(buildSessionSubtitle(session, 30, 150)).toBe(
-          `2 sets · ${fmt(1080)} kg · 30 min · 150 Cal`
+          `2 sets · ${fmt(1080)} kg · 30 min · 150 kcal`
         );
       });
 
@@ -836,7 +936,7 @@ describe('workoutSession', () => {
         });
         const result = buildSessionSubtitle(session, 20, 100, 'lbs');
         // 1000 kg * 2.20462 ≈ 2205 lbs
-        expect(result).toBe(`2 sets · ${fmt(2205)} lbs · 20 min · 100 Cal`);
+        expect(result).toBe(`2 sets · ${fmt(2205)} lbs · 20 min · 100 kcal`);
       });
 
       it('omits volume when weights are zero', () => {
@@ -847,7 +947,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 30, 200)).toBe(
-          '2 sets · 30 min · 200 Cal'
+          '2 sets · 30 min · 200 kcal'
         );
       });
 
@@ -860,7 +960,7 @@ describe('workoutSession', () => {
         });
         // 800 kg volume
         expect(buildSessionSubtitle(session, 0, 150)).toBe(
-          '2 sets · 800 kg · 150 Cal'
+          '2 sets · 800 kg · 150 kcal'
         );
       });
 
@@ -892,7 +992,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 30, 300)).toBe(
-          '30 min · 5.2 km · 300 Cal'
+          '30 min · 5.2 km · 300 kcal'
         );
       });
 
@@ -905,7 +1005,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 20, 200)).toBe(
-          '20 min · 4.0 km · 200 Cal'
+          '20 min · 4.0 km · 200 kcal'
         );
       });
     });
@@ -913,13 +1013,15 @@ describe('workoutSession', () => {
     describe('individual activity (single or no sets)', () => {
       it('shows duration and calories', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 300 Cal');
+        expect(buildSessionSubtitle(session, 30, 300)).toBe(
+          '30 min · 300 kcal'
+        );
       });
 
       it('includes distance in km', () => {
         const session = makeIndividual({ distance: 5.5 });
         expect(buildSessionSubtitle(session, 30, 300)).toBe(
-          '30 min · 5.5 km · 300 Cal'
+          '30 min · 5.5 km · 300 kcal'
         );
       });
 
@@ -927,22 +1029,26 @@ describe('workoutSession', () => {
         const session = makeIndividual({ distance: 10 }); // 10 km
         const result = buildSessionSubtitle(session, 60, 500, 'kg', 'miles');
         // 10 km * 0.621371 ≈ 6.2 mi
-        expect(result).toBe('1h · 6.2 mi · 500 Cal');
+        expect(result).toBe('1h · 6.2 mi · 500 kcal');
       });
 
       it('omits distance when null', () => {
         const session = makeIndividual({ distance: null });
-        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
+        expect(buildSessionSubtitle(session, 45, 250)).toBe(
+          '45 min · 250 kcal'
+        );
       });
 
       it('omits distance when zero', () => {
         const session = makeIndividual({ distance: 0 });
-        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
+        expect(buildSessionSubtitle(session, 45, 250)).toBe(
+          '45 min · 250 kcal'
+        );
       });
 
       it('omits duration when zero', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 0, 300)).toBe('300 Cal');
+        expect(buildSessionSubtitle(session, 0, 300)).toBe('300 kcal');
       });
 
       it('omits calories when zero', () => {
@@ -967,7 +1073,7 @@ describe('workoutSession', () => {
         });
         // Single set still enters the sets branch — weight 100 * reps 10 = 1000 kg volume
         expect(buildSessionSubtitle(session, 30, 200)).toBe(
-          `1 set · ${fmt(1000)} kg · 30 min · 200 Cal`
+          `1 set · ${fmt(1000)} kg · 30 min · 200 kcal`
         );
       });
     });
@@ -6746,5 +6852,66 @@ describe('wodScoreFormat', () => {
     expect(wodScoreFormat({ workout_format: 'amrap' })).toBe('amrap');
     expect(wodScoreFormat({ format: 'for_time' })).toBe('for_time');
     expect(wodScoreFormat({})).toBeNull();
+  });
+});
+
+describe('summarizeWorkoutEffort', () => {
+  it('is null when no exercise carries a rating', () => {
+    expect(summarizeWorkoutEffort([])).toBeNull();
+    expect(summarizeWorkoutEffort([{ workout_effort: null }, {}])).toBeNull();
+  });
+
+  it('reads the rating from any exercise of the session', () => {
+    expect(
+      summarizeWorkoutEffort([{ workout_effort: null }, { workout_effort: 8 }])
+    ).toBe(8);
+  });
+
+  it('takes the highest if they ever differ, and ignores values outside 1-10', () => {
+    expect(
+      summarizeWorkoutEffort([
+        { workout_effort: 6 },
+        { workout_effort: 9 },
+        { workout_effort: 0 },
+        { workout_effort: 14 },
+      ])
+    ).toBe(9);
+  });
+});
+
+describe('upcomingExercises', () => {
+  const entry = (
+    id: string,
+    setIds: number[],
+    group: number | null = null
+  ) => ({
+    id,
+    superset_group: group,
+    sets: setIds.map((setId) => ({ id: setId })),
+  });
+  const session = {
+    exercises: [
+      entry('a', [1, 2], 1),
+      entry('b', [3, 4], 1),
+      entry('c', [5]),
+      entry('d', [6]),
+    ],
+  } as unknown as PresetSessionResponse;
+
+  it('lists the later exercises with a set to do, leaving out superset partners', () => {
+    expect(upcomingExercises(session, '1', {}).map((e) => e.id)).toEqual([
+      'c',
+      'd',
+    ]);
+  });
+
+  it('leaves out exercises that are already done', () => {
+    expect(upcomingExercises(session, '3', { 5: 1 }).map((e) => e.id)).toEqual([
+      'd',
+    ]);
+  });
+
+  it('is empty without an active set', () => {
+    expect(upcomingExercises(session, null, {})).toEqual([]);
   });
 });

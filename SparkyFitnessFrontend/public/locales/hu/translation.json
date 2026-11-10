@@ -87,7 +87,6 @@
       "categoryStrength": "Erősítés",
       "categoryCardio": "Kardió",
       "categoryYoga": "Jóga",
-      "caloriesPerHourLabel": "Kalóriák/Óra",
       "levelExpert": "Szakértő",
       "mechanicLabel": "Mechanika",
       "selectMechanicPlaceholder": "Válassz mechanizmust",
@@ -113,7 +112,6 @@
       "suggestedTab": "Ajánlott",
       "importFitTab": "FIT importálása",
       "modalityLabel": "Nyomonkövetési típus",
-      "caloriesPerHourHint": "Ha üresen hagyja, a rendszer az óránkénti kalóriákat számítja ki ({{newExerciseCalories}} kalória/óra).",
       "descriptionLabel": "Leírás",
       "sourceLabel": "Forrás",
       "forceLabel": "Erő",
@@ -171,8 +169,6 @@
       "activeCalories": "Aktív kalóriák: {{activeCaloriesFromExercise}} {{energyUnit}}",
       "stepsCalories": "Lépések: {{dailySteps}} = {{stepsCalories}} {{energyUnit}}",
       "bmrCalories": "BMR: {{bmr}} {{energyUnit}}",
-      "bmrSourceMeasured": "Mért",
-      "bmrSourceAlgorithm": "Algoritmus",
       "totalCaloriesBurned": "Összes: {{totalCaloriesBurned}} {{energyUnit}}",
       "goal": "cél",
       "caloriesBurnedBreakdownTitle": "Elégetett kalóriák lebontva",
@@ -221,7 +217,6 @@
       "exerciseLabel": "Edzés",
       "unknownExercise": "Ismeretlen edzés",
       "addSetButton": "Sorozat hozzáadása",
-      "caloriesBurnedOptionalLabel": "Elégetett kalóriák (opcionális)",
       "caloriesBurnedPlaceholder": "Adja meg az elégetett kalóriákat a számítás felülírásához",
       "caloriesBurnedHint": "Ha ezt a mezőt üresen hagyja, a kalóriák mennyisége mentéskor automatikusan kiszámításra kerül.",
       "distanceLabel": "Távolság",
@@ -1184,7 +1179,6 @@
       "prnReason": "Ok (Opcionális)",
       "prnReasonPlaceholder": "pl. Fájdalom",
       "prnMax": "Max dózis / nap",
-      "supplementDoseScalingCalories": "Minden bejegyzés {{dose}} adagot tartalmaz: {{dose}} × {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "Minden bejegyzés {{dose}} adagot tartalmaz, így az adagonként megadott tápérték {{dose}}-szorosa.",
       "servingUnit": "adag",
       "servingsPerLog": "Bejegyzésenkénti adagok",
@@ -1456,7 +1450,40 @@
     "customSource": "Egyedi",
     "minutesUnit": "Perc",
     "primaryMuscles": "Elsődleges izmok",
-    "secondaryMuscles": "Másodlagos izmok"
+    "secondaryMuscles": "Másodlagos izmok",
+    "levelIntermediate": "Haladó",
+    "force": "Erő",
+    "forcePull": "Húzás",
+    "forcePush": "Tolás",
+    "forceStatic": "Statikus",
+    "mechanic": "Mechanika",
+    "levelExpert": "Szakértő",
+    "selectForce": "Erő kiválasztása",
+    "selectMechanic": "Válasszon mechanikát",
+    "mechanicIsolation": "Izoláció",
+    "mechanicCompound": "Összetett",
+    "equipment": "Felszerelés",
+    "instructions": "Utasítások (soronként egy)",
+    "images": "Képek",
+    "description": "Leírás",
+    "saveChanges": "Változások mentése",
+    "playInstructions": "Utasítások Lejátszása",
+    "activeCalories": "aktív kalória",
+    "caloriesUnit": "kalória",
+    "setsLabel": "Sorozatok",
+    "repsLabel": "Ismétlések",
+    "weightLabel": "Súly",
+    "levelLabel": "Szint",
+    "forceLabel": "Erő",
+    "mechanicLabel": "Mechanika",
+    "equipmentLabel": "Felszerelés",
+    "primaryMusclesLabel": "Elsődleges Izmok",
+    "secondaryMusclesLabel": "Másodlagos Izmok",
+    "instructionsLabel": "Utasítások",
+    "previewExerciseImage": "Gyakorlat képének előnézete.",
+    "exerciseImage": "Gyakorlat Képe",
+    "failedToLoadExerciseDetailsForEditing": "Nem sikerült betölteni a gyakorlat adatait szerkesztés céljából.",
+    "failedToUpdateExerciseInDatabase": "Nem sikerült frissíteni a gyakorlatot az adatbázisban"
   },
   "enhancedFoodSearch": {
     "editAndAdd": "Módosít & Hozzáad",
@@ -1483,7 +1510,10 @@
     "failedToLoadFavorites": "Kedvencek betöltése sikertelen.",
     "failedToUpdateFavorite": "Kedvencek frissítése sikertelen.",
     "provider": "Adatszolgáltató",
-    "selectBarcodeProvider": "Szolgáltató Kiválasztása"
+    "selectBarcodeProvider": "Szolgáltató Kiválasztása",
+    "scanBarcode": "Vonalkód Beolvasása",
+    "customFood": "Egyedi Étel",
+    "importFromCSV": "Importálás CSV fájlból"
   },
   "sync": {
     "syncAll": "Összes aktív szolgáltató szinkronizálása",
@@ -1622,6 +1652,33 @@
     },
     "waterTracking": {
       "title": "Vízfogyasztás nyomon követése"
+    },
+    "aiService": {
+      "globalSettings": {
+        "setAsActive": "Konfiguráció engedélyezése",
+        "activeService": "Konfiguráció engedélyezve"
+      },
+      "userSettings": {
+        "activeProvider": "Chat konfiguráció"
+      }
     }
+  },
+  "admin": {
+    "backupSettings": {
+      "backupCount_one": "{{count}} biztonsági mentés",
+      "backupCount_other": "{{count}} biztonsági mentés"
+    }
+  },
+  "barcodeLookup": {
+    "protein": "Fehérje: {{value}} g",
+    "carbs": "Szénhidrát: {{value}} g",
+    "fat": "Zsír: {{value}} g",
+    "sourceFailed": "Ez a forrás nem elérhető.",
+    "sourceNotFound": "Nincsenek termékek ebben a forrásban.",
+    "notFound": "Nem található termék. Ellenőrizz más forrásokat vagy adj hozzá ételt manuálisan.",
+    "otherSources": "Egyéb források",
+    "loading": "Egyéb források ellenőrzése…",
+    "alternativesFailed": "Az egyéb forrásokat nem lehetett betölteni.",
+    "noAlternatives": "Nincs egyéb elérhető forrás."
   }
 }

@@ -9,6 +9,8 @@ import {
   syncHevyData,
   syncLiftosaurData,
   LiftosaurSyncResult,
+  syncIntervalsData,
+  IntervalsSyncResult,
   loginGarmin,
   GarminLoginPayload,
 } from '@/api/Integrations/integrations';
@@ -41,14 +43,19 @@ import {
   handleDisconnectStrava,
   handleManualSyncStrava,
   handleDisconnectLiftosaur,
+  handleDisconnectIntervals,
   fetchGarminStatus,
   GarminMfaPayload,
   resumeGarminLogin,
 } from '@/api/Settings/externalProviderService';
 import { garminKeys } from '@/api/keys/integrations';
 import { externalProviderKeys } from '@/api/keys/settings';
-import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
+import {
+  useDiaryInvalidation,
+  useGarminStatusInvalidation,
+} from '@/hooks/useInvalidateKeys';
 import i18n from 'i18next';
+import { garminSyncWarning } from '@/hooks/Integrations/garminSyncWarning';
 export const useLinkFitbitMutation = () => {
   const { t } = useTranslation();
   const invalidate = useDiaryInvalidation();
@@ -295,6 +302,73 @@ export const useDisconnectLiftosaurMutation = () => {
     },
   });
 };
+interface SyncIntervalsVariables {
+  providerId?: string;
+  startDate?: string;
+  endDate?: string;
+  saveMockData?: boolean;
+  dataSource?: string;
+}
+
+export const useSyncIntervalsMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const invalidateDiary = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({
+      providerId,
+      startDate,
+      endDate,
+      ...mock
+    }: SyncIntervalsVariables) =>
+      syncIntervalsData(providerId, startDate, endDate, mock),
+    onSuccess: (data: IntervalsSyncResult) => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+      invalidateDiary();
+      toast({
+        // Some activities could not be saved; the next sync covering their day retries them.
+        variant: data?.activitiesFailed ? 'destructive' : 'default',
+        title: t(
+          'integrations.intervalsSyncSuccessTitle',
+          'Intervals.icu synced successfully'
+        ),
+        description: t(
+          'integrations.intervalsSyncDetails',
+          'Synced: {{activitiesImported}} activities ({{activitiesSkipped}} skipped, {{activitiesFailed}} failed), {{wellnessDays}} wellness days.',
+          {
+            activitiesImported: data?.activitiesImported ?? 0,
+            activitiesSkipped: data?.activitiesSkipped ?? 0,
+            activitiesFailed: data?.activitiesFailed ?? 0,
+            wellnessDays: data?.wellnessDays ?? 0,
+          }
+        ),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.intervalsSyncError',
+        'Intervals.icu sync failed. Please check your athlete ID and API key in settings.'
+      ),
+    },
+  });
+};
+
+export const useDisconnectIntervalsMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (providerId?: string) => handleDisconnectIntervals(providerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+    },
+  });
+};
 export const useLoginGarminMutation = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -358,13 +432,22 @@ export const useDisconnectGarminMutation = () => {
 };
 
 export const useManualSyncGarminMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const invalidateSyncData = useDiaryInvalidation();
+  const invalidateGarminStatus = useGarminStatusInvalidation();
 
   return useMutation({
     mutationFn: ({ startDate, endDate, ...mock }: SyncVariables) =>
       handleManualSyncGarmin(startDate, endDate, mock),
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidateSyncData();
+      const warning = garminSyncWarning(result, t);
+      if (warning) toast(warning);
+    },
+    // A failed sync can change the status too (e.g. the service went down).
+    onSettled: () => {
+      invalidateGarminStatus();
     },
   });
 };
@@ -599,12 +682,6 @@ export const useManualSyncGoogleHealthMutation = () => {
     },
   });
 };
-
-export interface GarminStatusResponse {
-  isLinked: boolean;
-  lastUpdated: string | null;
-  tokenExpiresAt: string | null;
-}
 
 export const useGarminStatus = (userId?: string) => {
   return useQuery({

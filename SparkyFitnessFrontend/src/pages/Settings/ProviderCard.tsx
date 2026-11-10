@@ -51,6 +51,8 @@ import {
   useSyncHevyMutation,
   useSyncLiftosaurMutation,
   useDisconnectLiftosaurMutation,
+  useSyncIntervalsMutation,
+  useDisconnectIntervalsMutation,
   useConnectCorosMutation,
   useDisconnectCorosMutation,
   useManualSyncCorosMutation,
@@ -230,6 +232,12 @@ export const ProviderCard = ({
     mutate: handleDisconnectLiftosaur,
     isPending: isDisconnectLiftosaurPending,
   } = useDisconnectLiftosaurMutation();
+  const { mutate: syncIntervalsData, isPending: isSyncIntervalsPending } =
+    useSyncIntervalsMutation();
+  const {
+    mutate: handleDisconnectIntervals,
+    isPending: isDisconnectIntervalsPending,
+  } = useDisconnectIntervalsMutation();
 
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
 
@@ -302,6 +310,14 @@ export const ProviderCard = ({
           endDate,
         });
         break;
+      case 'intervals':
+        syncIntervalsData({
+          providerId: provider.id,
+          startDate,
+          endDate,
+          ...mock,
+        });
+        break;
     }
   };
 
@@ -336,7 +352,9 @@ export const ProviderCard = ({
     isSyncCorosPending ||
     isSyncHevyPending ||
     isSyncLiftosaurPending ||
-    isDisconnectLiftosaurPending;
+    isDisconnectLiftosaurPending ||
+    isSyncIntervalsPending ||
+    isDisconnectIntervalsPending;
 
   const handleToggleActive = async (providerId: string, isActive: boolean) => {
     try {
@@ -413,8 +431,11 @@ export const ProviderCard = ({
       provider.garmin_connect_status === 'linked' ||
       provider.garmin_connect_status === 'connected' ||
       provider.hevy_connect_status === 'connected' ||
-      provider.liftosaur_connect_status === 'connected';
+      provider.liftosaur_connect_status === 'connected' ||
+      provider.intervals_connect_status === 'connected';
 
+    // Polar's is the only token expiry shown: the other OAuth providers refresh their
+    // access tokens on their own, so their short expiry misleads users into reconnecting.
     switch (provider.provider_type) {
       case 'withings':
         return {
@@ -422,7 +443,7 @@ export const ProviderCard = ({
           disconnect: () => handleDisconnectWithings(),
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.withings_last_sync_at,
-          tokenExpires: provider.withings_token_expires,
+          tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
       case 'fitbit':
@@ -431,7 +452,7 @@ export const ProviderCard = ({
           disconnect: () => handleDisconnectFitbit(),
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.fitbit_last_sync_at,
-          tokenExpires: provider.fitbit_token_expires,
+          tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
       case 'oura':
@@ -440,7 +461,7 @@ export const ProviderCard = ({
           disconnect: () => handleDisconnectOura(),
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.oura_last_sync_at,
-          tokenExpires: provider.oura_token_expires,
+          tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
       case 'googlehealth':
@@ -449,7 +470,7 @@ export const ProviderCard = ({
           disconnect: () => handleDisconnectGoogleHealth(),
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.googlehealth_last_sync_at,
-          tokenExpires: null, // access tokens auto-refresh; showing 1h expiry misleads users
+          tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
       case 'polar':
@@ -467,7 +488,7 @@ export const ProviderCard = ({
           disconnect: () => handleDisconnectStrava(),
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.strava_last_sync_at,
-          tokenExpires: provider.strava_token_expires,
+          tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
       case 'coros_mcp':
@@ -476,7 +497,7 @@ export const ProviderCard = ({
           disconnect: () => handleDisconnectCoros(provider.id),
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.coros_last_sync_at,
-          tokenExpires: provider.coros_token_expires,
+          tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
       case 'garmin':
@@ -485,7 +506,7 @@ export const ProviderCard = ({
           disconnect: () => handleDisconnectGarmin(),
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.garmin_last_status_check,
-          tokenExpires: provider.garmin_token_expires,
+          tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
       case 'hevy':
@@ -506,12 +527,25 @@ export const ProviderCard = ({
           tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
+      case 'intervals':
+        return {
+          connect: null,
+          disconnect: () => handleDisconnectIntervals(provider.id),
+          sync: () => setIsSyncDialogOpen(true),
+          lastSync: provider.intervals_last_sync_at,
+          tokenExpires: null,
+          hasToken: isLinked && provider.is_active,
+        };
       default:
         return null;
     }
   };
 
   const config = getProviderConfig();
+  // The Garmin status check reports null when the account has never synced.
+  const garminNeverSynced =
+    provider.provider_type === 'garmin' &&
+    provider.garmin_last_status_check === null;
 
   return (
     <div className="space-y-3">
@@ -700,6 +734,8 @@ export const ProviderCard = ({
               'mealie',
               'tandoor',
               'norish',
+              'valhalla',
+              'open_meteo',
               'free-exercise-db',
               'wger',
             ].includes(provider.provider_type) && (
@@ -949,26 +985,55 @@ export const ProviderCard = ({
           );
         })()}
 
-        {config?.hasToken && (config.lastSync || config.tokenExpires) && (
-          <div className="text-sm text-muted-foreground">
-            {config.lastSync && (
-              <span>
-                {t('settings.providerCard.lastSync2', 'Last Sync: {{value}}', {
-                  value: new Date(config.lastSync).toLocaleString(),
-                })}
-              </span>
+        {config?.hasToken &&
+          (config.lastSync || config.tokenExpires || garminNeverSynced) && (
+            <div className="text-sm text-muted-foreground">
+              {config.lastSync && (
+                <span>
+                  {t(
+                    'settings.providerCard.lastSync2',
+                    'Last Sync: {{value}}',
+                    {
+                      value: new Date(config.lastSync).toLocaleString(),
+                    }
+                  )}
+                </span>
+              )}
+              {!config.lastSync && garminNeverSynced && (
+                <span>
+                  {t('settings.providerCard.neverSynced', 'Last Sync: never')}
+                </span>
+              )}
+              {config.lastSync && config.tokenExpires && <span> | </span>}
+              {config.tokenExpires && (
+                <span>
+                  {t(
+                    'settings.providerCard.tokenExpires2',
+                    'Token Expires: {{value}}',
+                    { value: new Date(config.tokenExpires).toLocaleString() }
+                  )}
+                </span>
+              )}
+            </div>
+          )}
+
+        {provider.provider_type === 'garmin' &&
+          provider.garmin_service_reachable === false && (
+            <p className="text-sm text-destructive">
+              {t(
+                'settings.providerCard.garminServiceUnreachable',
+                'Garmin service unreachable. Syncing is not possible.'
+              )}
+            </p>
+          )}
+
+        {provider.provider_type === 'intervals' && (
+          <p className="text-xs text-muted-foreground mt-2">
+            {t(
+              'integrations.intervalsGarminNote',
+              'Activities that Intervals.icu received from Garmin Connect are skipped while Garmin is connected here, so they are not imported twice.'
             )}
-            {config.lastSync && config.tokenExpires && <span> | </span>}
-            {config.tokenExpires && (
-              <span>
-                {t(
-                  'settings.providerCard.tokenExpires2',
-                  'Token Expires: {{value}}',
-                  { value: new Date(config.tokenExpires).toLocaleString() }
-                )}
-              </span>
-            )}
-          </div>
+          </p>
         )}
 
         {provider.availability_error && (

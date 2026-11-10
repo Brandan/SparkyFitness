@@ -15,6 +15,9 @@ import {
   sumPercentages,
   type MealPercentages,
 } from '../utils/mealDistribution';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { energyToKcal } from '@workspace/shared';
 
 export interface MealDistributionMeal {
   key: string;
@@ -36,6 +39,7 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
   totalCalories,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const [textPrimary, textMuted] = useCSSVariable([
     '--color-text-primary',
     '--color-text-muted',
@@ -125,7 +129,12 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
                   value={
                     kcalEdit?.key === key
                       ? kcalEdit.text
-                      : String(caloriesFromPercent(percent, totalCalories))
+                      : String(
+                          roundedEnergy(
+                            caloriesFromPercent(percent, totalCalories),
+                            energyUnit
+                          )
+                        )
                   }
                   onChangeText={(text) => {
                     const digits = text.replace(/\D/g, '');
@@ -133,7 +142,7 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
                     setMeal(
                       key,
                       percentFromCalories(
-                        parseInt(digits, 10) || 0,
+                        energyToKcal(parseInt(digits, 10) || 0, energyUnit),
                         totalCalories
                       ),
                       false
@@ -142,23 +151,29 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
                   onFocus={() =>
                     setKcalEdit({
                       key,
-                      text: String(caloriesFromPercent(percent, totalCalories)),
+                      text: String(
+                        roundedEnergy(
+                          caloriesFromPercent(percent, totalCalories),
+                          energyUnit
+                        )
+                      ),
                     })
                   }
                   onBlur={() => setKcalEdit(null)}
                   keyboardType="number-pad"
                   editable={!isLocked && canEditCalories}
                   selectTextOnFocus
-                  accessibilityLabel={t('goals.meals.mealKcal', {
-                    defaultValue: '{{meal}} (kcal)',
+                  accessibilityLabel={t('goals.meals.mealEnergyWithUnit', {
+                    defaultValue: '{{meal}} ({{unit}})',
                     meal: label,
+                    unit: energyUnitLabel(energyUnit, t),
                   })}
                   testID={`goal-input-meal-kcal-${key}`}
                   style={{ textAlign: 'center', paddingHorizontal: 4 }}
                 />
               </View>
               <Text className="w-10 text-sm text-text-secondary">
-                {t('goals.meals.kcalUnit', { defaultValue: 'kcal' })}
+                {energyUnitLabel(energyUnit, t)}
               </Text>
               <View className="w-16">
                 <FormInput

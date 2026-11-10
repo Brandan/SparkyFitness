@@ -74,6 +74,7 @@ const renderSummary = (plannedTotals?: PlannedNutrition) =>
 describe('NutritionSummaryCard net carbs summary', () => {
   beforeEach(() => {
     mockShowNetCarbs = false;
+    mockVisibleNutrients = ['carbs'];
   });
 
   it('shows total carbohydrates by default', () => {
@@ -129,5 +130,32 @@ describe('NutritionSummaryCard planned amounts', () => {
 
     expect(screen.queryByText(/planned/)).not.toBeInTheDocument();
     expect(screen.queryByTestId('planned-bar')).not.toBeInTheDocument();
+  });
+});
+
+describe('NutritionSummaryCard calorie budget', () => {
+  it('uses the activity-adjusted budget for the calorie label and bar', () => {
+    mockVisibleNutrients = ['calories'];
+    const { container } = render(
+      <NutritionSummaryCard
+        selectedDate="2026-10-24"
+        dayTotals={{
+          calories: 1225,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          dietary_fiber: 0,
+        }}
+        goals={{ ...DEFAULT_GOALS, calories: 1800 }}
+        calorieBudget={2481}
+        energyUnit="kcal"
+        convertEnergy={(value) => value}
+      />
+    );
+    expect(screen.getByText('of 2481kcal')).toBeInTheDocument();
+    const bar = container.querySelector<HTMLElement>(
+      '.h-1\\.5[style]:not([data-testid])'
+    );
+    expect(parseFloat(bar?.style.width ?? '0')).toBeCloseTo(49.375);
   });
 });

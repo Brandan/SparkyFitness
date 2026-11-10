@@ -1,17 +1,22 @@
 import {
   requestAuthorization,
+  getRequestStatusForAuthorization,
+  AuthorizationRequestStatus,
   queryQuantitySamples,
   queryStatisticsCollectionForQuantity,
   isHealthDataAvailable,
   queryCategorySamples,
   queryWorkoutSamples,
   queryCorrelationSamples,
+  queryActivitySummary,
+  ActivitySummaryTypeIdentifier,
   type QueryStatisticsResponse,
   type StatisticsOptions,
 } from '@kingstinct/react-native-healthkit';
 import { Platform, Alert } from 'react-native';
 import { addLog } from '../LogService';
 import i18n from '../../localization/i18n';
+import { isAuthorizationNotDeterminedError } from '../../utils/healthErrors';
 import {
   AggregatedHealthRecord,
   MetricConfig,
@@ -23,9 +28,11 @@ import {
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { getDeviceTimezone } from '../../utils/dateUtils';
 import {
+  aggregateSleepSessions,
   toLocalDateString,
   mapDayStatisticsToMinMaxAvg,
 } from './dataAggregation';
+import { overnightBodyTemperatures } from './overnightBodyTemperature';
 import { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '../shared/dataTransformation';
 import {
   WATCH_SESSION_METADATA_KEY,
@@ -33,9 +40,15 @@ import {
 } from './dataTransformation';
 import { DIETARY_WRITE_IDENTIFIERS } from './writebackMappers';
 import {
+  WORKOUT_EFFORT_IDENTIFIER,
+  matchWorkoutEffort,
+  readWorkoutEffortSamples,
+} from './workoutEffort';
+import {
   collectWorkoutTelemetry,
   type WorkoutProxyLike,
 } from './workoutTelemetry';
+import { readAppleWorkoutZoneGroups } from '../appleHeartZones';
 import {
   createTelemetryRunContext,
   type TelemetryRunContext,
@@ -123,6 +136,11 @@ const recordReadError = (error: unknown, label: string): string => {
       `[HealthKitService] ${label} failed: database inaccessible (device likely locked)`,
       'WARNING'
     );
+  } else if (isAuthorizationNotDeterminedError(error)) {
+    addLog(
+      `[HealthKitService] ${label}: authorization not determined (permission not yet granted)`,
+      'INFO'
+    );
   } else {
     addLog(`[HealthKitService] ${label} failed: ${message}`, 'ERROR');
   }
@@ -146,6 +164,7 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierBloodPressureSystolic',
   'HKQuantityTypeIdentifierBloodPressureDiastolic',
   'HKQuantityTypeIdentifierBodyTemperature',
+  'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
   'HKQuantityTypeIdentifierBloodGlucose',
   'HKQuantityTypeIdentifierOxygenSaturation',
   'HKQuantityTypeIdentifierVO2Max',
@@ -158,6 +177,7 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierLeanBodyMass',
   'HKCategoryTypeIdentifierSleepAnalysis',
   'HKCategoryTypeIdentifierMindfulSession', // For Stress
+  'HKCategoryTypeIdentifierToothbrushingEvent',
   'HKWorkoutTypeIdentifier', // For Workouts
   'HKCategoryTypeIdentifierCervicalMucusQuality',
   'HKCategoryTypeIdentifierIntermenstrualBleeding',
@@ -200,6 +220,8 @@ const SUPPORTED_HK_TYPES = new Set<string>([
  */
 const WORKOUT_TELEMETRY_READ_IDENTIFIERS: readonly string[] = [
   'HKWorkoutRouteTypeIdentifier',
+  // The person's own 1-10 rating of the workout, read by time window.
+  WORKOUT_EFFORT_IDENTIFIER,
   'HKQuantityTypeIdentifierStepCount',
   'HKQuantityTypeIdentifierHeartRate',
   'HKQuantityTypeIdentifierRunningSpeed',
@@ -223,6 +245,8 @@ const HEALTHKIT_UNIT_MAP: Record<string, string> = {
   Hydration: 'L',
   BodyTemperature: 'degC',
   BasalBodyTemperature: 'degC',
+  SleepingWristTemperature: 'degC',
+  OvernightBodyTemperature: 'degC',
   BloodGlucose: 'mg/dL',
   HeartRateVariabilitySDNN: 'ms',
   // Add other metrics that need explicit units as needed
@@ -242,6 +266,10 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   BloodPressureSystolic: 'HKQuantityTypeIdentifierBloodPressureSystolic',
   BloodPressureDiastolic: 'HKQuantityTypeIdentifierBloodPressureDiastolic',
   BodyTemperature: 'HKQuantityTypeIdentifierBodyTemperature',
+  SleepingWristTemperature:
+    'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
+  // Body Temperature read against the person's sleep, one mean per night.
+  OvernightBodyTemperature: 'HKQuantityTypeIdentifierBodyTemperature',
   BloodGlucose: 'HKQuantityTypeIdentifierBloodGlucose',
   OxygenSaturation: 'HKQuantityTypeIdentifierOxygenSaturation',
   Vo2Max: 'HKQuantityTypeIdentifierVO2Max',
@@ -254,6 +282,8 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   LeanBodyMass: 'HKQuantityTypeIdentifierLeanBodyMass',
   SleepSession: 'HKCategoryTypeIdentifierSleepAnalysis',
   Stress: 'HKCategoryTypeIdentifierMindfulSession', // Map Stress to MindfulSession for HealthKit
+  MindfulnessSession: 'HKCategoryTypeIdentifierMindfulSession',
+  Toothbrushing: 'HKCategoryTypeIdentifierToothbrushingEvent',
   Workout: 'HKWorkoutTypeIdentifier', // Map Workout to HKWorkoutTypeIdentifier for HealthKit
   CervicalMucus: 'HKCategoryTypeIdentifierCervicalMucusQuality',
   // The route is its own HealthKit type; mapping it to the workout type would
@@ -315,43 +345,9 @@ export const initHealthConnect = async (): Promise<boolean> => {
   }
 };
 
-export const requestHealthPermissions = async (
+const healthKitAuthorizationTypes = (
   permissionsToRequest: PermissionRequest[]
-): Promise<boolean> => {
-  if (!isHealthKitAvailable) {
-    Alert.alert(
-      i18n.t('healthSync.alerts.healthAppUnavailableTitle', {
-        defaultValue: 'Health App Not Available',
-      }),
-      i18n.t('healthSync.alerts.healthAppUnavailableMessage', {
-        defaultValue:
-          'Please install the Apple Health app to sync your health data.',
-      })
-    );
-    return false;
-  }
-
-  const isSimulator =
-    Platform.OS === 'ios' &&
-    (Platform.constants as { simulator?: boolean })?.simulator === true;
-  if (
-    isSimulator &&
-    !(globalThis as Record<string, unknown>).FORCE_HEALTHKIT_ON_SIM
-  ) {
-    // Returning true here is a convenience for simulator runs, but callers log it as
-    // "permission granted" — say plainly that nothing was requested so the log is not
-    // read as evidence that HealthKit was asked.
-    addLog(
-      '[HealthKitService] Simulator: skipped the authorization request entirely (no sheet, no grant). Set FORCE_HEALTHKIT_ON_SIM to exercise the real path.',
-      'WARNING'
-    );
-    return true;
-  }
-
-  if (!permissionsToRequest || permissionsToRequest.length === 0) {
-    return true;
-  }
-
+): { toRead: string[]; toShare: string[] } => {
   const readPermissionsSet = new Set<string>();
   const writePermissionsSet = new Set<string>();
 
@@ -393,14 +389,27 @@ export const requestHealthPermissions = async (
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKWorkoutTypeIdentifier');
         }
+      } else if (p.recordType === 'ActiveCaloriesBurned') {
+        // The daily active figure can come from the Move ring (an account
+        // setting, see activeEnergyByDay). The activity summary type is asked
+        // for whether the setting is on or not, so the setting needs no
+        // permission step of its own and a new phone already has it.
+        if (p.accessType === 'read') {
+          readPermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+          readPermissionsSet.add(ActivitySummaryTypeIdentifier);
+        } else if (p.accessType === 'write') {
+          writePermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+        }
       } else if (p.recordType === 'TotalCaloriesBurned') {
         // Total calories is derived from basal + active energy: the day-statistics
         // reader and the earliest-sample probe query both underlying types, so
         // authorization must cover both even when Active Calories is not itself an
-        // enabled metric.
+        // enabled metric. Its active part can come from the Move ring like
+        // Active Calories.
         if (p.accessType === 'read') {
           readPermissionsSet.add('HKQuantityTypeIdentifierBasalEnergyBurned');
           readPermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+          readPermissionsSet.add(ActivitySummaryTypeIdentifier);
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKQuantityTypeIdentifierBasalEnergyBurned');
           writePermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
@@ -435,6 +444,90 @@ export const requestHealthPermissions = async (
 
   const toRead = Array.from(readPermissionsSet);
   const toShare = Array.from(writePermissionsSet);
+
+  return { toRead, toShare };
+};
+
+/**
+ * Whether any of these permissions includes a HealthKit type the user has never been
+ * asked about, e.g. one added to a metric in an app update. HealthKit only shows the
+ * sheet for such types, so re-requesting when this is true is safe. An unknown status
+ * or a failed check counts as true: a request with nothing new shows no sheet.
+ */
+export const hasUnrequestedHealthPermissions = async (
+  permissions: PermissionRequest[]
+): Promise<boolean> => {
+  if (!isHealthKitAvailable) {
+    return false;
+  }
+  const { toRead: allToRead, toShare } =
+    healthKitAuthorizationTypes(permissions);
+  // HealthKit keeps reporting the workout effort rating and the workout route
+  // as never requested, so counting them would show the sheet on every visit.
+  // They are still asked for with the rest whenever something else is
+  // genuinely new.
+  const toRead = allToRead.filter(
+    (identifier) =>
+      identifier !== WORKOUT_EFFORT_IDENTIFIER &&
+      identifier !== 'HKWorkoutRouteTypeIdentifier'
+  );
+  if (toRead.length === 0 && toShare.length === 0) {
+    return false;
+  }
+  try {
+    const status = await getRequestStatusForAuthorization({
+      toRead: toRead as Parameters<typeof requestAuthorization>[0]['toRead'],
+      toShare: toShare as Parameters<typeof requestAuthorization>[0]['toShare'],
+    });
+    return status !== AuthorizationRequestStatus.unnecessary;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(
+      `[HealthKitService] Failed to check HealthKit authorization status: ${message}`,
+      'WARNING'
+    );
+    return true;
+  }
+};
+
+export const requestHealthPermissions = async (
+  permissionsToRequest: PermissionRequest[]
+): Promise<boolean> => {
+  if (!isHealthKitAvailable) {
+    Alert.alert(
+      i18n.t('healthSync.alerts.healthAppUnavailableTitle', {
+        defaultValue: 'Health App Not Available',
+      }),
+      i18n.t('healthSync.alerts.healthAppUnavailableMessage', {
+        defaultValue:
+          'Please install the Apple Health app to sync your health data.',
+      })
+    );
+    return false;
+  }
+
+  const isSimulator =
+    Platform.OS === 'ios' &&
+    (Platform.constants as { simulator?: boolean })?.simulator === true;
+  if (
+    isSimulator &&
+    !(globalThis as Record<string, unknown>).FORCE_HEALTHKIT_ON_SIM
+  ) {
+    // Returning true here is a convenience for simulator runs, but callers log it as
+    // "permission granted" — say plainly that nothing was requested so the log is not
+    // read as evidence that HealthKit was asked.
+    addLog(
+      '[HealthKitService] Simulator: skipped the authorization request entirely (no sheet, no grant). Set FORCE_HEALTHKIT_ON_SIM to exercise the real path.',
+      'WARNING'
+    );
+    return true;
+  }
+
+  if (!permissionsToRequest || permissionsToRequest.length === 0) {
+    return true;
+  }
+
+  const { toRead, toShare } = healthKitAuthorizationTypes(permissionsToRequest);
 
   if (toRead.length === 0 && toShare.length === 0) {
     // Every requested record type expanded to nothing — an unmapped record type, or one
@@ -499,12 +592,6 @@ const AGGREGATION_CONFIGS: Record<string, AggregationConfig> = {
     unit: 'count',
     type: 'step',
     logLabel: 'steps',
-  },
-  activeCalories: {
-    identifier: 'HKQuantityTypeIdentifierActiveEnergyBurned',
-    unit: 'kcal',
-    type: 'active_calories',
-    logLabel: 'calories',
   },
   distance: {
     identifier: 'HKQuantityTypeIdentifierDistanceWalkingRunning',
@@ -643,23 +730,124 @@ export const getAggregatedStepsByDate = (startDate: Date, endDate: Date) =>
     (result) => result.records
   );
 
-export const getAggregatedActiveCaloriesByDateDetailed = (
-  startDate: Date,
+/**
+ * Move ring active energy per local day, the figure the Fitness app shows. A day
+ * without a ring is left out: HealthKit answers a denied or not-yet-requested read
+ * with no summaries rather than an error, and days before the person had a ring have
+ * none, so those days keep the statistics sum.
+ */
+const queryMoveRingActiveByDay = async (
+  filterStart: Date,
   endDate: Date
-) =>
-  getAggregatedDataByDateDetailed(
-    startDate,
-    endDate,
-    AGGREGATION_CONFIGS.activeCalories
-  );
+): Promise<Map<string, number>> => {
+  const now = new Date();
+  const filterEnd = endDate.getTime() < now.getTime() ? endDate : now;
+  const summaries = await queryActivitySummary({
+    date: { startDate: filterStart, endDate: filterEnd },
+  });
+  const firstDay = toLocalDateString(filterStart);
+  const lastDay = toLocalDateString(filterEnd);
+  const byDay = new Map<string, number>();
+  for (const summary of summaries) {
+    const { year, month, day } = summary.dateComponents;
+    if (year == null || month == null || day == null) {
+      continue;
+    }
+    // The components are in the device calendar, so a non-Gregorian year lands
+    // outside the window and that day keeps the statistics sum.
+    const date = toLocalDateString(new Date(year, month - 1, day));
+    if (date < firstDay || date > lastDay) {
+      continue;
+    }
+    byDay.set(date, summary.activeEnergyBurned.quantity);
+  }
+  return byDay;
+};
+
+// Active energy per local day: the statistics sum, as the Health app shows it, or,
+// with useMoveRing (the account's use_move_ring_active_calories setting), the Move
+// ring where the day has one. The two differ because Fitness credits only Apple
+// devices while Health counts every source by its priority. Throws if either query
+// fails.
+const activeEnergyByDay = async (
+  startDate: Date,
+  endDate: Date,
+  useMoveRing: boolean
+): Promise<Map<string, number>> => {
+  const [buckets, ring] = await Promise.all([
+    queryDayStatistics(
+      'HKQuantityTypeIdentifierActiveEnergyBurned',
+      ['cumulativeSum'],
+      startDate,
+      endDate,
+      'kcal'
+    ),
+    useMoveRing
+      ? queryMoveRingActiveByDay(startDate, endDate)
+      : new Map<string, number>(),
+  ]);
+  const byDay = new Map<string, number>();
+  for (const bucket of buckets) {
+    byDay.set(
+      toLocalDateString(new Date(bucket.startDate as Date)),
+      bucket.sumQuantity?.quantity ?? 0
+    );
+  }
+  for (const [date, kcal] of ring) {
+    // iPhone keeps a summary for every day, so a day spent with only another
+    // brand's tracker has a 0 ring while Health has its calories.
+    if (kcal > 0) {
+      byDay.set(date, kcal);
+    }
+  }
+  return byDay;
+};
+
+export const getAggregatedActiveCaloriesByDateDetailed = async (
+  startDate: Date,
+  endDate: Date,
+  useMoveRing = false
+): Promise<HealthKitReadResult<AggregatedHealthRecord>> => {
+  if (!isHealthKitAvailable) {
+    addLog(
+      '[HealthKitService] HealthKit not available for calories aggregation',
+      'DEBUG'
+    );
+    return { records: [] };
+  }
+
+  try {
+    const byDay = await activeEnergyByDay(startDate, endDate, useMoveRing);
+    const deviceTz = getDeviceTimezone();
+    // YYYY-MM-DD keys sort lexicographically = chronologically.
+    const records = Array.from(byDay.entries())
+      .filter(([, kcal]) => kcal > 0)
+      .sort(([dayA], [dayB]) => dayA.localeCompare(dayB))
+      .map(([date, kcal]) => ({
+        date,
+        value: Math.round(kcal),
+        type: 'active_calories',
+        record_timezone: deviceTz,
+      }));
+    return { records };
+  } catch (error) {
+    return {
+      records: [],
+      error: recordReadError(error, 'Aggregated calories query'),
+    };
+  }
+};
 
 export const getAggregatedActiveCaloriesByDate = (
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  useMoveRing = false
 ) =>
-  getAggregatedActiveCaloriesByDateDetailed(startDate, endDate).then(
-    (result) => result.records
-  );
+  getAggregatedActiveCaloriesByDateDetailed(
+    startDate,
+    endDate,
+    useMoveRing
+  ).then((result) => result.records);
 
 export const getAggregatedDistanceByDateDetailed = (
   startDate: Date,
@@ -694,12 +882,14 @@ export const getAggregatedFloorsClimbedByDate = (
     (result) => result.records
   );
 
-// Total calories = Basal + Active energy summed per local day, via two collection
-// queries merged by day string. All-or-nothing: either query failing errors the whole
-// metric (so the sync cursor holds) rather than silently under-reporting days.
+// Total calories = Basal + Active energy summed per local day (active as in
+// activeEnergyByDay), merged by day string. All-or-nothing: either query failing
+// errors the whole metric (so the sync cursor holds) rather than silently
+// under-reporting days.
 export const getAggregatedTotalCaloriesByDateDetailed = async (
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  useMoveRing = false
 ): Promise<HealthKitReadResult<AggregatedHealthRecord>> => {
   if (!isHealthKitAvailable) {
     addLog(
@@ -710,7 +900,7 @@ export const getAggregatedTotalCaloriesByDateDetailed = async (
   }
 
   try {
-    const [basalBuckets, activeBuckets] = await Promise.all([
+    const [basalBuckets, activeByDay] = await Promise.all([
       queryDayStatistics(
         'HKQuantityTypeIdentifierBasalEnergyBurned',
         ['cumulativeSum'],
@@ -718,24 +908,23 @@ export const getAggregatedTotalCaloriesByDateDetailed = async (
         endDate,
         'kcal'
       ),
-      queryDayStatistics(
-        'HKQuantityTypeIdentifierActiveEnergyBurned',
-        ['cumulativeSum'],
-        startDate,
-        endDate,
-        'kcal'
-      ),
+      activeEnergyByDay(startDate, endDate, useMoveRing),
     ]);
 
     const totalsByDay = new Map<string, number>();
-    for (const buckets of [basalBuckets, activeBuckets]) {
-      for (const bucket of buckets) {
-        const sum = bucket.sumQuantity?.quantity ?? 0;
-        if (sum > 0) {
-          const day = toLocalDateString(new Date(bucket.startDate as Date));
-          totalsByDay.set(day, (totalsByDay.get(day) ?? 0) + sum);
-        }
+    const add = (day: string, kcal: number) => {
+      if (kcal > 0) {
+        totalsByDay.set(day, (totalsByDay.get(day) ?? 0) + kcal);
       }
+    };
+    for (const bucket of basalBuckets) {
+      add(
+        toLocalDateString(new Date(bucket.startDate as Date)),
+        bucket.sumQuantity?.quantity ?? 0
+      );
+    }
+    for (const [day, kcal] of activeByDay) {
+      add(day, kcal);
     }
 
     const deviceTz = getDeviceTimezone();
@@ -759,11 +948,14 @@ export const getAggregatedTotalCaloriesByDateDetailed = async (
 
 export const getAggregatedTotalCaloriesByDate = (
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  useMoveRing = false
 ) =>
-  getAggregatedTotalCaloriesByDateDetailed(startDate, endDate).then(
-    (result) => result.records
-  );
+  getAggregatedTotalCaloriesByDateDetailed(
+    startDate,
+    endDate,
+    useMoveRing
+  ).then((result) => result.records);
 
 /**
  * Aggregates Apple Health Resting/Basal Energy for the BMR override.
@@ -1054,6 +1246,52 @@ const handleStress: RecordHandler = async (identifier, startDate, endDate) => {
   }));
 };
 
+// Handler for category samples that are sessions (mindful minutes, toothbrushing).
+// Unlike Stress (presence only), each sample keeps its uuid and source so the
+// server can upsert it by id.
+const handleCategorySession: RecordHandler = async (
+  identifier,
+  startDate,
+  endDate
+) => {
+  const samples = await queryCategorySamples(
+    identifier as Parameters<typeof queryCategorySamples>[0],
+    {
+      ascending: false,
+      limit: 0,
+      filter: { date: { startDate, endDate } },
+    }
+  );
+
+  return samples
+    .filter((s) => isInDateRange(new Date(s.startDate), startDate, endDate))
+    .map((s) => {
+      const sample = s as unknown as {
+        uuid?: string;
+        metadata?: Record<string, unknown>;
+        metadataTimeZone?: string;
+        sourceRevision?: { source?: { bundleIdentifier?: string } };
+      };
+      const flatTz = sample.metadataTimeZone;
+      const metadata =
+        sample.metadata || flatTz
+          ? {
+              ...sample.metadata,
+              ...(flatTz && !sample.metadata?.HKTimeZone
+                ? { HKTimeZone: flatTz }
+                : {}),
+            }
+          : undefined;
+      return {
+        uuid: sample.uuid,
+        startTime: s.startDate,
+        endTime: s.endDate,
+        metadata,
+        sourceBundleId: sample.sourceRevision?.source?.bundleIdentifier,
+      };
+    });
+};
+
 // Handler for reproductive health category types
 const handleReproductiveHealth: RecordHandler = async (
   identifier,
@@ -1144,6 +1382,23 @@ const handleWorkout: RecordHandler = async (
     if (!ctx.claim()) break;
     telemetryAllowed.add(w);
   }
+
+  // One read of the ratings covers every workout in the window.
+  const effortSamples =
+    filteredWorkouts.length > 0
+      ? await readWorkoutEffortSamples(
+          new Date(
+            Math.min(
+              ...filteredWorkouts.map((w) => new Date(w.startDate).getTime())
+            )
+          ),
+          new Date(
+            Math.max(
+              ...filteredWorkouts.map((w) => new Date(w.endDate).getTime())
+            )
+          )
+        )
+      : [];
 
   // Fetch statistics (calories, distance) for each workout. Bounded fan-out:
   // each workout issues several statistics queries plus, when telemetry is
@@ -1343,6 +1598,8 @@ const handleWorkout: RecordHandler = async (
       // budget on a backfill silently loses elevation/floors/strokes/elapsed time
       // as well, even though the budget exists only to cap the expensive reads.
       const telemetry: Record<string, number | null | undefined> = {};
+      const effort = matchWorkoutEffort(effortSamples, w);
+      if (effort != null) telemetry.workout_effort = effort;
       const gain = elevation.metadataElevationAscended?.quantity;
       const loss = elevation.metadataElevationDescended?.quantity;
       // The sample property when it carries a value, else the statistic read
@@ -1431,6 +1688,8 @@ const handleWorkout: RecordHandler = async (
     result.status === 'fulfilled' ? [result.value] : []
   );
 
+  await attachAppleZoneGroups(workoutsWithStats);
+
   // One summary line per run — the field-verifiable signal for #2191. See the
   // matching log in healthconnect/index.ts.
   const overBudget =
@@ -1444,6 +1703,29 @@ const handleWorkout: RecordHandler = async (
 
   return workoutsWithStats;
 };
+
+/**
+ * Copies Apple's heart-rate zone group onto each workout that has one.
+ * Own-watch workouts are still skipped later by the transformer; this only
+ * fills the field. A failure leaves the workout to be bucketed on the server.
+ */
+async function attachAppleZoneGroups(
+  records: Record<string, unknown>[]
+): Promise<void> {
+  const uuids = records.flatMap((record) =>
+    typeof record.uuid === 'string' && record.uuid.length > 0
+      ? [record.uuid]
+      : []
+  );
+  if (uuids.length === 0) return;
+  const groups = await readAppleWorkoutZoneGroups(uuids);
+  if (groups.size === 0) return;
+  for (const record of records) {
+    if (typeof record.uuid !== 'string') continue;
+    const zones = groups.get(record.uuid.toLowerCase());
+    if (zones) record.hr_zones = zones;
+  }
+}
 
 // Handler for BloodPressure records (requires merging systolic and diastolic samples)
 const handleBloodPressure: RecordHandler = async (
@@ -1519,6 +1801,10 @@ const QUANTITY_TRANSFORMS: Record<
   Height: (base, q) => ({ ...base, height: { inMeters: q } }),
   BodyFat: (base, q) => ({ ...base, percentage: { inPercent: q * 100 } }),
   BodyTemperature: (base, q) => ({ ...base, temperature: { inCelsius: q } }),
+  SleepingWristTemperature: (base, q) => ({
+    ...base,
+    temperature: { inCelsius: q },
+  }),
   BloodGlucose: (base, q) => ({
     ...base,
     level: { inMilligramsPerDeciliter: q },
@@ -1541,6 +1827,9 @@ const QUANTITY_TRANSFORMS: Record<
 };
 
 // Handler for standard quantity types (most common metrics)
+// Quantities that span the night and are dated by their end, the wake day.
+const END_DATED_QUANTITIES = new Set(['SleepingWristTemperature']);
+
 const createQuantityHandler = (recordType: string): RecordHandler => {
   return async (identifier, startDate, endDate) => {
     if (!SUPPORTED_HK_TYPES.has(identifier)) {
@@ -1571,8 +1860,13 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
       return [];
     }
 
+    // A sample dated by its end (the wake day) is matched by its end: last night's
+    // wrist temperature starts the evening before a window that opens at midnight.
+    const matchByEnd = END_DATED_QUANTITIES.has(recordType);
     const filteredSamples = samples.filter((record) => {
-      const recordDate = new Date(record.startDate);
+      const recordDate = new Date(
+        matchByEnd ? record.endDate : record.startDate
+      );
       return isInDateRange(recordDate, startDate, endDate);
     });
 
@@ -1899,10 +2193,77 @@ const handleNutrition: RecordHandler = async (
   return [...correlationRecords, ...looseRecords];
 };
 
+// A night that began before the sync window would otherwise be read from the
+// window start only, and its mean would replace the full night's on the server.
+const OVERNIGHT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+
+// Body Temperature (a smart ring writes it through the night) as one reading per
+// night: the mean of one source's readings inside each sleep session. The stored
+// Body Temperature value is one per day, so the night is worked out here from the
+// raw readings. Emits pre-aggregated { value, date, timestamp, site } records that
+// the shared transformer passes through as the metric's `skin_temperature` type.
+const handleOvernightBodyTemperature: RecordHandler = async (
+  identifier,
+  startDate,
+  endDate,
+  telemetry
+) => {
+  const sleepRecords = await handleSleepSession(
+    HEALTHKIT_TYPE_MAP.SleepSession,
+    new Date(startDate.getTime() - OVERNIGHT_LOOKBACK_MS),
+    endDate,
+    telemetry
+  );
+  // Read from a day earlier so a night that began before the window is whole,
+  // but send only the nights that ended inside it.
+  const sessions = aggregateSleepSessions(
+    sleepRecords as Parameters<typeof aggregateSleepSessions>[0]
+  ).filter((s) => Date.parse(s.wake_time) >= startDate.getTime());
+  if (sessions.length === 0) return [];
+
+  const spanStart = new Date(
+    Math.min(...sessions.map((s) => Date.parse(s.bedtime)))
+  );
+  const spanEnd = new Date(
+    Math.max(...sessions.map((s) => Date.parse(s.wake_time)))
+  );
+  if (
+    !Number.isFinite(spanStart.getTime()) ||
+    !Number.isFinite(spanEnd.getTime())
+  ) {
+    return [];
+  }
+
+  const samples = await queryQuantitySamples(
+    identifier as Parameters<typeof queryQuantitySamples>[0],
+    {
+      ascending: false,
+      limit: 0,
+      unit: HEALTHKIT_UNIT_MAP.OvernightBodyTemperature,
+      filter: { date: { startDate: spanStart, endDate: spanEnd } },
+    }
+  );
+  if (!Array.isArray(samples)) return [];
+
+  return overnightBodyTemperatures(
+    sessions,
+    samples.map((s) => ({
+      ms: new Date(s.startDate).getTime(),
+      celsius: s.quantity,
+      source: (
+        s as { sourceRevision?: { source?: { bundleIdentifier?: string } } }
+      ).sourceRevision?.source?.bundleIdentifier,
+    }))
+  );
+};
+
 // Registry mapping record types to their handlers
 const RECORD_HANDLERS: Record<string, RecordHandler> = {
   SleepSession: handleSleepSession,
+  OvernightBodyTemperature: handleOvernightBodyTemperature,
   Stress: handleStress,
+  MindfulnessSession: handleCategorySession,
+  Toothbrushing: handleCategorySession,
   IntermenstrualBleeding: handleReproductiveHealth,
   MenstruationFlow: handleReproductiveHealth,
   OvulationTest: handleReproductiveHealth,
@@ -2015,6 +2376,8 @@ const probeWorkoutEarliest = async (now: Date): Promise<Date | null> => {
 const CATEGORY_PROBE_TYPES = new Set([
   'SleepSession',
   'Stress',
+  'MindfulnessSession',
+  'Toothbrushing',
   'IntermenstrualBleeding',
   'MenstruationFlow',
   'OvulationTest',

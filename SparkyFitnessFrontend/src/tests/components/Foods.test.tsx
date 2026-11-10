@@ -4,6 +4,14 @@ import FoodDatabaseManager from '@/pages/Foods/Foods';
 import { renderWithClient } from '../test-utils';
 import { apiCall } from '@/api/api';
 
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    getEnergyUnitString: (unit: string) => unit,
+  }),
+}));
+
 jest.mock('@/api/api', () => ({ apiCall: jest.fn() }));
 let mockActiveUserId = 'test-user-id';
 jest.mock('@/hooks/useAuth', () => ({
@@ -41,7 +49,12 @@ jest.mock('react-i18next', () => ({
 
 // `LastLogged` reads the account timezone to say how long ago a food was logged.
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ timezone: 'UTC' }),
+  usePreferences: () => ({
+    timezone: 'UTC',
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    getEnergyUnitString: (unit: string) => unit,
+  }),
 }));
 
 jest.mock('@/hooks/use-mobile', () => ({

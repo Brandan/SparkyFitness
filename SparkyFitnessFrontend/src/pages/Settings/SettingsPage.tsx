@@ -37,11 +37,13 @@ import AllergenSettings from '@/pages/Settings/AllergenSettings';
 import { DeveloperResources } from './DevloperResources';
 import { AccountSecurity } from './AccountSecurity';
 import { ApiSettings } from './ApiSettings';
+import { OAuthClientSettings } from './OAuthClientSettings';
 import { WaterTrackingSettings } from './WaterTrackingSettings';
 import { FastingSettings } from './FastingSettings';
 import { GuidedWorkoutSettings } from './GuidedWorkoutSettings';
 import CycleSettings from './CycleSettings';
 import { PreferenceSettings } from './PreferenceSettings';
+import { HeartRateZoneSettings } from './HeartRateZoneSettings';
 import { ProfileInformation } from './ProfileInformation';
 import { DataManagementSettings } from './DataManagementSettings';
 import { DataImportSettings } from './DataImportSettings';
@@ -71,6 +73,7 @@ const SECTION_TO_TAB_MAP: Record<string, string> = {
   'food-and-exercise-data-providers': 'developer-integrations',
   'ai-service': 'developer-integrations',
   'api-settings': 'developer-integrations',
+  'oauth-clients': 'developer-integrations',
   'developer-resources': 'developer-integrations',
   integrations: 'developer-integrations',
 };
@@ -175,6 +178,12 @@ const Settings = () => {
               className="border rounded-lg mb-4"
             >
               <PreferenceSettings />
+            </AccordionItem>
+            <AccordionItem
+              value="heart-rate-zones"
+              className="border rounded-lg mb-4"
+            >
+              <HeartRateZoneSettings />
             </AccordionItem>
             <AccordionItem
               value="family-access"
@@ -453,6 +462,7 @@ const Settings = () => {
               </AccordionContent>
             </AccordionItem>
             <ApiSettings />
+            <OAuthClientSettings />
             <DeveloperResources />
           </Accordion>
         </TabsContent>

@@ -68,6 +68,8 @@ import {
   useSkipPlannedMealMutation,
 } from '@/hooks/Foods/usePlannedMeals';
 import { ToastAction } from '@/components/ui/toast';
+import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
+import { getCalorieBudget } from '@/utils/calorieBudget';
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -124,6 +126,8 @@ const Diary = () => {
     useDailyHealthMetrics(selectedDate);
   const { data: summaryData, isLoading: summaryLoading } =
     useDailySummary(selectedDate);
+  const { data: goalTypePreferences } = useNutrientGoalPreferences();
+  const calorieGoalPreference = goalTypePreferences?.['calories'];
   const { data: fetchedFoodEntries, isLoading: foodEntriesLoading } =
     useFoodEntries(selectedDate);
   const { data: foodEntryMeals, isLoading: foodEntryMealsLoading } =
@@ -455,6 +459,14 @@ const Diary = () => {
             selectedDate={selectedDate}
             dayTotals={dayTotals as unknown as DayTotals}
             goals={effectiveGoals}
+            calorieBudget={
+              summaryData?.calorieBalance
+                ? getCalorieBudget(
+                    summaryData.calorieBalance,
+                    calorieGoalPreference
+                  )
+                : undefined
+            }
             energyUnit={energyUnit}
             convertEnergy={convertEnergy}
             customNutrients={customNutrients}
@@ -556,6 +568,8 @@ const Diary = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     effectiveGoals,
+    summaryData?.calorieBalance,
+    calorieGoalPreference,
     visibleMealTypes,
     selectedDate,
     dayTotals,

@@ -1,6 +1,12 @@
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -30,6 +36,7 @@ import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import WatchConnectivity from '../../modules/watch-connectivity';
+import { useNfcSupport } from '../hooks/useNfcSupport';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -50,6 +57,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const usesNativeTabs = useNativeIOSTabsActive();
 
   // Only offered with a watch paired: the settings do nothing without one.
+  const { supported: nfcSupported } = useNfcSupport();
   const hasPairedWatch =
     WatchConnectivity?.isSupported() === true &&
     WatchConnectivity.isPaired() === true;
@@ -325,6 +333,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               )}
               {isConnected && (
                 <SettingsRow
+                  icon="measurements-settings"
+                  title={t('settings.rows.customMeasurements', {
+                    defaultValue: 'Custom Measurements',
+                  })}
+                  onPress={() => navigation.navigate('CustomCategories')}
+                  iconColor={catBlue}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
                   icon="chart-bar"
                   title={t('settings.rows.reports', {
                     defaultValue: 'Reports',
@@ -360,17 +378,41 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                 />
               )}
               <SettingsRow
+                icon="add-circle"
+                title={t('settings.rows.addMenu', {
+                  defaultValue: 'Quick Actions',
+                })}
+                onPress={() => navigation.navigate('AddMenuSettings')}
+                iconColor={catBlue}
+              />
+              <SettingsRow
                 icon="workout-settings"
                 title={t('settings.rows.workout', { defaultValue: 'Workout' })}
                 onPress={() => navigation.navigate('WorkoutSettings')}
                 iconColor={catBlue}
               />
+              {nfcSupported && (
+                <SettingsRow
+                  icon="nfc"
+                  title={t('settings.rows.nfcTags', {
+                    defaultValue: 'NFC tags',
+                  })}
+                  onPress={() => navigation.navigate('ActionTags')}
+                  iconColor={catBlue}
+                />
+              )}
               {hasPairedWatch && (
                 <SettingsRow
                   icon="watch-settings"
-                  title={t('settings.rows.watch', {
-                    defaultValue: 'Apple Watch',
-                  })}
+                  title={
+                    Platform.OS === 'android'
+                      ? t('settings.rows.wearOs', {
+                          defaultValue: 'Wear OS',
+                        })
+                      : t('settings.rows.watch', {
+                          defaultValue: 'Apple Watch',
+                        })
+                  }
                   onPress={() => navigation.navigate('WatchSettings')}
                   iconColor={catSlate}
                 />

@@ -633,6 +633,7 @@ const FoodUnitSelector = ({
                     {t('foodUnitSelector.quantity', 'Quantity')}
                   </Label>
                   <NumericInput
+                    allowExpressions
                     ref={quantityInputRef}
                     id="quantity"
                     step="any"

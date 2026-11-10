@@ -65,6 +65,12 @@ export const ADAPTIVE_TDEE_CLAMP_KCAL = 500;
  */
 export const ADAPTIVE_TDEE_GOAL_MIN_DAYS = 14;
 
+/**
+ * Qualifying calorie-log days (at least 200 kcal each) before the log-derived
+ * adaptive TDEE estimate is released in place of the BMR-based fallback.
+ */
+export const ADAPTIVE_TDEE_MIN_CALORIE_DAYS = 7;
+
 export const CALORIE_SAFETY_FLOOR_MODES = [
   'standard',
   'custom',
@@ -136,3 +142,24 @@ export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   very_active: 1.725,
   extra_active: 1.9,
 } as const;
+
+/**
+ * Calorie cycling (#2327): how a weekly calorie budget is spread over the
+ * weekdays. `off` keeps the same target every day; `training_rest` and `custom`
+ * both store one raw percentage per weekday (index 0 = Sunday), which the
+ * shared `cycleWeekTargets` scales so the week still adds up to target x 7.
+ */
+export const CALORIE_CYCLING_MODES = [
+  'off',
+  'training_rest',
+  'custom',
+] as const;
+
+export type CalorieCyclingMode = (typeof CALORIE_CYCLING_MODES)[number];
+
+/** Largest raw weekday percentage, either way. */
+export const CALORIE_CYCLING_MAX_OFFSET = 40;
+
+export const CALORIE_CYCLING_DEFAULT_OFFSETS: readonly number[] = [
+  0, 0, 0, 0, 0, 0, 0,
+];

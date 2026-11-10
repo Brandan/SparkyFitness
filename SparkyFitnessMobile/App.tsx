@@ -20,9 +20,11 @@ import { FoodImageSourceProvider } from './src/components/FoodImageSourceProvide
 import { LightboxProvider } from './src/components/LightboxProvider';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
-import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, usePreferences } from './src/hooks';
+import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
+import { useCycleSheetLabel } from './src/hooks/useAddMenuItemLabel';
 import { configureRunLiveActivity } from './src/services/runLiveActivity';
 import { useWatchWorkoutStart } from './src/hooks/useWatchWorkoutStart';
+import { useLiveWorkoutInputsCapture } from './src/hooks/useLiveWorkoutInputsCapture';
 import {
   useStartLiveWorkout,
   type StartLiveWorkoutNavigation,
@@ -41,18 +43,32 @@ import {
   SafeFoodsLibrary,
   SafeMealsLibrary,
   SafeMealPlans,
+  SafeLabReportImport,
+  SafeLabResultAdd,
+  SafeLabResultDetail,
+  SafeLabResults,
   SafePersonalRecords,
   SafeWatchRunLive,
   SafeRunPrograms,
   SafeRunProgramCalendar,
   SafeRunProgramEdit,
+  SafeRoutes,
+  SafeRouteDetail,
+  SafeRouteDraw,
+  SafeRouteGenerate,
   SafeRunProgramRace,
+  SafeFitnessTest,
+  SafeFitnessTestResult,
   SafeRunProgramWorkout,
   SafeMealPlanForm,
   SafeWorkoutPlans,
   SafeWorkoutPlanForm,
   SafeWaterContainers,
+  SafeWaterLog,
   SafeWaterContainerEdit,
+  SafeActionTags,
+  SafeActionTagForm,
+  SafeActionTagScan,
   SafeExercisesLibrary,
   SafeWorkoutPresetsLibrary,
   SafeFoodDetail,
@@ -89,6 +105,8 @@ import {
   SafeImportHistory,
   SafeMeasurementsAdd,
   SafeMindfulnessLog,
+  SafeOralCare,
+  SafeOralCareLog,
   SafeProgressPhotos,
   SafeProgressPhotoCompare,
   SafeProgressPhotoTimelapse,
@@ -101,6 +119,7 @@ import {
   SafeEquipment,
   SafeShoes,
   SafeShoeForm,
+  SafePlateInventory,
   SafeAiSettings,
   SafeFoodSettings,
   SafeCustomNutrients,
@@ -110,9 +129,13 @@ import {
   SafeDashboardSettings,
   SafeHealthTrendsSettings,
   SafeWatchSettings,
+  SafeAddMenuSettings,
   SafeDiarySettings,
+  SafeCustomCategories,
+  SafeCustomCategoryEdit,
   SafeWorkoutSettings,
   SafeWarmupSettings,
+  SafeHeartRateZonesSettings,
   SafeServerSettings,
   SafePasskeySettings,
   SafeAppSettings,
@@ -126,11 +149,15 @@ import {
   SafeNutritionReport,
   SafeSleepAnalytics,
   SafeMoodReport,
+  SafeHeartRateReport,
+  SafeCompareReport,
   SafeHydrationReport,
+  SafeOralCareReport,
   SafeSubstancesReport,
   SafeMeasurementsReport,
   SafeReportsSettings,
   SafeCardioSession,
+  SafeActivityShare,
   SafeRecordActivity,
   SafeRunSummary,
   SafeFamilyMembers,
@@ -143,6 +170,8 @@ import {
   SafeCycleLogModal,
   SafePregnancySetup,
   SafeMedicationsList,
+  SafeMedicationAdherence,
+  SafeMedicationEntryEdit,
   SafeMedicationDetail,
   SafeMedicationForm,
   SafeMedicationScheduleForm,
@@ -151,6 +180,7 @@ import {
   SafeGlp1TitrationForm,
   SafeSymptomLog,
   SafeMoodLog,
+  SafeMoodDay,
   SafeSymptomHistory,
   SafeSymptomEpisodeDetail,
   SafeManageSymptoms,
@@ -180,6 +210,8 @@ import PendingPresetUpdatePrompt from './src/components/PendingPresetUpdatePromp
 import { usePendingPresetUpdateStore } from './src/stores/pendingPresetUpdateStore';
 import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
+import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
+import OralCareReminderReconciler from './src/components/OralCareReminderReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
 import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
@@ -294,9 +326,13 @@ function WatchWorkoutGate() {
     setTelemetryPending,
     handleWatchFinishedWorkout
   );
+  // A watch-started workout never opens the active-workout screen, which is
+  // what normally loads the history its targets are resolved from.
+  useLiveWorkoutInputsCapture(isServerConnected);
   useWatchSetTargetsSync(watchSupported);
   useWatchRecordingBridge(watchSupported);
   useWatchRunBridge(watchSupported, isServerConnected);
+  useWatchRouteBridge(watchSupported);
   useWatchWorkoutStart(watchSupported, isServerConnected, startLiveWorkout);
   useWatchPlanSync(watchSupported);
   useWatchWorkoutEdit(watchSupported);
@@ -348,7 +384,9 @@ function AppContent() {
     handleAddProgressPhotos,
     handleAddSymptoms,
     handleAddMood,
+    handleStartCheckIn,
     handleAddMindfulness,
+    handleAddOralCare,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
@@ -356,12 +394,8 @@ function AppContent() {
     handleAddSheetDismissWithoutAction,
   } = useAddSheetActions({ syncMutation });
 
-  const { enabled: cycleEnabled, mode: cycleMode, discreetMode: cycleDiscreet } = useCycleMode();
-  const cycleSheetLabel = cycleDiscreet
-    ? t('addSheet.wellness', { defaultValue: 'Wellness' })
-    : cycleMode === 'pregnant' || cycleMode === 'postpartum'
-      ? t('addSheet.logPregnancyEntry', { defaultValue: 'Log Pregnancy Entry' })
-      : t('addSheet.logCycle', { defaultValue: 'Log Cycle' });
+  const { enabled: cycleEnabled } = useCycleMode();
+  const cycleSheetLabel = useCycleSheetLabel();
 
   const [primary, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -437,24 +471,34 @@ function AppContent() {
   }, [isDarkMode, primary, bgPrimary, textPrimary, chromeBorder]);
 
   const linking = useMemo<LinkingOptions<RootStackParamList>>(() => ({
-    prefixes: ['sparkyfitnessmobile://'],
+    prefixes: ['sparkyfitnessmobile://', 'https://tag.sparkyfitness.com'],
     config: {
       initialRouteName: 'Tabs',
       screens: {
         Tabs: {
           screens: {
             Dashboard: '',
-            // The Android Calories left Quick Settings tile opens the diary.
+            // The Android Calories left Quick Settings tile and the wider
+            // widgets' Diary shortcut open the diary.
             Diary: 'diary',
           },
         },
         FoodScan: 'scan',
         FoodSearch: 'search',
+        // The Android calorie and macro widgets' fasting shortcut.
+        FastingDetail: 'fasting',
         ChatSettings: 'settings/voice',
+        HeartRateZonesSettings: 'settings/heart-rate-zones',
         // Tapping the workout Live Activity opens its associated URL.
         ActiveWorkout: 'active-workout',
         // The run Live Activity opens the recording screen.
         RecordActivity: 'record-activity',
+        // The brushing timer's Live Activity opens the oral care screen.
+        OralCare: 'oral-care',
+        // Route generation; without a routing provider the screen explains that.
+        RouteGenerate: 'routes/generate',
+        // An NFC tag tap: https://tag.sparkyfitness.com/t/<code> (#941).
+        ActionTagScan: 't/:code',
       },
     },
   }), []);
@@ -595,6 +639,16 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.runProgramRace', { defaultValue: 'Plan a race' }), { headerBackTitle: t('screens.runPrograms', { defaultValue: 'Training programs' }) })}
           />
           <Stack.Screen
+            name="FitnessTest"
+            component={SafeFitnessTest}
+            options={createStackScreenOptions(t('screens.fitnessTest', { defaultValue: 'Fitness tests' }), { headerBackTitle: t('screens.runPrograms', { defaultValue: 'Training programs' }) })}
+          />
+          <Stack.Screen
+            name="FitnessTestResult"
+            component={SafeFitnessTestResult}
+            options={createStackScreenOptions(t('screens.fitnessTestResult', { defaultValue: 'Fitness test' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
             name="RunProgramEdit"
             component={SafeRunProgramEdit}
             options={createStackScreenOptions(t('screens.runProgramEdit', { defaultValue: 'Edit plan' }), { headerBackTitle: t('screens.runPrograms', { defaultValue: 'Training programs' }) })}
@@ -605,9 +659,57 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.runProgramWorkout', { defaultValue: 'Workout' }), { headerBackTitle: t('screens.runProgramCalendar', { defaultValue: 'Program calendar' }) })}
           />
           <Stack.Screen
+            name="Routes"
+            component={SafeRoutes}
+            options={createStackScreenOptions(t('screens.routes', { defaultValue: 'Routes' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="RouteDetail"
+            component={SafeRouteDetail}
+            options={createStackScreenOptions(t('screens.routes', { defaultValue: 'Routes' }), { headerBackTitle: t('screens.routes', { defaultValue: 'Routes' }) })}
+          />
+          <Stack.Screen
+            name="RouteDraw"
+            component={SafeRouteDraw}
+            options={createStackScreenOptions(t('screens.routeDraw', { defaultValue: 'Draw a route' }), { headerBackTitle: t('screens.routes', { defaultValue: 'Routes' }) })}
+          />
+          <Stack.Screen
+            name="RouteGenerate"
+            component={SafeRouteGenerate}
+            options={createStackScreenOptions(t('screens.routeGenerate', { defaultValue: 'Generate a route' }), { headerBackTitle: t('screens.routes', { defaultValue: 'Routes' }) })}
+          />
+          <Stack.Screen
             name="PersonalRecords"
             component={SafePersonalRecords}
             options={createStackScreenOptions(t('screens.personalRecords', { defaultValue: 'Personal records' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="LabResults"
+            component={SafeLabResults}
+            options={createStackScreenOptions(t('screens.labResults', { defaultValue: 'Lab results' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="LabResultDetail"
+            component={SafeLabResultDetail}
+            options={createStackScreenOptions(t('screens.labResultDetail', { defaultValue: 'Lab result' }), { headerBackTitle: t('screens.labResults', { defaultValue: 'Lab results' }) })}
+          />
+          <Stack.Screen
+            name="LabResultAdd"
+            component={SafeLabResultAdd}
+            options={createStackScreenOptions(t('screens.labResultAdd', { defaultValue: 'Add lab result' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
+            name="LabReportImport"
+            component={SafeLabReportImport}
+            options={createStackScreenOptions(t('screens.labReportImport', { defaultValue: 'Import report' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="WatchRunLive"
@@ -635,9 +737,29 @@ function AppContent() {
             options={createStackScreenOptions(t('waterContainers.title', { defaultValue: 'Water containers' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
           />
           <Stack.Screen
+            name="WaterLog"
+            component={SafeWaterLog}
+            options={createStackScreenOptions(t('waterLog.title', { defaultValue: 'Drinks' }), { headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }) })}
+          />
+          <Stack.Screen
             name="WaterContainerEdit"
             component={SafeWaterContainerEdit}
             options={createStackScreenOptions(t('waterContainerEdit.editTitle', { defaultValue: 'Edit container' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="ActionTags"
+            component={SafeActionTags}
+            options={createStackScreenOptions(t('actionTags.title', { defaultValue: 'NFC tags' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="ActionTagForm"
+            component={SafeActionTagForm}
+            options={createStackScreenOptions(t('actionTags.form.createTitle', { defaultValue: 'Set up NFC tag' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="ActionTagScan"
+            component={SafeActionTagScan}
+            options={createStackScreenOptions(t('actionTags.scan.title', { defaultValue: 'NFC tag' }))}
           />
           <Stack.Screen
             name="ExercisesLibrary"
@@ -841,9 +963,24 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.moodReport', { defaultValue: 'Mood' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
+            name="HeartRateReport"
+            component={SafeHeartRateReport}
+            options={createStackScreenOptions(t('screens.heartRateReport', { defaultValue: 'Heart Rate' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="CompareReport"
+            component={SafeCompareReport}
+            options={createStackScreenOptions(t('screens.compareReport', { defaultValue: 'Compare' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
             name="HydrationReport"
             component={SafeHydrationReport}
             options={createStackScreenOptions(t('screens.hydrationReport', { defaultValue: 'Hydration' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="OralCareReport"
+            component={SafeOralCareReport}
+            options={createStackScreenOptions(t('oralCareReport.title', { defaultValue: 'Oral care' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
             name="SubstancesReport"
@@ -864,6 +1001,11 @@ function AppContent() {
             name="CardioSession"
             component={SafeCardioSession}
             options={createStackScreenOptions(t('screens.cardioSession', { defaultValue: 'Cardio Session' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ActivityShare"
+            component={SafeActivityShare}
+            options={createStackScreenOptions(t('screens.activityShare', { defaultValue: 'Share Activity' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
             name="RecordActivity"
@@ -949,6 +1091,11 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="OralCare"
+            component={SafeOralCare}
+            options={createStackScreenOptions(t('oralCare.title', { defaultValue: 'Oral care' }), { headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }) })}
+          />
+          <Stack.Screen
             name="SleepDetail"
             component={SafeSleepDetail}
             options={createStackScreenOptions(t('screens.sleep', { defaultValue: 'Sleep' }), { headerBackTitle: t('navigation.diary', { defaultValue: 'Diary' }) })}
@@ -986,9 +1133,29 @@ function AppContent() {
             })}
           />
           <Stack.Screen
+            name="OralCareLog"
+            component={SafeOralCareLog}
+            options={createStackScreenOptions(t('oralCare.log.addTitle', { defaultValue: 'Log oral care' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
             name="ProgressPhotos"
             component={SafeProgressPhotos}
-            options={createStackScreenOptions(t('screens.progressPhotos', { defaultValue: 'Progress Photos' }), { headerBackButtonDisplayMode: 'minimal' })}
+            options={({ route }) =>
+              createStackScreenOptions(t('screens.progressPhotos', { defaultValue: 'Progress Photos' }), {
+                headerBackButtonDisplayMode: 'minimal',
+                // The guided check-in's last step is a sheet, like the two
+                // steps before it; on its own the screen is pushed.
+                ...(route.params?.guidedCheckIn
+                  ? {
+                      presentation: 'modal' as const,
+                      ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+                    }
+                  : {}),
+              })}
           />
           <Stack.Screen
             name="ProgressPhotoCompare"
@@ -1066,6 +1233,11 @@ function AppContent() {
             options={createStackScreenOptions(t('shoes.title', { defaultValue: 'Shoes' }), { headerBackTitle: t('shoes.title', { defaultValue: 'Shoes' }) })}
           />
           <Stack.Screen
+            name="PlateInventory"
+            component={SafePlateInventory}
+            options={createStackScreenOptions(t('plates.title', { defaultValue: 'Plates & bars' }), { headerBackTitle: t('equipmentHub.title', { defaultValue: 'Equipment' }) })}
+          />
+          <Stack.Screen
             name="DashboardSettings"
             component={SafeDashboardSettings}
             options={createStackScreenOptions(t('screens.dashboardSettings', { defaultValue: 'Dashboard Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
@@ -1081,9 +1253,24 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.diarySettings', { defaultValue: 'Diary Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
+            name="CustomCategories"
+            component={SafeCustomCategories}
+            options={createStackScreenOptions(t('customCategories.title', { defaultValue: 'Custom measurements' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="CustomCategoryEdit"
+            component={SafeCustomCategoryEdit}
+            options={createStackScreenOptions(t('customCategoryEdit.editTitle', { defaultValue: 'Edit category' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
             name="WatchSettings"
             component={SafeWatchSettings}
             options={createStackScreenOptions(t('screens.watchSettings', { defaultValue: 'Apple Watch' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="AddMenuSettings"
+            component={SafeAddMenuSettings}
+            options={createStackScreenOptions(t('screens.addMenuSettings', { defaultValue: 'Quick Actions' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
             name="WorkoutSettings"
@@ -1094,6 +1281,11 @@ function AppContent() {
             name="WarmupSettings"
             component={SafeWarmupSettings}
             options={createStackScreenOptions(t('screens.warmupSettings', { defaultValue: 'Warm-up Calculator' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
+          />
+          <Stack.Screen
+            name="HeartRateZonesSettings"
+            component={SafeHeartRateZonesSettings}
+            options={createStackScreenOptions(t('screens.heartRateZonesSettings', { defaultValue: 'Heart Rate Zones' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
             name="ServerSettings"
@@ -1168,6 +1360,20 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.medications', { defaultValue: 'Medications' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
+            name="MedicationAdherence"
+            component={SafeMedicationAdherence}
+            options={createStackScreenOptions(t('medications.adherence.screenTitle', { defaultValue: 'Adherence' }), { headerBackTitle: t('screens.medications', { defaultValue: 'Medications' }) })}
+          />
+          <Stack.Screen
+            name="MedicationEntryEdit"
+            component={SafeMedicationEntryEdit}
+            options={createStackScreenOptions(t('medications.entryEdit.title', { defaultValue: 'Edit logged dose' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
             name="MedicationDetail"
             component={SafeMedicationDetail}
             options={createStackScreenOptions(t('screens.medication', { defaultValue: 'Medication' }), { headerBackTitle: t('screens.medications', { defaultValue: 'Medications' }) })}
@@ -1232,6 +1438,15 @@ function AppContent() {
             })}
           />
           <Stack.Screen
+            name="MoodDay"
+            component={SafeMoodDay}
+            options={createStackScreenOptions(t('screens.moodLog', { defaultValue: 'Mood' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
             name="AiSettings"
             component={SafeAiSettings}
             options={createStackScreenOptions(t('screens.aiSettings', { defaultValue: 'AI' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
@@ -1280,8 +1495,10 @@ function AppContent() {
           onAddSymptoms={handleAddSymptoms}
           onAddMood={handleAddMood}
           onAddMindfulness={handleAddMindfulness}
+          onAddOralCare={handleAddOralCare}
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
+          onStartCheckIn={handleStartCheckIn}
           onOpenCycle={handleOpenCycle}
           showCycleCard={cycleEnabled}
           cycleLabel={cycleSheetLabel}
@@ -1321,6 +1538,8 @@ function AppContent() {
         <ActiveWorkoutBar />
         <ActiveWorkoutKeepAwake />
         <MedicationReminderReconciler />
+        <MoodCheckinReminderReconciler />
+        <OralCareReminderReconciler />
         <SafeAreaToast />
         </LightboxProvider>
       </SafeAreaProvider>
