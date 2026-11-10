@@ -2,6 +2,7 @@ import { dayOfWeek } from '@workspace/shared';
 import type {
   AddedPlannedMeal,
   CreatePlannedFoodBody,
+  CreatePlannedMealBody,
   UpdatePlannedFoodBody,
   PlannedMealActionBody,
   PlannedMealItem,
@@ -50,8 +51,8 @@ async function requirePlannedItem(
   return item;
 }
 
-/** Logs a one-off planned food as a diary entry and remembers which one. */
-async function addPlannedFood(
+/** Logs a one-off planned food or meal in the diary and remembers what it wrote. */
+async function addPlannedOneOff(
   userId: string,
   body: PlannedMealActionBody
 ): Promise<AddedPlannedMeal> {
@@ -59,6 +60,22 @@ async function addPlannedFood(
   if (!item || item.status !== 'planned' || item.plan_date !== body.date) {
     throw new PlannedMealNotFoundError();
   }
+  if (item.meal_id) {
+    const written = await plannedFoodItemRepository.addMealToDiary(
+      userId,
+      item,
+      body.entry_time ?? null
+    );
+    if (!written) {
+      throw new ValidationError('Nothing to add: the planned item is empty.');
+    }
+    clearUserTdeeCache(userId);
+    return {
+      food_entry_ids: written.foodEntryIds,
+      food_entry_meal_ids: [written.foodEntryMealId],
+    };
+  }
+  if (!item.food_id || !item.variant_id) throw new PlannedMealNotFoundError();
   const entry = await createFoodEntry(
     {
       user_id: userId,
@@ -95,7 +112,7 @@ async function addPlannedMeal(
 ): Promise<AddedPlannedMeal> {
   await requirePlannedItem(userId, body);
 
-  if (body.template_id === null) return addPlannedFood(userId, body);
+  if (body.template_id === null) return addPlannedOneOff(userId, body);
 
   const created = await createFoodEntriesFromTemplate(
     body.template_id,
@@ -214,7 +231,24 @@ async function createPlannedFood(
   return requireOneOff(userId, record.id, record.plan_date);
 }
 
-/** Changes the quantity, serving or meal of a still-planned one-off food. */
+/** Plans one saved meal on one day and meal, outside any meal plan. */
+async function createPlannedMeal(
+  userId: string,
+  body: CreatePlannedMealBody
+): Promise<PlannedMealItem> {
+  if (
+    !(await plannedFoodItemRepository.mealTypeExists(userId, body.meal_type_id))
+  ) {
+    throw new ValidationError('Unknown meal.');
+  }
+  if (!(await plannedFoodItemRepository.mealExists(userId, body.meal_id))) {
+    throw new ValidationError('That saved meal could not be found.');
+  }
+  const record = await plannedFoodItemRepository.createMeal(userId, body);
+  return requireOneOff(userId, record.id, record.plan_date);
+}
+
+/** Changes the quantity, serving or meal of a still-planned one-off food or meal. */
 async function updatePlannedFood(
   userId: string,
   id: string,
@@ -224,12 +258,27 @@ async function updatePlannedFood(
   if (!current || current.status !== 'planned') {
     throw new PlannedMealNotFoundError();
   }
-  await assertUsable(
-    userId,
-    patch.meal_type_id ?? current.meal_type_id,
-    current.food_id,
-    patch.variant_id ?? current.variant_id
-  );
+  if (current.meal_id) {
+    if (patch.variant_id) {
+      throw new ValidationError('A saved meal has no serving to change.');
+    }
+    if (
+      patch.meal_type_id &&
+      !(await plannedFoodItemRepository.mealTypeExists(
+        userId,
+        patch.meal_type_id
+      ))
+    ) {
+      throw new ValidationError('Unknown meal.');
+    }
+  } else {
+    await assertUsable(
+      userId,
+      patch.meal_type_id ?? current.meal_type_id,
+      current.food_id ?? '',
+      patch.variant_id ?? current.variant_id ?? ''
+    );
+  }
   const updated = await plannedFoodItemRepository.update(userId, id, patch);
   if (!updated) throw new PlannedMealNotFoundError();
   return requireOneOff(userId, updated.id, updated.plan_date);
@@ -272,6 +321,7 @@ export {
   skipPlannedMeal,
   restorePlannedMeal,
   createPlannedFood,
+  createPlannedMeal,
   updatePlannedFood,
 };
 export default {
@@ -280,5 +330,6 @@ export default {
   skipPlannedMeal,
   restorePlannedMeal,
   createPlannedFood,
+  createPlannedMeal,
   updatePlannedFood,
 };

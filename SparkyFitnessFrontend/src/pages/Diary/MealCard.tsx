@@ -436,7 +436,6 @@ const MealCard = ({
                   </Tabs>
                   <EnhancedFoodSearch
                     mealType={meal.type}
-                    hideMealTab={planning}
                     onFoodSelect={(item, type) => {
                       if (type === 'food') {
                         debug(
@@ -451,7 +450,7 @@ const MealCard = ({
                           'MealCard: Meal selected in search:',
                           item
                         );
-                        onFoodSelect(item as Meal, meal.type);
+                        onFoodSelect(item as Meal, meal.type, planning);
                       }
                     }}
                   />

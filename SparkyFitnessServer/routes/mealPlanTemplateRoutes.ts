@@ -9,6 +9,7 @@ import plannedMealService, {
 import { ValidationError } from '../utils/errors.js';
 import {
   createPlannedFoodBodySchema,
+  createPlannedMealBodySchema,
   updatePlannedFoodBodySchema,
   plannedMealActionBodySchema,
   plannedMealRestoreBodySchema,
@@ -398,6 +399,44 @@ router.post(
         .status(201)
         .json(
           await plannedMealService.createPlannedFood(req.userId, parsed.data)
+        );
+    } catch (error) {
+      sendPlannedMealError(error, res, next);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /meal-plan-templates/planned/meals:
+ *   post:
+ *     summary: Plan one saved meal on a day, outside any meal plan
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Creates a one-off planned meal. It is listed with the day's other
+ *       planned items (with a null template_id and item_type "meal") and is in
+ *       no total until it is added to the diary, which logs the meal and its foods.
+ *     responses:
+ *       201:
+ *         description: The planned item.
+ *       400:
+ *         description: Invalid request, unknown meal type, or unknown saved meal.
+ */
+router.post(
+  '/planned/meals',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = createPlannedMealBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+    try {
+      res
+        .status(201)
+        .json(
+          await plannedMealService.createPlannedMeal(req.userId, parsed.data)
         );
     } catch (error) {
       sendPlannedMealError(error, res, next);
