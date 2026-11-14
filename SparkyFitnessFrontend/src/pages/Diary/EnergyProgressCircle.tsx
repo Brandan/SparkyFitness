@@ -2,6 +2,11 @@ import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2 } from 'lucide-react';
 import { getEnergyRingState } from './energyHeadline';
+import { VarianceBadge } from './PlannedVariance';
+import {
+  PLANNED_FILL_OPACITY,
+  getPlannedVariance,
+} from './plannedVarianceMath';
 
 interface EnergyCircleProps {
   remaining: number;
@@ -11,6 +16,8 @@ interface EnergyCircleProps {
   planned?: number;
   /** Goal the ring is a fraction of, in the same unit as `planned`. */
   goal?: number;
+  /** Eaten calories in the same unit; with `planned` and `goal` it gives the over/under figure. */
+  eaten?: number;
   // Only set when the user's calorie goal direction is 'target' with a
   // configured min/max band (see NutrientGoalDirectionSettings). Leaves the
   // ring's core remaining/progress math untouched; only adds a color +
@@ -24,6 +31,7 @@ export const EnergyCircle = ({
   unit,
   planned = 0,
   goal = 0,
+  eaten,
   targetBand,
 }: EnergyCircleProps) => {
   const { t } = useTranslation();
@@ -32,8 +40,21 @@ export const EnergyCircle = ({
     goal > 0 && planned > 0
       ? Math.min((planned / goal) * 100, Math.max(0, 100 - eatenPct))
       : 0;
+  const variance =
+    eaten === undefined ? null : getPlannedVariance(eaten, planned, goal);
   const { inRange, colorClass: ringColorClass } =
     getEnergyRingState(targetBand);
+
+  const varianceBadge = variance ? (
+    <VarianceBadge
+      variance={variance}
+      format={(n) => Math.round(n).toLocaleString()}
+      unit={` ${getEnergyUnitString(unit)}`}
+      showWord
+      warnOver
+      className="ml-2 text-sm"
+    />
+  ) : null;
 
   const ringPath =
     'M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831';
@@ -43,12 +64,25 @@ export const EnergyCircle = ({
       <div className="relative w-32 h-32">
         <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
           <path
-            className="text-gray-200 dark:text-slate-400"
+            className="text-slate-200 dark:text-slate-700"
             stroke="currentColor"
             strokeWidth="3"
             fill="transparent"
             d={ringPath}
           />
+          {plannedPct > 0 && (
+            <path
+              data-testid="planned-energy-arc"
+              className={ringColorClass}
+              style={{ opacity: PLANNED_FILL_OPACITY }}
+              stroke="currentColor"
+              strokeWidth="3"
+              fill="transparent"
+              strokeDasharray={`${eatenPct + plannedPct}, 100`}
+              strokeDashoffset={0}
+              d={ringPath}
+            />
+          )}
           <path
             className={ringColorClass}
             stroke="currentColor"
@@ -57,18 +91,6 @@ export const EnergyCircle = ({
             strokeDasharray={`${eatenPct}, 100`}
             d={ringPath}
           />
-          {plannedPct > 0 && (
-            <path
-              data-testid="planned-energy-arc"
-              className={`${ringColorClass} opacity-40`}
-              stroke="currentColor"
-              strokeWidth="3"
-              fill="transparent"
-              strokeDasharray={`${plannedPct} ${100 - plannedPct}`}
-              strokeDashoffset={-eatenPct}
-              d={ringPath}
-            />
-          )}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <div className="text-xl font-bold text-gray-900 dark:text-gray-50 flex items-center gap-1">
@@ -111,7 +133,11 @@ export const EnergyCircle = ({
               unit: getEnergyUnitString(unit),
             }
           )}
+          {varianceBadge}
         </div>
+      )}
+      {planned <= 0 && varianceBadge && (
+        <div className="mt-2 text-center">{varianceBadge}</div>
       )}
     </div>
   );

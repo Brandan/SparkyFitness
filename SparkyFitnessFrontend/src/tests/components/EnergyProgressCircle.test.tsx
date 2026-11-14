@@ -48,4 +48,34 @@ describe('EnergyCircle planned calories', () => {
     expect(screen.queryByTestId('planned-energy-arc')).not.toBeInTheDocument();
     expect(screen.queryByTestId('planned-energy')).not.toBeInTheDocument();
   });
+
+  it('shows plus or minus against the goal next to the planned figure', () => {
+    const { rerender } = render(
+      <EnergyCircle
+        remaining={1000}
+        progress={50}
+        unit="kcal"
+        eaten={1000}
+        planned={1300}
+        goal={2000}
+      />
+    );
+    expect(screen.getByTestId('planned-variance')).toHaveTextContent(
+      '+300 kcal over'
+    );
+
+    rerender(
+      <EnergyCircle
+        remaining={1000}
+        progress={50}
+        unit="kcal"
+        eaten={1000}
+        planned={850}
+        goal={2000}
+      />
+    );
+    expect(screen.getByTestId('planned-variance')).toHaveTextContent(
+      '\u2212150 kcal under'
+    );
+  });
 });

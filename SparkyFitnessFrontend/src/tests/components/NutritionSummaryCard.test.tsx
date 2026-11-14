@@ -115,7 +115,27 @@ describe('NutritionSummaryCard planned amounts', () => {
       'title',
       '45.0g with planned'
     );
-    expect(screen.getByTestId('planned-bar')).toHaveStyle({ width: '30%' });
+    // The light fill runs from the start out to eaten plus planned (45 of 50).
+    expect(screen.getByTestId('planned-bar')).toHaveStyle({ width: '90%' });
+    expect(screen.getByTestId('planned-variance')).toHaveTextContent(
+      '\u22125.0g under'
+    );
+  });
+
+  it('shows how far over the goal the planned day lands', () => {
+    renderSummary(scalePlannedNutrition({ carbs: 30 }, 1));
+
+    expect(screen.getByTestId('planned-variance')).toHaveTextContent(
+      '+10.0g over'
+    );
+  });
+
+  it('shows how far under the goal the planned day lands', () => {
+    renderSummary(scalePlannedNutrition({ carbs: 5 }, 1));
+
+    expect(screen.getByTestId('planned-variance')).toHaveTextContent(
+      '\u221215.0g under'
+    );
   });
 
   it('subtracts planned fiber when net carbs are shown', () => {
@@ -154,7 +174,7 @@ describe('NutritionSummaryCard calorie budget', () => {
     );
     expect(screen.getByText('of 2481kcal')).toBeInTheDocument();
     const bar = container.querySelector<HTMLElement>(
-      '.h-1\\.5[style]:not([data-testid])'
+      '.rounded-full.h-1\\.5 > .absolute'
     );
     expect(parseFloat(bar?.style.width ?? '0')).toBeCloseTo(49.375);
   });

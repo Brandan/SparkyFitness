@@ -4145,6 +4145,12 @@
       "protein": "Protein",
       "carbs": "Carbs",
       "fat": "Fat"
+    },
+    "variance": {
+      "over": "over",
+      "under": "under",
+      "title": "Eaten plus planned vs goal",
+      "mealTitle": "Eaten plus planned vs this meal's target"
     }
   },
   "nutrientGoalDirection": {

@@ -4,6 +4,11 @@ import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { computeEnergyHeadline, getEnergyRingState } from './energyHeadline';
+import { PlannedProgressBar, VarianceBadge } from './PlannedVariance';
+import {
+  getPlannedVariance,
+  PLANNED_FILL_OPACITY,
+} from './plannedVarianceMath';
 
 const RING_PATH =
   'M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831';
@@ -18,25 +23,27 @@ interface DiaryStickyBarProps {
   selectedDate: string;
   dayTotals: MacroTotals;
   goals: MacroTotals;
-  /** Planned calories in kcal, beside what was eaten and never inside it. */
-  plannedKcal: number;
+  /** What the day's planned meals add, beside what was eaten and never inside it. */
+  plannedTotals: MacroTotals & { calories: number };
 }
 
 const MacroBar = ({
   name,
   eaten,
+  planned,
   goal,
   textClass,
-  fillClass,
+  color,
 }: {
   name: string;
   eaten: number;
+  planned: number;
   goal: number;
   textClass: string;
-  fillClass: string;
+  color: string;
 }) => {
   const { t } = useTranslation();
-  const pct = goal > 0 ? Math.min((eaten / goal) * 100, 100) : 0;
+  const variance = getPlannedVariance(eaten, planned, goal);
   const label = t(
     'diary.stickyBar.macroLabel',
     '{{name}} {{eaten}} of {{goal}} g',
@@ -50,16 +57,27 @@ const MacroBar = ({
     <div className="min-w-0 flex-1" role="img" aria-label={label} title={label}>
       <div className="flex items-baseline justify-between gap-1 text-xs">
         <span className={textClass}>{name}</span>
-        <span className="font-medium tabular-nums dark:text-slate-300">
-          {Math.round(eaten)}g
+        <span className="flex items-baseline gap-1">
+          <span className="font-medium tabular-nums dark:text-slate-300">
+            {Math.round(eaten)}g
+          </span>
+          {variance && (
+            <VarianceBadge
+              variance={variance}
+              format={(n) => Math.round(n).toString()}
+              unit="g"
+              className="text-[11px]"
+            />
+          )}
         </span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-slate-700">
-        <div
-          className={`h-full rounded-full ${fillClass}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <PlannedProgressBar
+        className="mt-1"
+        eaten={eaten}
+        planned={planned}
+        goal={goal}
+        color={color}
+      />
     </div>
   );
 };
@@ -74,7 +92,7 @@ const DiaryStickyBar = ({
   selectedDate,
   dayTotals,
   goals,
-  plannedKcal,
+  plannedTotals,
 }: DiaryStickyBarProps) => {
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
@@ -86,19 +104,25 @@ const DiaryStickyBar = ({
   const headline = computeEnergyHeadline({
     calorieBalance: summaryData.calorieBalance,
     calorieGoalPref: goalTypePreferences?.['calories'],
-    plannedKcal,
+    plannedKcal: plannedTotals.calories,
     energyUnit,
     convertEnergy,
   });
   const unit = getEnergyUnitString(energyUnit);
   const eatenPct = Math.min(Math.max(headline.progress, 0), 100);
-  const plannedPct =
+  // The light arc runs from the start out to eaten plus planned, under the solid one.
+  const projectedPct =
     headline.goal > 0 && headline.planned > 0
       ? Math.min(
-          (headline.planned / headline.goal) * 100,
-          Math.max(0, 100 - eatenPct)
+          ((headline.eaten + headline.planned) / headline.goal) * 100,
+          100
         )
       : 0;
+  const calorieVariance = getPlannedVariance(
+    headline.eaten,
+    headline.planned,
+    headline.goal
+  );
   const { colorClass } = getEnergyRingState(headline.targetBand);
 
   return (
@@ -113,12 +137,24 @@ const DiaryStickyBar = ({
           aria-hidden="true"
         >
           <path
-            className="text-gray-200 dark:text-slate-600"
+            className="text-slate-200 dark:text-slate-700"
             stroke="currentColor"
             strokeWidth="4"
             fill="transparent"
             d={RING_PATH}
           />
+          {projectedPct > eatenPct && (
+            <path
+              data-testid="sticky-planned-arc"
+              className={colorClass}
+              style={{ opacity: PLANNED_FILL_OPACITY }}
+              stroke="currentColor"
+              strokeWidth="4"
+              fill="transparent"
+              strokeDasharray={`${projectedPct}, 100`}
+              d={RING_PATH}
+            />
+          )}
           <path
             className={colorClass}
             stroke="currentColor"
@@ -127,17 +163,6 @@ const DiaryStickyBar = ({
             strokeDasharray={`${eatenPct}, 100`}
             d={RING_PATH}
           />
-          {plannedPct > 0 && (
-            <path
-              className={`${colorClass} opacity-40`}
-              stroke="currentColor"
-              strokeWidth="4"
-              fill="transparent"
-              strokeDasharray={`${plannedPct} ${100 - plannedPct}`}
-              strokeDashoffset={-eatenPct}
-              d={RING_PATH}
-            />
-          )}
         </svg>
         <div className="leading-tight">
           <div className="text-sm font-semibold tabular-nums dark:text-slate-300">
@@ -148,6 +173,15 @@ const DiaryStickyBar = ({
                 unit,
               })}
             </span>
+            {calorieVariance && (
+              <VarianceBadge
+                variance={calorieVariance}
+                format={(n) => Math.round(n).toLocaleString()}
+                warnOver
+                showWord
+                className="ml-2"
+              />
+            )}
           </div>
           <div className="whitespace-nowrap text-xs text-gray-500">
             {headline.remaining >= 0
@@ -171,23 +205,26 @@ const DiaryStickyBar = ({
         <MacroBar
           name={t('diary.stickyBar.protein', 'Protein')}
           eaten={dayTotals.protein}
+          planned={plannedTotals.protein}
           goal={goals.protein}
           textClass="text-blue-500"
-          fillClass="bg-blue-500"
+          color="#2563eb"
         />
         <MacroBar
           name={t('diary.stickyBar.carbs', 'Carbs')}
           eaten={dayTotals.carbs}
+          planned={plannedTotals.carbs}
           goal={goals.carbs}
           textClass="text-green-500"
-          fillClass="bg-green-500"
+          color="#16a34a"
         />
         <MacroBar
           name={t('diary.stickyBar.fat', 'Fat')}
           eaten={dayTotals.fat}
+          planned={plannedTotals.fat}
           goal={goals.fat}
           textClass="text-yellow-500"
-          fillClass="bg-yellow-500"
+          color="#eab308"
         />
       </div>
     </div>
