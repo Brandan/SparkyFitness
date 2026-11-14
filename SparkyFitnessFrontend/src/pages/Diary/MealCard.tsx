@@ -93,6 +93,8 @@ import AllergenBadges from '@/components/AllergenBadges';
 import { diaryEntryImages, usableFoodImages } from '@/utils/foodImages';
 import { useImageLightbox } from '@/hooks/Foods/useImageLightbox';
 import ImageLightbox from '@/components/ImageLightbox';
+import { PlannedProgressBar, VarianceBadge } from './PlannedVariance';
+import { getPlannedVariance } from './plannedVarianceMath';
 
 interface MealCardProps {
   meal: {
@@ -307,6 +309,11 @@ const MealCard = ({
   const plannedDisplay = Math.round(
     convertEnergy(plannedNutrition.calories, 'kcal', energyUnit)
   );
+  const mealVariance = getPlannedVariance(
+    totals.calories,
+    plannedNutrition.calories,
+    meal.targetCalories ?? 0
+  );
   const plannedMacrosKnown = plannedItems.some(
     (item) => item.nutrition != null
   );
@@ -328,36 +335,70 @@ const MealCard = ({
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg sm:text-xl dark:text-slate-300">
-                {meal.name}
-              </CardTitle>
-              <span className="text-xs sm:text-sm text-gray-500">
-                {Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}
-                {!!meal.targetCalories && (
-                  <span>{` / ${Math.round(
-                    convertEnergy(meal.targetCalories, 'kcal', energyUnit)
-                  )}`}</span>
-                )}
-                {getEnergyUnitString(energyUnit)}
-                {plannedDisplay > 0 && (
-                  <span>
-                    {` · +${plannedDisplay} ${t('diary.planned', 'planned')}`}
-                    {plannedMacrosKnown && (
-                      <>
-                        {' · '}
-                        <span className="inline-flex gap-x-3">
-                          <PlannedMacroFigures
-                            protein={plannedNutrition.protein}
-                            carbs={plannedNutrition.carbs}
-                            fat={plannedNutrition.fat}
-                          />
-                        </span>
-                      </>
-                    )}
-                  </span>
-                )}
-              </span>
+            <div className="min-w-0 sm:flex-1">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg sm:text-xl dark:text-slate-300">
+                  {meal.name}
+                </CardTitle>
+                <span className="text-xs sm:text-sm text-gray-500">
+                  {Math.round(
+                    convertEnergy(totals.calories, 'kcal', energyUnit)
+                  )}
+                  {!!meal.targetCalories && (
+                    <span>{` / ${Math.round(
+                      convertEnergy(meal.targetCalories, 'kcal', energyUnit)
+                    )}`}</span>
+                  )}
+                  {getEnergyUnitString(energyUnit)}
+                  {mealVariance && (
+                    <>
+                      {' · '}
+                      <VarianceBadge
+                        variance={mealVariance}
+                        format={(n) =>
+                          Math.round(
+                            convertEnergy(n, 'kcal', energyUnit)
+                          ).toLocaleString()
+                        }
+                        unit={` ${getEnergyUnitString(energyUnit)}`}
+                        showWord
+                        warnOver
+                        title={t(
+                          'diary.variance.mealTitle',
+                          "Eaten plus planned vs this meal's target"
+                        )}
+                        className="text-xs sm:text-sm"
+                      />
+                    </>
+                  )}
+                  {plannedDisplay > 0 && (
+                    <span>
+                      {` · +${plannedDisplay} ${t('diary.planned', 'planned')}`}
+                      {plannedMacrosKnown && (
+                        <>
+                          {' · '}
+                          <span className="inline-flex gap-x-3">
+                            <PlannedMacroFigures
+                              protein={plannedNutrition.protein}
+                              carbs={plannedNutrition.carbs}
+                              fat={plannedNutrition.fat}
+                            />
+                          </span>
+                        </>
+                      )}
+                    </span>
+                  )}
+                </span>
+              </div>
+              {!!meal.targetCalories && (
+                <PlannedProgressBar
+                  className="mt-2 max-w-md"
+                  eaten={totals.calories}
+                  planned={plannedNutrition.calories}
+                  goal={meal.targetCalories}
+                  color="#16a34a"
+                />
+              )}
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
               <PlannedAddAllButton

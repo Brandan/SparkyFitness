@@ -22,6 +22,8 @@ import {
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
 import { ExpandedGoals } from '@/types/goals';
 import type { PlannedNutrition } from '@workspace/shared';
+import { PlannedProgressBar, VarianceBadge } from './PlannedVariance';
+import { getPlannedVariance } from './plannedVarianceMath';
 
 export interface DayTotals {
   calories: number; // Stored internally as kcal
@@ -256,13 +258,15 @@ const NutritionSummaryCard = ({
                   )
                 : metadata.targetMax;
 
-            const percentage =
-              goal > 0 ? Math.min((comparisonTotal / goal) * 100, 100) : 0;
-            const plannedPercentage =
-              goal > 0 && hasPlanned
-                ? Math.min(((comparisonTotal + planned) / goal) * 100, 100) -
-                  percentage
-                : 0;
+            // A maximum already says "N over" under the number when passed.
+            const variance =
+              !hasPlanned && goalType === 'maximum'
+                ? null
+                : getPlannedVariance(
+                    comparisonTotal,
+                    hasPlanned ? planned : 0,
+                    goal
+                  );
 
             const subLine = isTargetType
               ? `${formatNutrientValue(nutrient, targetMinVal, customNutrients)}–${formatNutrientValue(nutrient, targetMaxVal, customNutrients)}${unit}`
@@ -285,6 +289,19 @@ const NutritionSummaryCard = ({
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                   )}
                 </div>
+                {variance && (
+                  <div className="leading-tight">
+                    <VarianceBadge
+                      variance={variance}
+                      format={(n) => formatAmount(n)}
+                      unit={unit}
+                      showWord
+                      warnOver={
+                        nutrient === 'calories' || goalType === 'maximum'
+                      }
+                    />
+                  </div>
+                )}
                 <div className="text-xs text-gray-500 leading-tight">
                   {subLine}
                 </div>
@@ -294,25 +311,13 @@ const NutritionSummaryCard = ({
                 >
                   {label}
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1 flex overflow-hidden">
-                  <div
-                    className="h-1.5"
-                    style={{
-                      width: `${percentage}%`,
-                      backgroundColor: barColor,
-                    }}
-                  />
-                  {plannedPercentage > 0 && (
-                    <div
-                      data-testid="planned-bar"
-                      className="h-1.5 opacity-60"
-                      style={{
-                        width: `${plannedPercentage}%`,
-                        backgroundImage: `repeating-linear-gradient(135deg, ${barColor} 0 2px, transparent 2px 4px)`,
-                      }}
-                    />
-                  )}
-                </div>
+                <PlannedProgressBar
+                  className="mt-1"
+                  eaten={comparisonTotal}
+                  planned={hasPlanned ? planned : 0}
+                  goal={goal}
+                  color={barColor}
+                />
                 {hasPlanned && (
                   <div
                     className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight"

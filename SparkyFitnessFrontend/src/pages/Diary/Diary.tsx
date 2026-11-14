@@ -631,7 +631,7 @@ const Diary = () => {
             selectedDate={selectedDate}
             dayTotals={dayTotals}
             goals={effectiveGoals}
-            plannedKcal={plannedTotals.calories}
+            plannedTotals={plannedTotals}
           />
         ) : (
           <div />

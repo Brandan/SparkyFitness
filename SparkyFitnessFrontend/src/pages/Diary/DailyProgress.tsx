@@ -373,6 +373,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             unit={energyUnit}
             planned={displayPlanned}
             goal={effectiveTargetGoal}
+            eaten={headline.eaten}
             targetBand={headline.targetBand}
           />
           {/* Energy Breakdown */}
