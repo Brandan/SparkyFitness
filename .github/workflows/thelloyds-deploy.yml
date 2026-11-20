@@ -9,9 +9,11 @@ name: Deploy to fitness.thelloyds.net
 #
 # GHCR images are pushed under this repo's own GITHUB_TOKEN (packages: write),
 # not the upstream workflows' GHCR_TOKEN/Docker Hub secrets, so this never
-# touches codewithcj's published images. The deploy step (added once the
-# server side is ready) SSHes in as a dedicated, forced-command-only account;
-# see thelloyds-infra's sparkyfitness role.
+# touches codewithcj's published images. The deploy job SSHes in as
+# sparkyfitness-deploy, a dedicated account whose key can run exactly one
+# forced command (`docker compose pull && up -d` in /opt/sparkyfitness) --
+# see thelloyds-infra's sparkyfitness role. DEPLOY_SSH_KEY is that account's
+# private key; the host key below is the server's own, not a secret.
 
 on:
   push:
@@ -76,3 +78,30 @@ jobs:
           platforms: linux/amd64
           cache-from: type=gha,scope=garmin
           cache-to: type=gha,mode=max,scope=garmin
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recreate the stack on the server
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -eu
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo '96.126.117.32 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL99uJ/vxwwQhN/8aDQeBH3cKc88MOyPZZV/SJ7FOOZv' > ~/.ssh/known_hosts
+          # The server's authorized_keys forces one fixed command for this key,
+          # so whatever we "run" here is ignored -- connecting is the trigger.
+          ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts sparkyfitness-deploy@96.126.117.32
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' https://fitness.thelloyds.net/ || true)
+            [ "$code" = "200" ] && exit 0
+            sleep 3
+          done
+          echo "fitness.thelloyds.net did not return 200 after deploy" >&2
+          exit 1
