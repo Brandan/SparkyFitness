@@ -195,6 +195,13 @@
       "amoled": "AMOLED",
       "system": "System"
     },
+    "appIcon": {
+      "title": "App Icon",
+      "subtitle": "Choose a fixed icon instead of following Light/Dark/Tinted.",
+      "system": "System default",
+      "dark": "Dark",
+      "changeFailed": "Couldn't change the app icon"
+    },
     "liquidGlass": {
       "title": "Liquid Glass navigation",
       "subtitle": "Use the iOS 26 glass tab bar and screen headers."

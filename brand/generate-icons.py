@@ -14,6 +14,7 @@ Run from anywhere; paths are resolved relative to the repo's `source/` root
 
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -116,6 +117,29 @@ def main() -> None:
     }
     for filename, px in widget_sizes.items():
         render(icon_svg(px, px, LIGHT, 0.62), widget_set / filename, px, px, bg="white")
+
+    print("Mobile: iOS alternate 'Dark' app icon (opaque, picked in Settings,")
+    print("        independent of the system Light/Dark/Tinted setting)")
+    alt_dark_set = mobile / "assets/icons/alt-icon-dark.appiconset"
+    render(icon_svg(1024, 1024, DARK, 0.62), alt_dark_set / "icon1024.png", 1024, 1024, bg="#121212")
+    (alt_dark_set / "Contents.json").write_text(
+        json.dumps(
+            {
+                "images": [
+                    {
+                        "filename": "icon1024.png",
+                        "idiom": "universal",
+                        "platform": "ios",
+                        "size": "1024x1024",
+                    }
+                ],
+                "info": {"version": 1, "author": "xcode"},
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    print(f"  wrote {(alt_dark_set / 'Contents.json').relative_to(SOURCE_ROOT)}")
 
     print("Web: favicon + PWA icons (transparent)")
     favicon_png = SOURCE_ROOT / "_favicon_tmp.png"

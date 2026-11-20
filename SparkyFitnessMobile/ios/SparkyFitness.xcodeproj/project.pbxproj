@@ -7,28 +7,28 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		12987A1BE59D3962945507D2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A16831D61BF131DE9A2A7776 /* PrivacyInfo.xcprivacy */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		140E5545F65069BD0D2978AE /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857BD58A34BE11AA7BC3317E /* ExpoModulesProvider.swift */; };
-		18B2EADA637040C3A134DCB1 /* index.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442EB8A53CE44F6F9ADB43C3 /* index.swift */; };
-		2E6A742A630A1BFBCC650D5B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A16831D61BF131DE9A2A7776 /* PrivacyInfo.xcprivacy */; };
+		176C8C1BC6FC48AC9072D458 /* ShortcutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 195F2EDB6B8F4899A8EB9699 /* ShortcutProvider.swift */; };
+		3BFEC301FD6A43C0A7B6941E /* ExpoWidgetsTarget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B30820FD489F41F7A167E182 /* ExpoWidgetsTarget.appex */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		58CF48BD889348C6B3EA4468 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 51CF39BB30DB4A54861A315F /* InfoPlist.strings */; };
-		5EFDB5A52DDC45C4864CF549 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8A195762A13744F2B66462DE /* InfoPlist.strings */; };
-		8E5D9C68CFDB408DBCC0DBBF /* ShortcutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DA3658DF4549A1B32F50AC /* ShortcutIntents.swift */; };
-		936A1D92C8F8403995C2B273 /* ShortcutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31EF462390EC4645BB20FFBF /* ShortcutProvider.swift */; };
-		954C0EF7680A477DA21185E4 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBC89E5C05D4F81A0C9501E /* SceneDelegate.swift */; };
-		96C48D10C9802329BCFC1385 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C8D5608CF989AD0297A390 /* ExpoModulesProvider.swift */; };
-		AE347750E496F9C3A61FBE34 /* libPods-SparkyFitness.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A1167DCB374EC3BB36C9E3E7 /* libPods-SparkyFitness.a */; };
-		B6C24ACF6100438A9FFAED3F /* ExpoWidgetsTarget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 69DE9F08F8CD41E498C7738F /* ExpoWidgetsTarget.appex */; };
+		41AED9D696994F058DFE5F6E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C72FC22B35FC460F80912946 /* InfoPlist.strings */; };
+		4BFD53C7512A460D905ED6A6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 072D269FD6034436AFE73224 /* InfoPlist.strings */; };
+		4CDA7D0945E4DA6D4DF1F4B7 /* libPods-ExpoWidgetsTarget.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C785CB5F7466FEAFC98CB42F /* libPods-ExpoWidgetsTarget.a */; };
+		6038B8AE85364FE9A9BA4E90 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = BDB6279FD68E45DEB63A7C95 /* InfoPlist.strings */; };
+		82104343F009484FA113F8F8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52AD24AD8174A15BB0862DD /* SceneDelegate.swift */; };
+		87AB61DB30494DE8943BD4EF /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C888DE1CBFF341C4A572B9BA /* InfoPlist.strings */; };
+		9266369BEEB048DA8D022A49 /* ShortcutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 861E0489E4A54C999F19A016 /* ShortcutIntents.swift */; };
+		9D84D797301E468C84A71798 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 64086E9E9EC5418CB64338D8 /* InfoPlist.strings */; };
+		A3EA4171B33483B81289C340 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFACC19F4DDEC8C26367E9AF /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		BD4E0C94D2A5420EAFE135A2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 02D701CAD8CA4450BB8122B3 /* InfoPlist.strings */; };
-		CAE2B61F64F44BFDA0308B36 /* appicon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 03A5C7AB0ACC49E79210354B /* appicon.icon */; };
-		CDCFDFAE4D10212001790D1A /* libPods-ExpoWidgetsTarget.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A1375A3A7973BB963761FF5C /* libPods-ExpoWidgetsTarget.a */; };
-		EEBD8C0161894DFFB509A127 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 5539882F17D74471A8141BF0 /* InfoPlist.strings */; };
-		F035420D8C634FB2BC71E978 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = B91F701CB6AD4B0DB78FD499 /* InfoPlist.strings */; };
+		BFBB79F75B4F4361BFD87054 /* index.swift in Sources */ = {isa = PBXBuildFile; fileRef = F716233A80EA4435854570D2 /* index.swift */; };
+		C06CA63C090E4333A856ECFA /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2BFCDAE351034E9DB2B045B0 /* InfoPlist.strings */; };
+		C13C03D9E6B621303FD7A791 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ACBE487E73129C8AE89DE307 /* PrivacyInfo.xcprivacy */; };
+		C27F2D100FBE56D3FAD9CA7E /* libPods-SparkyFitness.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B03D1C568D5A64B02AF87974 /* libPods-SparkyFitness.a */; };
+		C7002E8471E95FF9142F4281 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4782EBA11BDEFFCE650DA343 /* ExpoModulesProvider.swift */; };
+		E0EBDEF37825D7E0979BA7D8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ACBE487E73129C8AE89DE307 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		F590F467BC2C4A31A66DE6B6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = B73BEFD5D2FA465CB0F8A1C5 /* InfoPlist.strings */; };
+		F65B08F80BAB4504824AD1B4 /* appicon.icon in Resources */ = {isa = PBXBuildFile; fileRef = E0F1FBE8E03747D3B60A3FF8 /* appicon.icon */; };
 		XX06F64D8D698A9DD16B2AXX /* SparkyFitnessWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = XXE42A1828A7B00462941EXX /* SparkyFitnessWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		XX0F1C2568540AC16246F4XX /* CalorieTracker.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = XX07C59220CDFD09397445XX /* CalorieTracker.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		XX12B55A1EDABF083C3B51XX /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = XX470101BAEB8E0BBC8B0DXX /* WidgetKit.framework */; };
@@ -41,11 +41,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		09366DD18C494CBE81DC7E5D /* PBXContainerItemProxy */ = {
+		B459BE19544D4DCEBECB34FE /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 8B4B61FCB3FB4FE99CF5226C;
+			remoteGlobalIDString = D64BDF557ADF42B8A7AC9847;
 			remoteInfo = ExpoWidgetsTarget;
 		};
 		XX043BBCA8989DC112E660XX /* PBXContainerItemProxy */ = {
@@ -72,13 +72,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		4FE1ACA60AFE40E79AC666E6 /* Embed Foundation Extensions */ = {
+		3C47A52C43774588BD24D162 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				B6C24ACF6100438A9FFAED3F /* ExpoWidgetsTarget.appex in Embed Foundation Extensions */,
+				3BFEC301FD6A43C0A7B6941E /* ExpoWidgetsTarget.appex in Embed Foundation Extensions */,
 				XX0F1C2568540AC16246F4XX /* CalorieTracker.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
@@ -109,37 +109,37 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		02D701CAD8CA4450BB8122B3 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		03A5C7AB0ACC49E79210354B /* appicon.icon */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = appicon.icon; path = SparkyFitness/appicon.icon; sourceTree = "<group>"; };
+		072D269FD6034436AFE73224 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* SparkyFitness.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; fileEncoding = 4; includeInIndex = 0; path = SparkyFitness.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = SparkyFitness/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = SparkyFitness/Info.plist; sourceTree = "<group>"; };
-		15C326FE9746826553EB1FEB /* Pods-SparkyFitness.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SparkyFitness.debug.xcconfig"; path = "Target Support Files/Pods-SparkyFitness/Pods-SparkyFitness.debug.xcconfig"; sourceTree = "<group>"; };
-		1931EABB8A2C4E4CB70293B5 /* Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = Info.plist; sourceTree = "<group>"; };
-		20DA3658DF4549A1B32F50AC /* ShortcutIntents.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShortcutIntents.swift; path = SparkyFitness/ShortcutIntents.swift; sourceTree = "<group>"; };
-		31EF462390EC4645BB20FFBF /* ShortcutProvider.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShortcutProvider.swift; path = SparkyFitness/ShortcutProvider.swift; sourceTree = "<group>"; };
-		442EB8A53CE44F6F9ADB43C3 /* index.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = index.swift; path = index.swift; sourceTree = "<group>"; };
-		51CF39BB30DB4A54861A315F /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		5539882F17D74471A8141BF0 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		607FF2329551E433C8E792C5 /* Pods-ExpoWidgetsTarget.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ExpoWidgetsTarget.debug.xcconfig"; path = "Target Support Files/Pods-ExpoWidgetsTarget/Pods-ExpoWidgetsTarget.debug.xcconfig"; sourceTree = "<group>"; };
-		69DE9F08F8CD41E498C7738F /* ExpoWidgetsTarget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ExpoWidgetsTarget.appex; path = ExpoWidgetsTarget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		857BD58A34BE11AA7BC3317E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SparkyFitness/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		8A195762A13744F2B66462DE /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = it.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		97C8D5608CF989AD0297A390 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ExpoWidgetsTarget/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		A1167DCB374EC3BB36C9E3E7 /* libPods-SparkyFitness.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SparkyFitness.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		A1375A3A7973BB963761FF5C /* libPods-ExpoWidgetsTarget.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ExpoWidgetsTarget.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		A16831D61BF131DE9A2A7776 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = SparkyFitness/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		A9F8687F759A45868538CC96 /* ExpoWidgetsTarget.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ExpoWidgetsTarget.entitlements; path = ExpoWidgetsTarget.entitlements; sourceTree = "<group>"; };
+		195F2EDB6B8F4899A8EB9699 /* ShortcutProvider.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShortcutProvider.swift; path = SparkyFitness/ShortcutProvider.swift; sourceTree = "<group>"; };
+		2BFCDAE351034E9DB2B045B0 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		4782EBA11BDEFFCE650DA343 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ExpoWidgetsTarget/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		64086E9E9EC5418CB64338D8 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = it.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		7E265AB93E454D9B9646DBF6 /* Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = Info.plist; sourceTree = "<group>"; };
+		861E0489E4A54C999F19A016 /* ShortcutIntents.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShortcutIntents.swift; path = SparkyFitness/ShortcutIntents.swift; sourceTree = "<group>"; };
+		8866C8FAF3934966AAD7A9D3 /* ExpoWidgetsTarget.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ExpoWidgetsTarget.entitlements; path = ExpoWidgetsTarget.entitlements; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = SparkyFitness/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B73BEFD5D2FA465CB0F8A1C5 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		B91F701CB6AD4B0DB78FD499 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = hu.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		ACBE487E73129C8AE89DE307 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = SparkyFitness/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		B03D1C568D5A64B02AF87974 /* libPods-SparkyFitness.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SparkyFitness.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B25D4498BA1E830B53D8A596 /* Pods-SparkyFitness.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SparkyFitness.release.xcconfig"; path = "Target Support Files/Pods-SparkyFitness/Pods-SparkyFitness.release.xcconfig"; sourceTree = "<group>"; };
+		B30820FD489F41F7A167E182 /* ExpoWidgetsTarget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ExpoWidgetsTarget.appex; path = ExpoWidgetsTarget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B3A46B8175675973AF84C037 /* Pods-SparkyFitness.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SparkyFitness.debug.xcconfig"; path = "Target Support Files/Pods-SparkyFitness/Pods-SparkyFitness.debug.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C695D639D9798D6BDF81CE49 /* Pods-SparkyFitness.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SparkyFitness.release.xcconfig"; path = "Target Support Files/Pods-SparkyFitness/Pods-SparkyFitness.release.xcconfig"; sourceTree = "<group>"; };
-		CB5C20313E04F6F3F2A3D125 /* Pods-ExpoWidgetsTarget.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ExpoWidgetsTarget.release.xcconfig"; path = "Target Support Files/Pods-ExpoWidgetsTarget/Pods-ExpoWidgetsTarget.release.xcconfig"; sourceTree = "<group>"; };
+		BDB6279FD68E45DEB63A7C95 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = hu.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		C72FC22B35FC460F80912946 /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		C785CB5F7466FEAFC98CB42F /* libPods-ExpoWidgetsTarget.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ExpoWidgetsTarget.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C888DE1CBFF341C4A572B9BA /* InfoPlist.strings */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.strings; name = InfoPlist.strings; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		C98EC2B492F85DF527EE83C1 /* Pods-ExpoWidgetsTarget.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ExpoWidgetsTarget.debug.xcconfig"; path = "Target Support Files/Pods-ExpoWidgetsTarget/Pods-ExpoWidgetsTarget.debug.xcconfig"; sourceTree = "<group>"; };
+		E0F1FBE8E03747D3B60A3FF8 /* appicon.icon */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = appicon.icon; path = SparkyFitness/appicon.icon; sourceTree = "<group>"; };
+		E52AD24AD8174A15BB0862DD /* SceneDelegate.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = SparkyFitness/SceneDelegate.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = undefined; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		EFACC19F4DDEC8C26367E9AF /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SparkyFitness/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SparkyFitness/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* SparkyFitness-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "SparkyFitness-Bridging-Header.h"; path = "SparkyFitness/SparkyFitness-Bridging-Header.h"; sourceTree = "<group>"; };
-		FBBC89E5C05D4F81A0C9501E /* SceneDelegate.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = SparkyFitness/SceneDelegate.swift; sourceTree = "<group>"; };
+		F716233A80EA4435854570D2 /* index.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = index.swift; path = index.swift; sourceTree = "<group>"; };
+		FDAFB9D656D9B06646C0BAE5 /* Pods-ExpoWidgetsTarget.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ExpoWidgetsTarget.release.xcconfig"; path = "Target Support Files/Pods-ExpoWidgetsTarget/Pods-ExpoWidgetsTarget.release.xcconfig"; sourceTree = "<group>"; };
 		XX07C59220CDFD09397445XX /* CalorieTracker.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = 4; includeInIndex = 0; path = CalorieTracker.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		XX25618E1DD8DBE274BF01XX /* SparkyFitnessWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = 4; includeInIndex = 0; path = SparkyFitnessWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		XX470101BAEB8E0BBC8B0DXX /* WidgetKit.framework */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = undefined; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -220,15 +220,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AE347750E496F9C3A61FBE34 /* libPods-SparkyFitness.a in Frameworks */,
+				C27F2D100FBE56D3FAD9CA7E /* libPods-SparkyFitness.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FDEE3946F4E5497184E4E4EC /* Frameworks */ = {
+		4B26CB01371B4E188680EC31 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CDCFDFAE4D10212001790D1A /* libPods-ExpoWidgetsTarget.a in Frameworks */,
+				4CDA7D0945E4DA6D4DF1F4B7 /* libPods-ExpoWidgetsTarget.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,24 +255,25 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		03E33C017D43AE8B785C45A5 /* Pods */ = {
+		04B341F82ABE7221234ADD51 /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				607FF2329551E433C8E792C5 /* Pods-ExpoWidgetsTarget.debug.xcconfig */,
-				CB5C20313E04F6F3F2A3D125 /* Pods-ExpoWidgetsTarget.release.xcconfig */,
-				15C326FE9746826553EB1FEB /* Pods-SparkyFitness.debug.xcconfig */,
-				C695D639D9798D6BDF81CE49 /* Pods-SparkyFitness.release.xcconfig */,
+				A11522CBBE1E9F99DAC87F7B /* ExpoWidgetsTarget */,
+				6C5AECBAD49B6C48298C74EF /* SparkyFitness */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		0E7695E4958C754B0C3FD53F /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				C98EC2B492F85DF527EE83C1 /* Pods-ExpoWidgetsTarget.debug.xcconfig */,
+				FDAFB9D656D9B06646C0BAE5 /* Pods-ExpoWidgetsTarget.release.xcconfig */,
+				B3A46B8175675973AF84C037 /* Pods-SparkyFitness.debug.xcconfig */,
+				B25D4498BA1E830B53D8A596 /* Pods-SparkyFitness.release.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
-			sourceTree = "<group>";
-		};
-		0B2FCE58CFE28AE2EE523CFE /* SparkyFitness */ = {
-			isa = PBXGroup;
-			children = (
-				857BD58A34BE11AA7BC3317E /* ExpoModulesProvider.swift */,
-			);
-			name = SparkyFitness;
 			sourceTree = "<group>";
 		};
 		13B07FAE1A68108700A75B9A /* SparkyFitness */ = {
@@ -284,11 +285,11 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				03A5C7AB0ACC49E79210354B /* appicon.icon */,
-				FBBC89E5C05D4F81A0C9501E /* SceneDelegate.swift */,
-				20DA3658DF4549A1B32F50AC /* ShortcutIntents.swift */,
-				31EF462390EC4645BB20FFBF /* ShortcutProvider.swift */,
-				A16831D61BF131DE9A2A7776 /* PrivacyInfo.xcprivacy */,
+				E0F1FBE8E03747D3B60A3FF8 /* appicon.icon */,
+				E52AD24AD8174A15BB0862DD /* SceneDelegate.swift */,
+				861E0489E4A54C999F19A016 /* ShortcutIntents.swift */,
+				195F2EDB6B8F4899A8EB9699 /* ShortcutProvider.swift */,
+				ACBE487E73129C8AE89DE307 /* PrivacyInfo.xcprivacy */,
 			);
 			name = SparkyFitness;
 			sourceTree = "<group>";
@@ -301,47 +302,64 @@
 				XX4DFF38D47332D6BF0183XX /* SwiftUI.framework */,
 				XXCAF23C3FC41F82140FA1XX /* ActivityKit.framework */,
 				XXA12889081EB894481655XX /* AppIntents.framework */,
-				A1375A3A7973BB963761FF5C /* libPods-ExpoWidgetsTarget.a */,
-				A1167DCB374EC3BB36C9E3E7 /* libPods-SparkyFitness.a */,
+				C785CB5F7466FEAFC98CB42F /* libPods-ExpoWidgetsTarget.a */,
+				B03D1C568D5A64B02AF87974 /* libPods-SparkyFitness.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		5F289E2987F84B699C2DE025 /* en.lproj */ = {
+		37DEBD80DDE84BBD86BEE2F3 /* es.lproj */ = {
 			isa = PBXGroup;
 			children = (
-				02D701CAD8CA4450BB8122B3 /* InfoPlist.strings */,
+				2BFCDAE351034E9DB2B045B0 /* InfoPlist.strings */,
 			);
-			name = en.lproj;
+			name = es.lproj;
 			path = "";
 			sourceTree = "<group>";
 		};
-		6469EF7C5AD64466B4E43B5E /* ExpoWidgetsTarget */ = {
+		4900DEF98DE445E58F373A2C /* ExpoWidgetsTarget */ = {
 			isa = PBXGroup;
 			children = (
-				A9F8687F759A45868538CC96 /* ExpoWidgetsTarget.entitlements */,
-				1931EABB8A2C4E4CB70293B5 /* Info.plist */,
-				442EB8A53CE44F6F9ADB43C3 /* index.swift */,
+				8866C8FAF3934966AAD7A9D3 /* ExpoWidgetsTarget.entitlements */,
+				7E265AB93E454D9B9646DBF6 /* Info.plist */,
+				F716233A80EA4435854570D2 /* index.swift */,
 			);
 			name = ExpoWidgetsTarget;
 			path = ExpoWidgetsTarget;
 			sourceTree = "<group>";
 		};
-		73E83F9EDCA59E2B6EAF7F30 /* ExpoModulesProviders */ = {
+		607BE674F416437F8D6577BE /* en.lproj */ = {
 			isa = PBXGroup;
 			children = (
-				EFDB925D4742019CEF998CE6 /* ExpoWidgetsTarget */,
-				0B2FCE58CFE28AE2EE523CFE /* SparkyFitness */,
+				072D269FD6034436AFE73224 /* InfoPlist.strings */,
 			);
-			name = ExpoModulesProviders;
+			name = en.lproj;
+			path = "";
 			sourceTree = "<group>";
 		};
-		75C5CAAE1F524DBCBBED7EE7 /* hu.lproj */ = {
+		6C5AECBAD49B6C48298C74EF /* SparkyFitness */ = {
 			isa = PBXGroup;
 			children = (
-				B91F701CB6AD4B0DB78FD499 /* InfoPlist.strings */,
+				EFACC19F4DDEC8C26367E9AF /* ExpoModulesProvider.swift */,
 			);
-			name = hu.lproj;
+			name = SparkyFitness;
+			sourceTree = "<group>";
+		};
+		72B37274C08E4A91847617E1 /* de.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				C888DE1CBFF341C4A572B9BA /* InfoPlist.strings */,
+			);
+			name = de.lproj;
+			path = "";
+			sourceTree = "<group>";
+		};
+		7F2BAF14867B4360AC50429E /* fr.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				C72FC22B35FC460F80912946 /* InfoPlist.strings */,
+			);
+			name = fr.lproj;
 			path = "";
 			sourceTree = "<group>";
 		};
@@ -360,9 +378,9 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				6469EF7C5AD64466B4E43B5E /* ExpoWidgetsTarget */,
-				03E33C017D43AE8B785C45A5 /* Pods */,
-				73E83F9EDCA59E2B6EAF7F30 /* ExpoModulesProviders */,
+				4900DEF98DE445E58F373A2C /* ExpoWidgetsTarget */,
+				0E7695E4958C754B0C3FD53F /* Pods */,
+				04B341F82ABE7221234ADD51 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -373,7 +391,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* SparkyFitness.app */,
-				69DE9F08F8CD41E498C7738F /* ExpoWidgetsTarget.appex */,
+				B30820FD489F41F7A167E182 /* ExpoWidgetsTarget.appex */,
 				XXE42A1828A7B00462941EXX /* SparkyFitnessWatch.app */,
 				XX25618E1DD8DBE274BF01XX /* SparkyFitnessWatchWidget.appex */,
 				XX07C59220CDFD09397445XX /* CalorieTracker.appex */,
@@ -381,63 +399,45 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		B24A75F644424DFB8392AD0E /* es.lproj */ = {
+		A11522CBBE1E9F99DAC87F7B /* ExpoWidgetsTarget */ = {
 			isa = PBXGroup;
 			children = (
-				5539882F17D74471A8141BF0 /* InfoPlist.strings */,
+				4782EBA11BDEFFCE650DA343 /* ExpoModulesProvider.swift */,
 			);
-			name = es.lproj;
-			path = "";
-			sourceTree = "<group>";
-		};
-		B5756036252C4030B4C522D7 /* de.lproj */ = {
-			isa = PBXGroup;
-			children = (
-				51CF39BB30DB4A54861A315F /* InfoPlist.strings */,
-			);
-			name = de.lproj;
-			path = "";
+			name = ExpoWidgetsTarget;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
-				5F289E2987F84B699C2DE025 /* en.lproj */,
-				B5756036252C4030B4C522D7 /* de.lproj */,
-				B24A75F644424DFB8392AD0E /* es.lproj */,
-				C4E51779486B423885A18D72 /* fr.lproj */,
-				75C5CAAE1F524DBCBBED7EE7 /* hu.lproj */,
-				D4E1D511DA2C4FEAAB8B4E70 /* it.lproj */,
+				607BE674F416437F8D6577BE /* en.lproj */,
+				72B37274C08E4A91847617E1 /* de.lproj */,
+				37DEBD80DDE84BBD86BEE2F3 /* es.lproj */,
+				7F2BAF14867B4360AC50429E /* fr.lproj */,
+				DFB43E08A1C74715A732AC08 /* hu.lproj */,
+				C47D7241FF474F34BA6C42CB /* it.lproj */,
 			);
 			name = Supporting;
 			path = SparkyFitness/Supporting;
 			sourceTree = "<group>";
 		};
-		C4E51779486B423885A18D72 /* fr.lproj */ = {
+		C47D7241FF474F34BA6C42CB /* it.lproj */ = {
 			isa = PBXGroup;
 			children = (
-				B73BEFD5D2FA465CB0F8A1C5 /* InfoPlist.strings */,
-			);
-			name = fr.lproj;
-			path = "";
-			sourceTree = "<group>";
-		};
-		D4E1D511DA2C4FEAAB8B4E70 /* it.lproj */ = {
-			isa = PBXGroup;
-			children = (
-				8A195762A13744F2B66462DE /* InfoPlist.strings */,
+				64086E9E9EC5418CB64338D8 /* InfoPlist.strings */,
 			);
 			name = it.lproj;
 			path = "";
 			sourceTree = "<group>";
 		};
-		EFDB925D4742019CEF998CE6 /* ExpoWidgetsTarget */ = {
+		DFB43E08A1C74715A732AC08 /* hu.lproj */ = {
 			isa = PBXGroup;
 			children = (
-				97C8D5608CF989AD0297A390 /* ExpoModulesProvider.swift */,
+				BDB6279FD68E45DEB63A7C95 /* InfoPlist.strings */,
 			);
-			name = ExpoWidgetsTarget;
+			name = hu.lproj;
+			path = "";
 			sourceTree = "<group>";
 		};
 		XX3E41C1850246162C0061XX /* expo:targets */ = {
@@ -459,21 +459,21 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "SparkyFitness" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				7821FB561740BCE1BAED4C63 /* [Expo] Configure project */,
+				2A6ACA9CAE88A46FF335E0B7 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				E6511AFEF8294A7BB411991C /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
-				4FE1ACA60AFE40E79AC666E6 /* Embed Foundation Extensions */,
+				E31317855ADE48C696F00171 /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
+				3C47A52C43774588BD24D162 /* Embed Foundation Extensions */,
 				XX81D5C67C94C2E1F9007EXX /* Embed Watch Content */,
-				A300CAD51CC522A8467A89D4 /* [CP] Embed Pods Frameworks */,
+				BE22BFFAE2979470AF2B79DA /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				474FB6A9CA3D44F997DE1BF3 /* PBXTargetDependency */,
+				0E112CD7917442839BD0B95A /* PBXTargetDependency */,
 				XXCFD83E0FAC11BF99F1ECXX /* PBXTargetDependency */,
 				XX74FD46B647F333F8AB7DXX /* PBXTargetDependency */,
 			);
@@ -482,15 +482,15 @@
 			productReference = 13B07F961A680F5B00A75B9A /* SparkyFitness.app */;
 			productType = "com.apple.product-type.application";
 		};
-		8B4B61FCB3FB4FE99CF5226C /* ExpoWidgetsTarget */ = {
+		D64BDF557ADF42B8A7AC9847 /* ExpoWidgetsTarget */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = E455319982604F42999BD690 /* Build configuration list for PBXNativeTarget "ExpoWidgetsTarget" */;
+			buildConfigurationList = B8E777DF1E0047A8985188CF /* Build configuration list for PBXNativeTarget "ExpoWidgetsTarget" */;
 			buildPhases = (
-				1AE738FA071A897692070730 /* [CP] Check Pods Manifest.lock */,
-				6351028E4DA0C7FC7C4EEECA /* [Expo] Configure project */,
-				08F366BCCEEC443AA49DBB80 /* Sources */,
-				FDEE3946F4E5497184E4E4EC /* Frameworks */,
-				749BE4DD156E969BE385F6DC /* [CP] Copy Pods Resources */,
+				901C555FB0BBF907094F4EAC /* [CP] Check Pods Manifest.lock */,
+				20040E5F09FFC6690A334CBC /* [Expo] Configure project */,
+				FFD2EC2413DB4FD195B9D00F /* Sources */,
+				4B26CB01371B4E188680EC31 /* Frameworks */,
+				265A03BC00E8F63D0AB60748 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -498,7 +498,7 @@
 			);
 			name = ExpoWidgetsTarget;
 			productName = ExpoWidgetsTarget;
-			productReference = 69DE9F08F8CD41E498C7738F /* ExpoWidgetsTarget.appex */;
+			productReference = B30820FD489F41F7A167E182 /* ExpoWidgetsTarget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		XX30007D7D35F3B445E065XX /* CalorieTracker */ = {
@@ -573,7 +573,7 @@
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
 					};
-					8B4B61FCB3FB4FE99CF5226C = {
+					D64BDF557ADF42B8A7AC9847 = {
 						LastSwiftMigration = 1250;
 					};
 					XX30007D7D35F3B445E065XX = {
@@ -607,7 +607,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* SparkyFitness */,
-				8B4B61FCB3FB4FE99CF5226C /* ExpoWidgetsTarget */,
+				D64BDF557ADF42B8A7AC9847 /* ExpoWidgetsTarget */,
 				XX8D5513FE35C43A2BDAD7XX /* SparkyFitnessWatch */,
 				XX78E90F5E0E81B308936EXX /* SparkyFitnessWatchWidget */,
 				XX30007D7D35F3B445E065XX /* CalorieTracker */,
@@ -623,14 +623,14 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				CAE2B61F64F44BFDA0308B36 /* appicon.icon in Resources */,
-				BD4E0C94D2A5420EAFE135A2 /* InfoPlist.strings in Resources */,
-				58CF48BD889348C6B3EA4468 /* InfoPlist.strings in Resources */,
-				EEBD8C0161894DFFB509A127 /* InfoPlist.strings in Resources */,
-				F590F467BC2C4A31A66DE6B6 /* InfoPlist.strings in Resources */,
-				F035420D8C634FB2BC71E978 /* InfoPlist.strings in Resources */,
-				5EFDB5A52DDC45C4864CF549 /* InfoPlist.strings in Resources */,
-				12987A1BE59D3962945507D2 /* PrivacyInfo.xcprivacy in Resources */,
+				F65B08F80BAB4504824AD1B4 /* appicon.icon in Resources */,
+				4BFD53C7512A460D905ED6A6 /* InfoPlist.strings in Resources */,
+				87AB61DB30494DE8943BD4EF /* InfoPlist.strings in Resources */,
+				C06CA63C090E4333A856ECFA /* InfoPlist.strings in Resources */,
+				41AED9D696994F058DFE5F6E /* InfoPlist.strings in Resources */,
+				6038B8AE85364FE9A9BA4E90 /* InfoPlist.strings in Resources */,
+				9D84D797301E468C84A71798 /* InfoPlist.strings in Resources */,
+				C13C03D9E6B621303FD7A791 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -652,7 +652,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2E6A742A630A1BFBCC650D5B /* PrivacyInfo.xcprivacy in Resources */,
+				E0EBDEF37825D7E0979BA7D8 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -702,29 +702,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		1AE738FA071A897692070730 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-ExpoWidgetsTarget-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		6351028E4DA0C7FC7C4EEECA /* [Expo] Configure project */ = {
+		20040E5F09FFC6690A334CBC /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -748,7 +726,7 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-ExpoWidgetsTarget/expo-configure-project.sh\"\n";
 		};
-		749BE4DD156E969BE385F6DC /* [CP] Copy Pods Resources */ = {
+		265A03BC00E8F63D0AB60748 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -772,7 +750,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ExpoWidgetsTarget/Pods-ExpoWidgetsTarget-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		7821FB561740BCE1BAED4C63 /* [Expo] Configure project */ = {
+		2A6ACA9CAE88A46FF335E0B7 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -846,7 +824,29 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SparkyFitness/Pods-SparkyFitness-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		A300CAD51CC522A8467A89D4 /* [CP] Embed Pods Frameworks */ = {
+		901C555FB0BBF907094F4EAC /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-ExpoWidgetsTarget-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		BE22BFFAE2979470AF2B79DA /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -900,7 +900,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-SparkyFitness/Pods-SparkyFitness-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		E6511AFEF8294A7BB411991C /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
+		E31317855ADE48C696F00171 /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -921,24 +921,24 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		08F366BCCEEC443AA49DBB80 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				18B2EADA637040C3A134DCB1 /* index.swift in Sources */,
-				96C48D10C9802329BCFC1385 /* ExpoModulesProvider.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		13B07F871A680F5B00A75B9A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				954C0EF7680A477DA21185E4 /* SceneDelegate.swift in Sources */,
-				8E5D9C68CFDB408DBCC0DBBF /* ShortcutIntents.swift in Sources */,
-				936A1D92C8F8403995C2B273 /* ShortcutProvider.swift in Sources */,
-				140E5545F65069BD0D2978AE /* ExpoModulesProvider.swift in Sources */,
+				82104343F009484FA113F8F8 /* SceneDelegate.swift in Sources */,
+				9266369BEEB048DA8D022A49 /* ShortcutIntents.swift in Sources */,
+				176C8C1BC6FC48AC9072D458 /* ShortcutProvider.swift in Sources */,
+				A3EA4171B33483B81289C340 /* ExpoModulesProvider.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FFD2EC2413DB4FD195B9D00F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BFBB79F75B4F4361BFD87054 /* index.swift in Sources */,
+				C7002E8471E95FF9142F4281 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -966,10 +966,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		474FB6A9CA3D44F997DE1BF3 /* PBXTargetDependency */ = {
+		0E112CD7917442839BD0B95A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 8B4B61FCB3FB4FE99CF5226C /* ExpoWidgetsTarget */;
-			targetProxy = 09366DD18C494CBE81DC7E5D /* PBXContainerItemProxy */;
+			target = D64BDF557ADF42B8A7AC9847 /* ExpoWidgetsTarget */;
+			targetProxy = B459BE19544D4DCEBECB34FE /* PBXContainerItemProxy */;
 		};
 		XX13EF3919C8543301C109XX /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -989,32 +989,9 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		0CD005875C734174AAA3D21E /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 607FF2329551E433C8E792C5 /* Pods-ExpoWidgetsTarget.debug.xcconfig */;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MZV26P994H;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ExpoWidgetsTarget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = ExpoWidgetsTarget;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
-				MARKETING_VERSION = 1.12.1;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = net.thelloyds.sparkyfitness.ExpoWidgetsTarget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 15C326FE9746826553EB1FEB /* Pods-SparkyFitness.debug.xcconfig */;
+			baseConfigurationReference = B3A46B8175675973AF84C037 /* Pods-SparkyFitness.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = appicon;
@@ -1053,7 +1030,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C695D639D9798D6BDF81CE49 /* Pods-SparkyFitness.release.xcconfig */;
+			baseConfigurationReference = B25D4498BA1E830B53D8A596 /* Pods-SparkyFitness.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = appicon;
@@ -1220,9 +1197,32 @@
 			};
 			name = Release;
 		};
-		B8AFBFE51FAA460BA10BB2D2 /* Release */ = {
+		BD5E1E0BEC7044F68AC9E022 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CB5C20313E04F6F3F2A3D125 /* Pods-ExpoWidgetsTarget.release.xcconfig */;
+			baseConfigurationReference = C98EC2B492F85DF527EE83C1 /* Pods-ExpoWidgetsTarget.debug.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MZV26P994H;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ExpoWidgetsTarget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ExpoWidgetsTarget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MARKETING_VERSION = 1.12.1;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
+				PRODUCT_BUNDLE_IDENTIFIER = net.thelloyds.sparkyfitness.ExpoWidgetsTarget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DFFF9A3A04FC47D2871C6844 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = FDAFB9D656D9B06646C0BAE5 /* Pods-ExpoWidgetsTarget.release.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements;
@@ -1524,11 +1524,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		E455319982604F42999BD690 /* Build configuration list for PBXNativeTarget "ExpoWidgetsTarget" */ = {
+		B8E777DF1E0047A8985188CF /* Build configuration list for PBXNativeTarget "ExpoWidgetsTarget" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				0CD005875C734174AAA3D21E /* Debug */,
-				B8AFBFE51FAA460BA10BB2D2 /* Release */,
+				BD5E1E0BEC7044F68AC9E022 /* Debug */,
+				DFFF9A3A04FC47D2871C6844 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

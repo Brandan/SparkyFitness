@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Linking, Platform, View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,12 @@ import {
   setThemePreference,
   type ThemePreference,
 } from '../services/themeService';
+import {
+  isAlternateAppIconSupported,
+  getCurrentAppIconName,
+  setAppIcon,
+  type AlternateAppIconName,
+} from '../../modules/alternate-app-icon';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -54,6 +60,13 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({
   const iosLanguage = isIOS ? getNativeIOSLanguage() : null;
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
+
+  const [appIconSupported] = useState(
+    () => isIOS && isAlternateAppIconSupported()
+  );
+  const [appIconName, setAppIconName] = useState<AlternateAppIconName | null>(
+    () => (isIOS ? getCurrentAppIconName() : null)
+  );
 
   const handleLanguageSelect = useCallback(
     async (value: LanguagePreference) => {
@@ -98,6 +111,39 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({
       value: 'System',
     },
   ];
+
+  const appIconOptions: {
+    label: string;
+    value: 'system' | AlternateAppIconName;
+  }[] = [
+    {
+      label: t('settings.appIcon.system', { defaultValue: 'System default' }),
+      value: 'system',
+    },
+    {
+      label: t('settings.appIcon.dark', { defaultValue: 'Dark' }),
+      value: 'Dark',
+    },
+  ];
+
+  const handleAppIconSelect = useCallback(
+    async (value: 'system' | AlternateAppIconName) => {
+      const name = value === 'system' ? null : value;
+      const previous = appIconName;
+      setAppIconName(name);
+      const ok = await setAppIcon(name);
+      if (!ok) {
+        setAppIconName(previous);
+        Toast.show({
+          type: 'error',
+          text1: t('settings.appIcon.changeFailed', {
+            defaultValue: "Couldn't change the app icon",
+          }),
+        });
+      }
+    },
+    [appIconName, t]
+  );
 
   const languagePickerOptions = [
     {
@@ -162,6 +208,28 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({
             />
           }
         />
+
+        {isIOS && appIconSupported && (
+          <SettingsRow
+            title={t('settings.appIcon.title', { defaultValue: 'App Icon' })}
+            subtitle={t('settings.appIcon.subtitle', {
+              defaultValue:
+                'Choose a fixed icon instead of following Light/Dark/Tinted.',
+            })}
+            subtitleNumberOfLines={0}
+            rightAccessory={
+              <BottomSheetPicker
+                value={appIconName ?? 'system'}
+                options={appIconOptions}
+                onSelect={handleAppIconSelect}
+                title={t('settings.appIcon.title', {
+                  defaultValue: 'App Icon',
+                })}
+                containerStyle={{ flex: 1, maxWidth: 200 }}
+              />
+            }
+          />
+        )}
 
         <GlucoseUnitSetting />
 

@@ -1,4 +1,6 @@
 PODS:
+  - AlternateAppIconModule (1.0.0):
+    - ExpoModulesCore
   - AppleHeartZonesModule (1.0.0):
     - ExpoModulesCore
   - BackgroundWaterModule (1.0.0):
@@ -2830,6 +2832,7 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
+  - AlternateAppIconModule (from `../modules/alternate-app-icon/ios`)
   - AppleHeartZonesModule (from `../modules/apple-heart-zones/ios`)
   - BackgroundWaterModule (from `../modules/background-water/ios`)
   - "EXApplication (from `../../node_modules/.pnpm/expo-application@57.0.3_expo@57.0.31/node_modules/expo-application/ios`)"
@@ -2985,6 +2988,8 @@ SPEC REPOS:
     - SwiftUIIntrospect
 
 EXTERNAL SOURCES:
+  AlternateAppIconModule:
+    :path: "../modules/alternate-app-icon/ios"
   AppleHeartZonesModule:
     :path: "../modules/apple-heart-zones/ios"
   BackgroundWaterModule:
@@ -3284,6 +3289,7 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.0_@react-native+jest-preset@0.86.3_@babel+core@7.2_aa56d519de450133511be1349fc267e3/node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  AlternateAppIconModule: 31b1bd4df43f7209c91542c35c0dc584dbf76fad
   AppleHeartZonesModule: 908fd4e551e9dee989d50d18a4b01562de874c18
   BackgroundWaterModule: 32e8562eb433ef6948cb887fdeeb795fdc2937c7
   EXApplication: a727f05eb8592f0bc764f6ab8d51eacc158652ec

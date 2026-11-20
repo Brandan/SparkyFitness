@@ -11,6 +11,7 @@ import {
 } from '../../src/stores/appPreferencesStore';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { AppLanguageNative } from '../../src/services/appLanguageNative';
+import * as AlternateAppIcon from '../../modules/alternate-app-icon';
 
 jest.mock('../../src/components/GlucoseUnitSetting', () => () => null);
 
@@ -59,7 +60,14 @@ jest.mock('../../src/utils/liquidGlass', () => ({
   canUseLiquidGlass: () => false,
 }));
 
+jest.mock('../../modules/alternate-app-icon', () => ({
+  isAlternateAppIconSupported: jest.fn(),
+  getCurrentAppIconName: jest.fn(),
+  setAppIcon: jest.fn(),
+}));
+
 const mockNative = AppLanguageNative as jest.Mocked<typeof AppLanguageNative>;
+const mockAppIcon = AlternateAppIcon as jest.Mocked<typeof AlternateAppIcon>;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
 const mockNavigation = {
@@ -109,6 +117,9 @@ describe('AppSettingsScreen', () => {
     (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'en' }]);
     mockNative.setApplicationLanguage.mockClear();
     mockNative.setApplicationLanguage.mockResolvedValue(undefined);
+    mockAppIcon.isAlternateAppIconSupported.mockReturnValue(false);
+    mockAppIcon.getCurrentAppIconName.mockReturnValue(null);
+    mockAppIcon.setAppIcon.mockResolvedValue(true);
     await initializeI18n('en');
     await i18n.changeLanguage('en');
   });
@@ -219,5 +230,93 @@ describe('AppSettingsScreen', () => {
     fireEvent(switches[HAPTICS_SWITCH_INDEX], 'valueChange', false);
 
     expect(useAppPreferencesStore.getState().hapticsEnabled).toBe(false);
+  });
+
+  describe('App Icon', () => {
+    function appIconPicker() {
+      const pickers = screen.getAllByTestId('bottom-sheet-picker');
+      const found = pickers.find((p) => p.props.title === 'App Icon');
+      if (!found) {
+        throw new Error('App Icon BottomSheetPicker not found');
+      }
+      return found.props as {
+        value?: string;
+        onSelect?: (value: string) => Promise<unknown> | void;
+      };
+    }
+
+    it('is hidden on Android', () => {
+      mockAppIcon.isAlternateAppIconSupported.mockReturnValue(true);
+      renderScreen();
+
+      expect(screen.queryByText('App Icon')).toBeNull();
+    });
+
+    it('is hidden on iOS when alternate icons are not supported', () => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      mockAppIcon.isAlternateAppIconSupported.mockReturnValue(false);
+      renderScreen();
+
+      expect(screen.queryByText('App Icon')).toBeNull();
+    });
+
+    it('shows on iOS when supported, defaulting to System default', async () => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      mockAppIcon.isAlternateAppIconSupported.mockReturnValue(true);
+      mockAppIcon.getCurrentAppIconName.mockReturnValue(null);
+
+      renderScreen();
+      await act(async () => undefined);
+
+      expect(screen.getByText('App Icon')).toBeTruthy();
+      expect(appIconPicker().value).toBe('system');
+    });
+
+    it('reflects an already-selected Dark icon', async () => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      mockAppIcon.isAlternateAppIconSupported.mockReturnValue(true);
+      mockAppIcon.getCurrentAppIconName.mockReturnValue('Dark');
+
+      renderScreen();
+      await act(async () => undefined);
+
+      expect(appIconPicker().value).toBe('Dark');
+    });
+
+    it('switches to Dark when selected', async () => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      mockAppIcon.isAlternateAppIconSupported.mockReturnValue(true);
+      mockAppIcon.getCurrentAppIconName.mockReturnValue(null);
+
+      renderScreen();
+      await act(async () => undefined);
+      await act(async () => {
+        await appIconPicker().onSelect?.('Dark');
+      });
+
+      expect(mockAppIcon.setAppIcon).toHaveBeenCalledWith('Dark');
+      expect(appIconPicker().value).toBe('Dark');
+    });
+
+    it('reverts and shows an error toast when the OS refuses the change', async () => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      mockAppIcon.isAlternateAppIconSupported.mockReturnValue(true);
+      mockAppIcon.getCurrentAppIconName.mockReturnValue(null);
+      mockAppIcon.setAppIcon.mockResolvedValue(false);
+
+      renderScreen();
+      await act(async () => undefined);
+      await act(async () => {
+        await appIconPicker().onSelect?.('Dark');
+      });
+
+      expect(appIconPicker().value).toBe('system');
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text1: "Couldn't change the app icon",
+        })
+      );
+    });
   });
 });
