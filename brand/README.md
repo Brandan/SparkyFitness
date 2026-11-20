@@ -12,7 +12,7 @@ Source of truth for the app icon / logo: a heartbeat line peaking into a four-po
 
 ## What it touches
 
-- `SparkyFitnessMobile/assets/icons/appicon.icon/` — iOS Icon Composer bundle (light/dark/tinted appearances); `icon.json`'s gradient colors are edited by hand, not generated.
+- `SparkyFitnessMobile/assets/icons/appicon.icon/` — iOS Icon Composer bundle. `icon.json`'s gradient colors for all three appearances (light, dark, and a hand-picked grayscale tinted variant — iOS would otherwise auto-desaturate the light gradient, which the HIG calls out as a worse fallback) are edited by hand, not generated. Keep `SparkyFitnessMobile/ios/SparkyFitness/appicon.icon/icon.json` (the copy inside the generated native project) identical after any edit here — `expo prebuild` normally re-copies it, but a quick manual edit of both is fine for a JSON-only change.
 - `SparkyFitnessMobile/assets/icons/adaptiveicon.png` — Android adaptive icon foreground.
 - `SparkyFitnessMobile/assets/icons/watchicon.png`, `live-activity-icon.png`.
 - `SparkyFitnessMobile/assets/images/logo.png` / `logo@2x.png` — in-app logo (Onboarding, About).
