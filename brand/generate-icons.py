@@ -120,18 +120,36 @@ def main() -> None:
 
     print("Mobile: iOS alternate 'Dark' app icon (opaque, picked in Settings,")
     print("        independent of the system Light/Dark/Tinted setting)")
+    # Alternate icons (unlike the primary Icon Composer icon) need the
+    # classic per-size iPhone breakdown, not a single "universal" image --
+    # App Store Connect's validator rejected a universal-only set with
+    # ITMS-90895 ("No such asset is present in the asset catalog") and
+    # flagged the missing 120x120 (ITMS-90890). iPhone-only sizes, since
+    # app.config.ts sets `supportsTablet: false`.
     alt_dark_set = mobile / "assets/icons/alt-icon-dark.appiconset"
-    render(icon_svg(1024, 1024, DARK, 0.62), alt_dark_set / "icon1024.png", 1024, 1024, bg="#121212")
+    alt_dark_sizes = {
+        "icon-20x20@2x.png": ("20x20", "2x", 40),
+        "icon-20x20@3x.png": ("20x20", "3x", 60),
+        "icon-29x29@2x.png": ("29x29", "2x", 58),
+        "icon-29x29@3x.png": ("29x29", "3x", 87),
+        "icon-40x40@2x.png": ("40x40", "2x", 80),
+        "icon-40x40@3x.png": ("40x40", "3x", 120),
+        "icon-60x60@2x.png": ("60x60", "2x", 120),
+        "icon-60x60@3x.png": ("60x60", "3x", 180),
+    }
+    for filename, (_, _, px) in alt_dark_sizes.items():
+        render(icon_svg(px, px, DARK, 0.62), alt_dark_set / filename, px, px, bg="#121212")
     (alt_dark_set / "Contents.json").write_text(
         json.dumps(
             {
                 "images": [
                     {
-                        "filename": "icon1024.png",
-                        "idiom": "universal",
-                        "platform": "ios",
-                        "size": "1024x1024",
+                        "idiom": "iphone",
+                        "size": size,
+                        "scale": scale,
+                        "filename": filename,
                     }
+                    for filename, (size, scale, _) in alt_dark_sizes.items()
                 ],
                 "info": {"version": 1, "author": "xcode"},
             },
