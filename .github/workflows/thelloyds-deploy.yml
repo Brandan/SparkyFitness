@@ -1,0 +1,78 @@
+name: Deploy to fitness.thelloyds.net
+
+# Builds this fork's own images from source and ships them straight to
+# fitness.thelloyds.net on every push to main -- separate from the upstream
+# release-please/draft-release chain (which stays tag/release-triggered and
+# unmodified), and intentionally simpler: no approval gate, because this only
+# ever runs against Brandan's own personal server, not codewithcj's published
+# images.
+#
+# GHCR images are pushed under this repo's own GITHUB_TOKEN (packages: write),
+# not the upstream workflows' GHCR_TOKEN/Docker Hub secrets, so this never
+# touches codewithcj's published images. The deploy step (added once the
+# server side is ready) SSHes in as a dedicated, forced-command-only account;
+# see thelloyds-infra's sparkyfitness role.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: thelloyds-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set lowercase repository name
+        id: repo
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: docker/Dockerfile.frontend
+          push: true
+          tags: ghcr.io/${{ steps.repo.outputs.name }}-frontend:latest,ghcr.io/${{ steps.repo.outputs.name }}-frontend:${{ github.sha }}
+          platforms: linux/amd64
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Build and push server
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: docker/Dockerfile.backend
+          push: true
+          tags: ghcr.io/${{ steps.repo.outputs.name }}-server:latest,ghcr.io/${{ steps.repo.outputs.name }}-server:${{ github.sha }}
+          platforms: linux/amd64
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+
+      - name: Build and push Garmin microservice
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: SparkyFitnessGarmin
+          file: docker/Dockerfile.garmin_microservice
+          push: true
+          tags: ghcr.io/${{ steps.repo.outputs.name }}-garmin:latest,ghcr.io/${{ steps.repo.outputs.name }}-garmin:${{ github.sha }}
+          platforms: linux/amd64
+          cache-from: type=gha,scope=garmin
+          cache-to: type=gha,mode=max,scope=garmin
