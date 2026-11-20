@@ -19,6 +19,7 @@ import {
   IOSConfig,
   withDangerousMod,
   withInfoPlist,
+  withXcodeProject,
 } from 'expo/config-plugins';
 import fs from 'fs';
 import path from 'path';
@@ -71,6 +72,25 @@ const withAlternateAppIcon: ConfigPlugin = (config) => {
         },
       },
     };
+    return config;
+  });
+
+  // Without this, App Store Connect's own binary validation rejects the
+  // build with ITMS-90895 ("No such asset is present in the asset
+  // catalog") even though the .appiconset is right there in Images.xcassets
+  // — Xcode only treats a catalog entry as a real, CFBundleIconName-
+  // resolvable alternate icon once it is also declared here, the same way
+  // its own "+ Alternate Icon" UI would declare it.
+  config = withXcodeProject(config, (config) => {
+    const projectName = IOSConfig.XcodeUtils.getProjectName(
+      config.modRequest.projectRoot
+    );
+    config.modResults.updateBuildProperty(
+      'ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES',
+      DARK_ICON_ASSET_SET_NAME,
+      undefined,
+      projectName
+    );
     return config;
   });
 
