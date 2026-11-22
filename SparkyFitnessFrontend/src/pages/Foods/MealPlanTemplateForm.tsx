@@ -461,6 +461,11 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     if (!assignment) return;
 
     setEditingAssignmentIndex(index);
+    // handleFoodUnitSelected/handleMealUnitSelected require both to be set
+    // and otherwise no-op; handleAddFood is the only other place that sets
+    // them, so editing before ever adding a food left them null.
+    setCurrentDay(assignment.day_of_week);
+    setCurrentMealType(assignment.meal_type);
 
     if (assignment.item_type === 'meal' && assignment.meal_id) {
       try {
