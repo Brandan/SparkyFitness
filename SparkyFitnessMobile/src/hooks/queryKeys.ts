@@ -539,3 +539,7 @@ export const compareSinceQueryKey = (p: CompareSinceParams) =>
 
 export const glucoseSamplesQueryKeyRoot = ['glucoseSamples'] as const;
 export const glucoseContextQueryKeyRoot = ['glucoseContext'] as const;
+
+/** One web image search for a food photo, keyed by the words searched. */
+export const foodImageSearchQueryKey = (query: string) =>
+  ['foodImageSearch', query] as const;

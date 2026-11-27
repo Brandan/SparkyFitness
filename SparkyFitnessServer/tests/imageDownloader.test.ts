@@ -21,7 +21,8 @@ const TMP_UPLOADS = path.join(os.tmpdir(), `sparky-imgdl-test-${process.pid}`);
 const priorUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY;
 process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY = TMP_UPLOADS;
 
-const { downloadImage } = await import('../utils/imageDownloader.js');
+const { downloadImage, fetchImageBytes } =
+  await import('../utils/imageDownloader.js');
 
 if (priorUploadsDir === undefined) {
   delete process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY;
@@ -288,5 +289,50 @@ describe('imageDownloader - downloadImage', () => {
         path.join(TMP_UPLOADS, 'exercises', 'ex-streamed', 'streambig.png')
       )
     ).toBe(false);
+  });
+});
+
+describe('imageDownloader - fetchImageBytes', () => {
+  it('returns the bytes and type without writing a file', async () => {
+    const bytes = Buffer.from('fake-jpeg-bytes');
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        imageResponse(bytes, { 'content-type': 'image/jpeg; charset=binary' })
+      );
+    const image = await fetchImageBytes('https://example.com/a.jpg');
+    expect(image.contentType).toBe('image/jpeg');
+    expect(image.bytes.equals(bytes)).toBe(true);
+  });
+
+  it('rejects a non-image answer', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        imageResponse('<html></html>', { 'content-type': 'text/html' })
+      );
+    await expect(fetchImageBytes('https://example.com/page')).rejects.toThrow(
+      /disallowed content-type/
+    );
+  });
+
+  it('rejects an image over 10 MB even without a length header', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      imageResponse(Buffer.alloc(10 * MB + 1), {
+        'content-type': 'image/png',
+      })
+    );
+    await expect(
+      fetchImageBytes('https://example.com/big.png')
+    ).rejects.toThrow(/maximum size/);
+  });
+
+  it('rejects an error status', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(new Response('no', { status: 403 }));
+    await expect(fetchImageBytes('https://example.com/a.jpg')).rejects.toThrow(
+      /status 403/
+    );
   });
 });

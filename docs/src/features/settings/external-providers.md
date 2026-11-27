@@ -28,10 +28,22 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Mealie
 - [Valhalla routing](/features/exercises/route-generation) (route generation and Follow roads; a base URL and an optional API key)
 - [Weather (Open-Meteo compatible)](/features/exercises/gps-activity-recording#weather) (adds the temperature and conditions to GPS-recorded activities; a base URL and an optional API key; nothing is looked up until you add one)
+- [Brave Search (food photos)](#brave-search-food-photos) (adds **Search the web** to a food's photos; an API key only; nothing is searched until you add one)
 - Tandoor
 - Strava (partially tested)
 - [COROS](/features/settings/coros)
 - NIH Dietary Supplement Label Database (fills in a supplement from its barcode; public, no key, active by default — deactivate it to turn it off). Open Food Facts is the fallback for supplement barcodes the NIH database does not have, mostly outside the US; with both off the supplement barcode scan is hidden
+
+## Brave Search (food photos)
+
+With a Brave Search provider, the photo picker on the food form (web and mobile, creating or editing a food) has **Search the web**. It searches for the food's brand and name, which you can change, and shows the images it finds. Pick one and SparkyFitness fetches it and adds it to the food's photos, like a photo you chose yourself; it is uploaded when you save the food.
+
+1. Create an API key in the [Brave Search API dashboard](https://api-dashboard.search.brave.com/app/keys). Searches count against that key's plan.
+2. In **Settings > External Providers**, add a provider of type **Brave Search (food photos)** and paste the key.
+
+What you type in the search box is sent to Brave Search, with safe search on. The picked image is fetched by your SparkyFitness server, not your browser or phone, and only an image from one of your own searches in the last half hour can be fetched; when the original site refuses, Brave's smaller copy is used instead. Check that you may use a photo before you share the food.
+
+An admin can make one key public for everyone, and you can share yours with family and friends through **Share Integrations**; the key itself is never shown to them.
 
 ## Hevy automatic sync
 

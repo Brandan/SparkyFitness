@@ -7,6 +7,7 @@ export const providerRequirements: Record<string, string[]> = {
   norish: ['base_url', 'app_key'],
   valhalla: ['base_url'],
   open_meteo: ['base_url'],
+  brave_search: ['app_key'],
   nutritionix: ['app_id', 'app_key'],
   fatsecret: ['app_id', 'app_key'],
   withings: ['app_id', 'app_key'],
@@ -33,6 +34,9 @@ const providerFieldLabels: Record<string, Record<string, string>> = {
   liftosaur: {
     app_key: 'Liftosaur API Key',
   },
+  brave_search: {
+    app_key: 'Brave Search API key',
+  },
   intervals: {
     app_id: 'Athlete ID',
     app_key: 'API Key',
@@ -54,6 +58,7 @@ const PROVIDERS_WITHOUT_APP_ID = [
   'norish',
   'valhalla',
   'open_meteo',
+  'brave_search',
   'free-exercise-db',
   'wger',
   'liftosaur',

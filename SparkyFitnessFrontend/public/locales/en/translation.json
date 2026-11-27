@@ -3125,6 +3125,13 @@
       "freeTierNote": "There is no default server. Open-Meteo's free service ({{url}}; its archive for older activities is served from archive-api.open-meteo.com) is for non-commercial use only. For commercial use, use its paid service (customer-api.open-meteo.com) with an API key, or run your own Open-Meteo server. A sent API key is used only for this provider.",
       "resultNote": "Once this provider is active, new GPS-recorded activities get the temperature and conditions at their start. Activities that already have weather (such as from Garmin) keep it."
     },
+    "imageSearchProvider": {
+      "apiKeyLabel": "Brave Search API key",
+      "apiKeyPlaceholder": "Paste your API key",
+      "apiKeyKeepPlaceholder": "Leave blank to keep the saved key",
+      "getKeyNote": "Get a key from the <link>Brave Search API dashboard</link>.",
+      "privacyNote": "Adds Search the web to food photos. The words you search for are sent to Brave Search."
+    },
     "providerSpecificFields": {
       "appURL": "App URL",
       "eGHttpYourInstance": "e.g., http://your-{{provider_type}}-instance.com",
@@ -7704,7 +7711,25 @@
     "mainImage": "Main",
     "moveImageEarlier": "Move image left",
     "moveImageLater": "Move image right",
-    "imagesReorderHint": "Drag to reorder. The first image is used as the thumbnail."
+    "imagesReorderHint": "Drag to reorder. The first image is used as the thumbnail.",
+    "webImageSearch": {
+      "open": "Search the web",
+      "title": "Search the web for a photo",
+      "description": "Pick a photo to add it to this food.",
+      "placeholder": "Food name and brand",
+      "queryLabel": "Search for",
+      "search": "Search",
+      "enterWords": "Type what to search for.",
+      "searching": "Searching…",
+      "searchFailed": "Image search failed. Try again.",
+      "tryAgain": "Try again",
+      "notConfiguredTitle": "Web image search is not set up",
+      "notConfiguredBody": "Add a Brave Search API key in <link>Settings › External Providers</link>, then search again.",
+      "noResults": "No images found. Try other words.",
+      "useImage": "Use image from {{source}}",
+      "pickFailed": "Couldn't get that image. Pick another one.",
+      "attribution": "Results from Brave Search. Check you may use a photo before sharing it."
+    }
   },
   "foodPhoto": {
     "title": "Estimate from a photo",

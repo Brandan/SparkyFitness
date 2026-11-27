@@ -1,10 +1,13 @@
 import express from 'express';
 import foodIntegrationRoutes from './foodIntegrationRoutes.js';
 import foodCrudRoutes from './foodCrudRoutes.js';
+import foodImageSearchRoutes from './foodImageSearchRoutes.js';
 import foodEntryRoutes from './foodEntryRoutes.js';
 const router = express.Router();
 // Mount the new routers
 router.use('/', foodIntegrationRoutes);
+// Before the CRUD routes, whose `/:foodId` would otherwise match `/image-search`.
+router.use('/', foodImageSearchRoutes);
 router.use('/', foodCrudRoutes);
 /**
  * @swagger

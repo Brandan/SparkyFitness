@@ -128,7 +128,13 @@ export interface FoodFormProps {
   };
   /** Saved photos of the food, offered by the notes toolbar's insert-photo picker. */
   noteImages?: readonly string[];
-  headerChildren?: React.ReactNode;
+  /**
+   * Content above the form. A function gets the name and brand as typed, so a
+   * header control (the photo picker's web search) can use them live.
+   */
+  headerChildren?:
+    | React.ReactNode
+    | ((identity: { name: string; brand: string }) => React.ReactNode);
   children?: React.ReactNode;
   /** Initial custom nutrient values (key = nutrient name, value = amount). */
   customNutrients?: Record<string, string | number> | null;
@@ -1119,7 +1125,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
         contentContainerClassName="px-4 pt-4 pb-20 gap-4"
         keyboardShouldPersistTaps="handled"
       >
-        {headerChildren}
+        {typeof headerChildren === 'function'
+          ? headerChildren({ name: form.name, brand: form.brand })
+          : headerChildren}
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
           {/* Food info */}
           {renderTextField(

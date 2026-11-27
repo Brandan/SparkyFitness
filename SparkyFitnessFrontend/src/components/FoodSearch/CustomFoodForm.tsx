@@ -427,6 +427,10 @@ const CustomFoodForm = ({
                 idPrefix="custom-food"
                 items={imageItems}
                 onItemsChange={setImageItems}
+                webSearchQuery={[formData.brand, formData.name]
+                  .map((part) => part?.trim())
+                  .filter(Boolean)
+                  .join(' ')}
               />
             </div>
 

@@ -13,6 +13,7 @@ import { Clipboard } from 'lucide-react';
 import { RoutingProviderFields } from './RoutingProviderFields';
 import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
 import { WeatherProviderFields } from './WeatherProviderFields';
+import { ImageSearchProviderFields } from './ImageSearchProviderFields';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { toast } from '@/hooks/use-toast';
@@ -233,6 +234,16 @@ export const EditProviderForm = ({
           onBaseUrlChange={(value) =>
             setEditData((prev) => ({ ...prev, base_url: value }))
           }
+          onAppKeyChange={(value) =>
+            setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+      {editData.provider_type === 'brave_search' && (
+        <ImageSearchProviderFields
+          idPrefix="edit"
+          editing
+          appKey={editData.app_key}
           onAppKeyChange={(value) =>
             setEditData((prev) => ({ ...prev, app_key: value }))
           }
