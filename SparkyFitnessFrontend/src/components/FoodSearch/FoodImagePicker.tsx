@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { GripVertical, XCircle } from 'lucide-react';
+import { Globe, GripVertical, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import {
   toNewImage,
   type PickerImage,
 } from '@/utils/imagePickerItems';
+import { FoodImageWebSearchDialog } from './FoodImageWebSearchDialog';
 
 interface FoodImagePickerProps {
   /** Ordered list of saved images and staged files. */
@@ -21,6 +22,11 @@ interface FoodImagePickerProps {
   /** Upper bound the server also enforces (10 files, 10MB each). */
   maxImages?: number;
   helpText?: string;
+  /**
+   * Shows "Search the web" when set (even to ''), starting the search from
+   * this text, usually the food's brand and name.
+   */
+  webSearchQuery?: string;
 }
 
 const DEFAULT_MAX_IMAGES = 10;
@@ -39,8 +45,10 @@ export function FoodImagePicker({
   labelText,
   maxImages = DEFAULT_MAX_IMAGES,
   helpText,
+  webSearchQuery,
 }: FoodImagePickerProps) {
   const { t } = useTranslation();
+  const [webSearchOpen, setWebSearchOpen] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
@@ -114,14 +122,36 @@ export function FoodImagePicker({
       <Label htmlFor={`${idPrefix}-images`}>
         {labelText ?? t('food.imagesLabel', 'Images')}
       </Label>
-      <Input
-        id={`${idPrefix}-images`}
-        type="file"
-        multiple
-        accept="image/*"
-        disabled={remainingSlots === 0}
-        onChange={handleFileChange}
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Input
+          id={`${idPrefix}-images`}
+          type="file"
+          multiple
+          accept="image/*"
+          disabled={remainingSlots === 0}
+          onChange={handleFileChange}
+          className="sm:flex-1"
+        />
+        {webSearchQuery !== undefined && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={remainingSlots === 0}
+            onClick={() => setWebSearchOpen(true)}
+          >
+            <Globe className="h-4 w-4 mr-2" />
+            {t('food.webImageSearch.open', 'Search the web')}
+          </Button>
+        )}
+      </div>
+      {webSearchQuery !== undefined && (
+        <FoodImageWebSearchDialog
+          open={webSearchOpen}
+          onOpenChange={setWebSearchOpen}
+          initialQuery={webSearchQuery}
+          onImagePicked={(file) => onItemsChange([...items, toNewImage(file)])}
+        />
+      )}
       {remainingSlots === 0 && (
         <p className="text-xs text-muted-foreground">
           {t('food.imagesLimitReached', {

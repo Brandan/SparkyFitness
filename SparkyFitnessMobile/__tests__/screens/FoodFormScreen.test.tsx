@@ -215,7 +215,12 @@ jest.mock('../../src/components/FoodForm', () => {
       } = props;
       return (
         <View>
-          {props.headerChildren}
+          {typeof props.headerChildren === 'function'
+            ? props.headerChildren({
+                name: props.initialValues?.name ?? '',
+                brand: props.initialValues?.brand ?? '',
+              })
+            : props.headerChildren}
           {children}
           {unitSelector ? (
             <Pressable

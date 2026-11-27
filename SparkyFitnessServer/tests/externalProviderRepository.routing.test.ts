@@ -33,7 +33,8 @@ describe('getActiveProviderWithKeyByType', () => {
     await getActiveProviderWithKeyByType('user-1', 'valhalla');
     expect(getClient).toHaveBeenCalledWith('user-1');
     const [sql, params] = query.mock.calls[0];
-    expect(params).toEqual(['user-1', 'valhalla']);
+    // A URL is required unless the caller says otherwise.
+    expect(params).toEqual(['user-1', 'valhalla', true]);
     expect(sql).toContain('(edp.user_id = $1) DESC');
     // Then public before family-shared: sort_order is per owner, so it cannot
     // decide between tiers.
@@ -47,6 +48,17 @@ describe('getActiveProviderWithKeyByType', () => {
       "has_family_access(edp.user_id, 'share_external_providers')"
     );
     expect(release).toHaveBeenCalled();
+  });
+
+  it('can skip the URL requirement for a key-only provider', async () => {
+    query.mockResolvedValue({
+      rows: [{ id: 'p', user_id: 'u', provider_name: 'Brave', base_url: null }],
+    });
+    const row = await getActiveProviderWithKeyByType('u', 'brave_search', {
+      requireBaseUrl: false,
+    });
+    expect(query.mock.calls[0][1]).toEqual(['u', 'brave_search', false]);
+    expect(row?.base_url).toBe('');
   });
 
   it('returns null when nothing matches', async () => {

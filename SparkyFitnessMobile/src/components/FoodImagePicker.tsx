@@ -16,6 +16,7 @@ import {
   type PickerImage,
 } from '../utils/pickerImages';
 import { addLog } from '../services/LogService';
+import FoodImageWebSearchModal from './FoodImageWebSearchModal';
 
 const TILE = 72;
 
@@ -27,6 +28,11 @@ interface FoodImagePickerProps {
   helpText?: string;
   maxImages?: number;
   disabled?: boolean;
+  /**
+   * Offers "Search the web" in the add menu when set (even to ''), starting
+   * the search from this text, usually the food's brand and name.
+   */
+  webSearchQuery?: string;
 }
 
 /**
@@ -44,6 +50,7 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   helpText,
   maxImages = MAX_IMAGES,
   disabled = false,
+  webSearchQuery,
 }) => {
   const { t } = useTranslation();
   const getImageSource = useFoodImageSourceContext();
@@ -56,6 +63,7 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   // leaves the second one orphaned. Mirrors FoodPhotoImproveScreen.
   const pickerLock = useRef(false);
   const [busy, setBusy] = useState(false);
+  const [webSearchOpen, setWebSearchOpen] = useState(false);
 
   // The system picker stays open for seconds, so `items` captured by the
   // handler can be stale by the time it returns — a parent that seeds saved
@@ -139,6 +147,16 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
           }),
           onPress: () => void addFromLibrary(),
         },
+        ...(webSearchQuery !== undefined
+          ? [
+              {
+                text: t('foodImagePicker.actions.searchWeb', {
+                  defaultValue: 'Search the Web',
+                }),
+                onPress: () => setWebSearchOpen(true),
+              },
+            ]
+          : []),
         {
           text: t('common.cancel', { defaultValue: 'Cancel' }),
           style: 'cancel',
@@ -251,6 +269,20 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
       </ScrollView>
       {helpText ? (
         <Text className="text-text-muted text-xs mt-2">{helpText}</Text>
+      ) : null}
+      {/* Mounted only while open, so a closed picker runs no search hooks. */}
+      {webSearchQuery !== undefined && webSearchOpen ? (
+        <FoodImageWebSearchModal
+          visible
+          initialQuery={webSearchQuery}
+          onClose={() => setWebSearchOpen(false)}
+          onImagePicked={(uri) => {
+            // Append against the latest list, as runPick does.
+            const current = itemsRef.current;
+            if (current.length >= maxImages) return;
+            onItemsChange([...current, toNewImage(uri)]);
+          }}
+        />
       ) : null}
     </View>
   );

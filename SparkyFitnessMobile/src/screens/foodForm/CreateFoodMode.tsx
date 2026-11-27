@@ -1004,7 +1004,7 @@ export function CreateFoodMode({
         noteImages={savedNoteImages}
         submitLabel={primaryLabel}
         hideSubmitButton={usesNativeHeader}
-        headerChildren={
+        headerChildren={({ name, brand }) => (
           <View className="mb-4">
             {params.labelScanSource && (
               <LabelScanSourceBanner
@@ -1017,9 +1017,13 @@ export function CreateFoodMode({
               items={pickerImages}
               onItemsChange={setPickerImages}
               disabled={isSubmitting}
+              webSearchQuery={[brand, name]
+                .map((part) => part.trim())
+                .filter(Boolean)
+                .join(' ')}
             />
           </View>
-        }
+        )}
         showAutoScaleNutrition={showAutoScaleNutrition}
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={

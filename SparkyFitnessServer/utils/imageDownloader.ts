@@ -101,6 +101,68 @@ function resolveImageFileName(imageUrl: string, contentType: string): string {
   return `${sourceStem}_${urlHash}${allowedExtensions[0]}`;
 }
 
+/** An image read into memory, checked like a download: raster type and size. */
+interface FetchedImage {
+  bytes: Buffer;
+  contentType: string;
+}
+
+/**
+ * Fetches a remote image into memory through the same public-host guard,
+ * redirect limit, content-type allowlist and 10 MB cap as `downloadImage`,
+ * without writing it anywhere. Used to hand a web search result to a client,
+ * which then uploads it like a photo the person picked.
+ */
+async function fetchImageBytes(imageUrl: string): Promise<FetchedImage> {
+  const response = await fetchImageResponse(imageUrl);
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(
+      `[imageDownloader] Upstream returned status ${response.status}`
+    );
+  }
+  const contentType = (response.headers.get('content-type') || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  if (!IMAGE_CONTENT_TYPE_EXTENSIONS.has(contentType)) {
+    await response.body?.cancel();
+    throw new Error(
+      `[imageDownloader] Rejected image with disallowed content-type: ${contentType || '(none)'}`
+    );
+  }
+  const declaredLength = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_BYTES) {
+    await response.body?.cancel();
+    throw new Error(
+      `[imageDownloader] Image exceeds maximum size of ${MAX_IMAGE_BYTES} bytes`
+    );
+  }
+  if (!response.body) {
+    throw new Error('[imageDownloader] Response had no body');
+  }
+  const chunks: Buffer[] = [];
+  let downloaded = 0;
+  const source = Readable.fromWeb(
+    response.body as unknown as NodeReadableStream
+  );
+  for await (const chunk of source) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    downloaded += buffer.length;
+    if (downloaded > MAX_IMAGE_BYTES) {
+      source.destroy();
+      throw new Error(
+        `[imageDownloader] Image exceeds maximum size of ${MAX_IMAGE_BYTES} bytes`
+      );
+    }
+    chunks.push(buffer);
+  }
+  if (downloaded === 0) {
+    throw new Error('[imageDownloader] Image was empty');
+  }
+  return { bytes: Buffer.concat(chunks), contentType };
+}
+
 /**
  * Ensures the upload directory exists.
  */
@@ -198,8 +260,9 @@ async function downloadImage(
     throw error;
   }
 }
-export { downloadImage };
-export type { ImageDomain };
+export { downloadImage, fetchImageBytes };
+export type { ImageDomain, FetchedImage };
 export default {
   downloadImage,
+  fetchImageBytes,
 };

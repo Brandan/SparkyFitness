@@ -866,7 +866,7 @@ export function EditFoodMode({
         noteImages={savedNoteImages}
         isSubmitting={isSubmitting}
         hideSubmitButton={usesNativeHeader}
-        headerChildren={
+        headerChildren={({ name, brand }) => (
           <View className="mb-4">
             <Button
               variant="secondary"
@@ -887,9 +887,13 @@ export function EditFoodMode({
               items={pickerImages}
               onItemsChange={setPickerImages}
               disabled={isSubmitting}
+              webSearchQuery={[brand, name]
+                .map((part) => part.trim())
+                .filter(Boolean)
+                .join(' ')}
             />
           </View>
-        }
+        )}
         unitSelector={
           availableUnitVariants.length > 0
             ? {

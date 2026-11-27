@@ -857,7 +857,9 @@ export interface RoutingProviderRow {
 // against another's. Backs routing resolution, which needs the key server-side.
 async function getActiveProviderWithKeyByType(
   userId: string,
-  providerType: string
+  providerType: string,
+  // A key-only provider (Brave Search) has no URL; every other caller needs one.
+  { requireBaseUrl = true }: { requireBaseUrl?: boolean } = {}
 ): Promise<RoutingProviderRow | null> {
   const client = await getClient(userId);
   try {
@@ -873,10 +875,10 @@ async function getActiveProviderWithKeyByType(
        )
        AND edp.is_active = TRUE
        AND edp.provider_type = $2
-       AND edp.base_url IS NOT NULL AND edp.base_url <> ''
+       AND ($3::boolean = FALSE OR (edp.base_url IS NOT NULL AND edp.base_url <> ''))
        ORDER BY (edp.user_id = $1) DESC, edp.is_public DESC, edp.sort_order ASC NULLS LAST, edp.created_at DESC
        LIMIT 1`,
-      [userId, providerType]
+      [userId, providerType, requireBaseUrl]
     );
     const row = result.rows[0];
     if (!row) return null;
@@ -897,7 +899,7 @@ async function getActiveProviderWithKeyByType(
       id: row.id,
       user_id: row.user_id,
       provider_name: row.provider_name,
-      base_url: row.base_url,
+      base_url: row.base_url ?? '',
       app_key: appKey,
     };
   } finally {

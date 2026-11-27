@@ -4991,7 +4991,8 @@
       "chooseFromLibrary": "Choose from Library",
       "setAsMain": "Set as main",
       "remove": "Remove",
-      "photo": "Photo"
+      "photo": "Photo",
+      "searchWeb": "Search the Web"
     },
     "labels": {
       "main": "Main"
@@ -5000,6 +5001,22 @@
       "mainPhotoEdit": "Main photo, edit",
       "photoEdit": "Photo {{number}}, edit",
       "addPhoto": "Add photo"
+    },
+    "webSearch": {
+      "title": "Search the web",
+      "placeholder": "Food name and brand",
+      "queryLabel": "Search for",
+      "search": "Search",
+      "enterWords": "Type what to search for.",
+      "searching": "Searching…",
+      "searchFailed": "Image search failed. Try again.",
+      "tryAgain": "Try again",
+      "notConfiguredTitle": "Web image search is not set up",
+      "notConfiguredBody": "On the web app, add a Brave Search API key in Settings › External Providers, then search again.",
+      "noResults": "No images found. Try other words.",
+      "useImage": "Use image from {{source}}",
+      "pickFailed": "Couldn't get that image. Pick another one.",
+      "attribution": "Results from Brave Search. Check you may use a photo before sharing it."
     }
   },
   "editLoggedMeal": {
