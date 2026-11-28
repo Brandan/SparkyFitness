@@ -131,4 +131,27 @@ describe('FoodImagePicker web search', () => {
       )
     ).toHaveAttribute('target', '_blank');
   });
+
+  it('searching again does not submit the food form around the picker', async () => {
+    mockSearch.mockResolvedValue({ status: 'ok', results: [result] });
+    const onFormSubmit = jest.fn((e: React.FormEvent) => e.preventDefault());
+    renderWithClient(
+      <form onSubmit={onFormSubmit}>
+        <FoodImagePicker
+          items={[]}
+          onItemsChange={jest.fn()}
+          webSearchQuery="apple"
+        />
+      </form>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Search the web' }));
+    fireEvent.change(screen.getByLabelText('Search for'), {
+      target: { value: 'green apple' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => expect(mockSearch).toHaveBeenCalledWith('green apple'));
+    expect(onFormSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Search the web for a photo')).toBeInTheDocument();
+  });
 });

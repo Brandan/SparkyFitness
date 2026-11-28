@@ -62,6 +62,10 @@ export function FoodImageWebSearchDialog({
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    // The dialog is portalled out of the DOM but not out of the React tree,
+    // so without this the submit reaches the food form around the picker
+    // and saves the food.
+    event.stopPropagation();
     setPickError(null);
     setSubmitted(draft.trim());
   };
